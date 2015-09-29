@@ -401,9 +401,16 @@ Library bap_trace
   Modules:         Bap_trace, 
                    Bap_trace_events,  
                    Bap_trace_event_types, 
-                   Bap_trace_meta,
-                   Bap_trace_binprot
+                   Bap_trace_meta
   BuildDepends:    bap, uri
+
+Library trace_test
+  Path:            lib_test/bap_trace
+  Build$:          flag(tests)
+  Install:         false
+  CompiledObject:  best
+  Modules:         Test_trace
+  BuildDepends:    bap, bap_trace, oUnit
 
 Executable "bap-server"
   Path:           src/server
@@ -468,7 +475,8 @@ Executable run_tests
                 oUnit,
                 sema_test,
                 types_test,
-                project_test
+                project_test,
+                trace_test
   CompiledObject: best
 
 Executable run_benchmarks

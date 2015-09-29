@@ -150,7 +150,7 @@ let supports_by_proto: t -> 'a tag -> bool = fun t tag ->
     let ops = Hashtbl.find_exn protos proto in
     ops.supports tag
 
-let supports t tag = supports_by_tool t tag || supports_by_proto t tag
+let supports t tag = failwith "inimplemented" (** TODO: to do! *)
 
 let of_stream t = match t.events.stream with
   | None -> fun () -> None
@@ -158,9 +158,7 @@ let of_stream t = match t.events.stream with
     fun () -> 
       let s = next () in
       match s with 
-      | Some ev -> 
-        let () = add_loaded t ev in
-        s
+      | Some ev -> add_loaded t ev; s
       | None -> None
 
 let memoize t = match t.events.stream with
@@ -169,7 +167,7 @@ let memoize t = match t.events.stream with
     let rec load = function 
       | None -> t 
       | Some ev ->
-        let () = add_loaded t ev in
+        add_loaded t ev;
         load (next ()) in
     load (next ())
 
@@ -188,8 +186,12 @@ let find t tag =
   | None -> None
   | Some ev -> Some (Value.get_exn tag ev)
 
+(** TODO: ask, if we need event itself or its contains *)
 let find_all t tag = 
-  Seq.filter (events t) ~f:(Value.is tag)
+  Seq.filter_map (events t) 
+    ~f:(fun v -> 
+      if Value.is tag v then Some (Value.get_exn tag v)
+      else None)
  
 (** TODO: ask about returing value: 'a or 'b *)
 let fold_matching t matcher ~f ~init =
@@ -205,23 +207,28 @@ let contains t tag =
   else if supports t tag then Some false
   else None
 
-let add_event t tag e = 
-  let ev = Value.create tag e in
-  let () = add_loaded t ev in
-  t
+let add_event t tag e = add_loaded t (Value.create tag e); t
 
 let append t evs = 
+  let () = flush stdout in
   let add evs = Seq.iter evs (fun ev -> add_loaded t ev) in
-  let next' () = 
-    let next = t.events.stream in
-    match next with
-    | None -> add evs; None
-    | Some f -> f () in    
+  let next' = match t.events.stream with
+    | None -> add evs; fun () -> None
+    | Some f -> fun () -> match f () with 
+      | Some e as r -> r
+      | None -> add evs; None in
   let events = { t.events with stream = Some next' } in
   {t with events}
 
+(** TODO: remove it  *)
+let stub: 'a tag -> bool = fun _ -> true
+
 let add tab key data = Hashtbl.add_exn tab ~key ~data
-let register_tool ~name ~supports = add tools name supports; name
+
+let register_tool: name:string -> supports:('a tag -> bool) -> tool 
+  = fun ~name ~supports -> 
+    Hashtbl.add_exn tools ~key:name ~data:stub; name
+
 let register_reader proto init = add readers proto init
 let register_writer proto write = add writers proto write
 let register_proto ~name ~probe ~supports = 

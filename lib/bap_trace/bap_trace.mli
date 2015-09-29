@@ -93,7 +93,7 @@ val set_meta : t -> dict -> t
 (** [supports trace feature] is [true] if a tool that was used to
     generate the trace, as well as transporting protocol and
     underlying format support the given feature. *)
-(* val supports : t -> 'a tag -> bool *)
+val supports : t -> 'a tag -> bool
 
 (** [memoize trace] eagerly loads all the trace into memory.   *)
 val memoize : t -> t
@@ -130,7 +130,7 @@ val fold_matching : t -> 'a Value.Match.t -> f:('b -> 'a -> 'b) -> init:'b -> 'b
     occurs in a trace, [Some false] if it may occur (i.e., is
     supported), but is not in the trace, and [None] if the event is not
     supported at all. *)
-(* val contains : t -> 'a tag -> bool option *)
+val contains : t -> 'a tag -> bool option
 
 (** [event trace] returns a sequence of events of the [trace].
     This function should be used if the above specified functions
@@ -199,9 +199,9 @@ val append : t -> event seq -> t
 
 *)
 
-(* val register_tool : *)
-(*   name:string -> *)
-(*   supports:('a tag -> bool) -> tool *)
+val register_tool :
+  name:string ->
+  supports:('a tag -> bool) -> tool
 
 (* val register_proto : *)
 (*   name:string -> *)
