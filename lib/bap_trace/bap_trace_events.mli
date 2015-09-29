@@ -1,4 +1,4 @@
-open Bap.Std
+open Bap_types.Std
 open Bap_trace_event_types
 
 (** Common trace events.
@@ -7,7 +7,6 @@ open Bap_trace_event_types
     A particular trace is not restricted to this event types,
     and can hold more or less event types.
 *)
-
 
 (** an read access to a memory cell  *)
 val memory_load : addr move tag

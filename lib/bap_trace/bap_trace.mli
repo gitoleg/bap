@@ -1,5 +1,5 @@
 open Core_kernel.Std
-open Bap.Std
+open Bap_types.Std
 
 (** Trace is a sequence of events accompanied with meta information.
 
