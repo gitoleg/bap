@@ -19,12 +19,13 @@ end
 
 type reader = Reader.t
 
-type events = {
-  stream : (unit -> event option) option;
-  loaded : event Queue.t
+type stream = {
+  yield: (unit -> event option);
+  ready: event Queue.t;
+  after: event seq;
 }
 
-module type S = module type of String.Caseless.Table
+type events = | Loaded of event seq | Stream of stream
 
 module Tab = String.Caseless.Table
 
@@ -83,7 +84,8 @@ let io_with_proto uri (f : proto -> ('a, error) Result.t) =
   | p::[] -> f p 
   | protos -> Error `Ambiguous_uri 
 
-let make_events stream = {stream; loaded = Queue.create ();}
+let make_stream yield = 
+  Stream {yield; ready = Queue.create (); after = Seq.empty }
 
 (** TODO: error generation should be much more clear and full *)
 let load uri = 
@@ -94,8 +96,8 @@ let load uri =
     (** TODO: wtf ? trace should give tool and proto, not a reader *)
     let tool = Reader.(reader.tool) in 
     let meta = Reader.(reader.meta) in
-    let next () = Some (Reader.(reader.next ())) in
-    let events = make_events (Some next) in
+    let next () = Some (Reader.(reader.next ())) in    
+    let events = make_stream next in
     Ok {id; meta; tool; events; proto = Some p} in
   io_with_proto uri load_with_proto
 
@@ -110,7 +112,7 @@ let save uri t =
 let create tool = {
   id = make_id (); 
   meta = Dict.empty; 
-  events = make_events None;
+  events = Loaded Seq.empty;
   tool; 
   proto = None;
 }
@@ -122,7 +124,7 @@ let unfold tool ~f ~init =
   let id = make_id () in
   let meta = Dict.empty in
   let proto = None in
-  let events = make_events (Some next) in
+  let events = make_stream next in
   {id; meta; tool; events; proto}  
 
 let set_attr t attr v = 
@@ -137,8 +139,7 @@ let has_attr t = Dict.mem  t.meta
 let meta t = t.meta
 let tool t = t.tool
 let set_meta t meta = {t with meta}
-let add_loaded t ev = Queue.enqueue t.events.loaded ev
-  
+
 let supports_by_tool: t -> 'a tag -> bool = fun t tag ->
   let f = Hashtbl.find_exn tools t.tool in
   f tag
@@ -152,33 +153,31 @@ let supports_by_proto: t -> 'a tag -> bool = fun t tag ->
 
 let supports t tag = failwith "inimplemented" (** TODO: to do! *)
 
-let of_stream t = match t.events.stream with
-  | None -> fun () -> None
-  | Some next ->
-    fun () -> 
-      let s = next () in
-      match s with 
-      | Some ev -> add_loaded t ev; s
-      | None -> None
+let add_loaded s ev = Queue.enqueue s.ready ev
 
-let memoize t = match t.events.stream with
-  | None -> t
-  | Some next -> 
+let events_of_stream s = 
+  let f () = match s.yield () with 
+    | Some ev -> 
+      add_loaded s ev; Some (ev, ())
+    | None -> None in
+  let evs = Seq.of_list (Queue.to_list s.ready) in
+  let evs' = Seq.unfold ~init:() ~f:f in
+  let evs = Seq.append evs evs' in
+  Seq.append evs s.after
+
+let memoize t = match t.events with
+  | Loaded _ -> t
+  | Stream s -> 
     let rec load = function 
       | None -> t 
       | Some ev ->
-        add_loaded t ev;
-        load (next ()) in
-    load (next ())
+        add_loaded s ev;
+        load (s.yield ()) in
+    load (s.yield ())
 
-let events t = 
-  let evs = Seq.of_list (Queue.to_list t.events.loaded) in
-  let f = of_stream t in
-  let f' () = match f () with 
-    | Some v -> Some (v, ())
-    | None -> None in
-  let evs' = Seq.unfold ~init:() ~f:f' in
-  Seq.append evs evs'
+let events t = match t.events with
+  | Loaded evs -> evs
+  | Stream s -> events_of_stream s
 
 (** TODO: ask, if we need event itself or its contains *)
 let find t tag = 
@@ -207,21 +206,25 @@ let contains t tag =
   else if supports t tag then Some false
   else None
 
-let add_event t tag e = add_loaded t (Value.create tag e); t
+let add_event t tag e = 
+  let ev = Value.create tag e in
+  let add s ev = Seq.append s (Seq.singleton ev) in
+  match t.events with
+  | Loaded evs -> {t with events = Loaded (add evs ev)}
+  | Stream s -> 
+    let s' = {s with after = add s.after ev} in
+    {t with events = Stream s'}
 
 let append t evs = 
-  let () = flush stdout in
-  let add evs = Seq.iter evs (fun ev -> add_loaded t ev) in
-  let next' = match t.events.stream with
-    | None -> add evs; fun () -> None
-    | Some f -> fun () -> match f () with 
-      | Some e as r -> r
-      | None -> add evs; None in
-  let events = { t.events with stream = Some next' } in
-  {t with events}
+  let add s s' = Seq.append s s' in
+  match t.events with 
+  | Loaded evs' -> {t with events = Loaded (add evs' evs)}
+  | Stream s -> 
+    let s' = {s with after = add s.after evs} in
+    {t with events = Stream s'}
 
 (** TODO: remove it  *)
-let stub: 'a tag -> bool = fun _ -> true
+let stub: 'a tag -> bool = fun _ -> failwith "temp function!"
 
 let add tab key data = Hashtbl.add_exn tab ~key ~data
 
@@ -232,5 +235,5 @@ let register_tool: name:string -> supports:('a tag -> bool) -> tool
 let register_reader proto init = add readers proto init
 let register_writer proto write = add writers proto write
 let register_proto ~name ~probe ~supports = 
-  add protos name {probe; supports}; name
+  add protos name {probe; supports=stub}; name
 

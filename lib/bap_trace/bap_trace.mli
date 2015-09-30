@@ -203,10 +203,10 @@ val register_tool :
   name:string ->
   supports:('a tag -> bool) -> tool
 
-(* val register_proto : *)
-(*   name:string -> *)
-(*   probe:(Uri.t -> bool) -> *)
-(*   supports:('a tag -> bool) -> proto *)
+val register_proto :
+  name:string ->
+  probe:(Uri.t -> bool) ->
+  supports:('a tag -> bool) -> proto
 
 
 (** Reader interface.  *)
