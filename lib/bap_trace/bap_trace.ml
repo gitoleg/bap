@@ -145,8 +145,6 @@ let tool t = t.tool
 let set_meta t meta = {t with meta}
 let supports t tag = failwith "inimplemented" (** TODO: to do! *)
 
-let events_of_stream s = Seq.append s.data s.after
-
 let memoize t = match t.events with
   | Loaded _ -> t
   | Stream s -> 
@@ -155,7 +153,7 @@ let memoize t = match t.events with
 
 let events t = match t.events with
   | Loaded evs -> evs
-  | Stream s -> events_of_stream s
+  | Stream s -> Seq.append s.data s.after
 
 (** TODO: ask, if we need event itself or its contains *)
 let find t tag = 
@@ -214,4 +212,5 @@ let register_reader proto init = add readers proto init
 let register_writer proto write = add writers proto write
 let register_proto ~name ~probe ~supports = 
   add protos name {probe; supports=stub}; name
+
 

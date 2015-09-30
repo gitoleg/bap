@@ -3,12 +3,15 @@ open Core_kernel.Std
 
 open Bap_types.Std
 open Bap_trace_meta_types
+open Bap_trace_meta
 open Bap_trace_event_types
 open Bap_trace_events
 
 let move = Move.({cell = Word.b1; data = Word.b1;})
 let var = Var.create ~tmp:true "temp" (Type.Imm 0x1) 
 let reg = Move.({cell = var; data = Word.b1;})
+let bin = Binary.({path="/dev/null"; arch=`x86; stripped = None})
+let trc = Tracer.({name="test_tracer"; args=Array.empty (); version="";}) 
 
 let test_events = 
   let c = Value.create in
@@ -18,14 +21,6 @@ let test_events =
     c register_write reg;
     c pc_update Word.b1; ]
 
-let str_of_ev ev = 
-  let is tag = Value.is tag ev in
-  if is memory_load then "load"
-  else if is memory_store then "store"
-  else if is register_write then "reg_write"
-  else if is register_read then "reg_read"
-  else "unknown"
-
 let tool = Bap_trace.register_tool 
     ~name:"test_tool" 
     ~supports:(fun tag -> 
@@ -34,22 +29,39 @@ let tool = Bap_trace.register_tool
 
 let empty = Bap_trace.create tool
 
+let seq_eql s s' = Seq.compare Value.compare s s' = 0
+
+let id ctxt = 
+  let t  = Bap_trace.create tool in
+  let t' = Bap_trace.create tool in
+  let id,id' = Bap_trace.(id t, id t') in
+  let not_eql = not (Bap_trace.Id.equal id id') in
+  assert_bool "is mustn't be equal, failed" not_eql
+
+let trace_tool ctxt = 
+  let t = Bap_trace.create tool in
+  let tool' = Bap_trace.tool t in
+  assert_equal ~ctxt tool tool'
+
 let set_attr t attr a ctxt = 
   let t = Bap_trace.set_attr t attr a in
   match Bap_trace.get_attr t attr with
   | None -> assert_failure "get attribute failed"
-  | Some a' -> assert_equal ~ctxt ~cmp:Value.equal a a'
+  | Some a' -> assert_equal ~ctxt a a'
 
 let has_attr t attr a ctxt = 
   let t = Bap_trace.set_attr t attr a in
   let has = Bap_trace.has_attr t attr in
   assert_bool "attribute is absent" has
 
-let set_meta t dict ctxt =
-  let t = Bap_trace.set_meta t dict in
-  let dict' = Bap_trace.meta t in 
+let set_meta t ctxt =
+  let open Value.Dict in 
+  let meta = Dict.set empty binary bin in
+  let meta = Dict.set meta tracer trc in
+  let t = Bap_trace.set_meta t meta in
+  let meta' = Bap_trace.meta t in 
   let cmp d d' = Value.Dict.compare d d' = 0 in
-  assert_equal ~ctxt ~cmp dict dict'
+  assert_equal ~ctxt ~cmp meta meta'
 
 let add_event t tag v ctxt = 
   let t = Bap_trace.add_event t tag v in
@@ -74,7 +86,8 @@ let find_all t count tag v ctxt =
   let len = Seq.length s in
   assert_equal ~ctxt len count
 
-let find_all_matching t ctxt = 
+let find_all_matching ctxt = 
+  let t = empty in
   let t = Bap_trace.add_event t memory_load move in
   let t = Bap_trace.add_event t memory_store move in
   let t = Bap_trace.add_event t register_read reg in
@@ -91,7 +104,8 @@ let find_all_matching t ctxt =
     (Seq.length s = Seq.length (Bap_trace.events t) &&
      Seq.length s' = 2)
 
-let fold_matching t ctxt = 
+let fold_matching ctxt = 
+  let t = empty in
   let t = Bap_trace.add_event t memory_load move in
   let t = Bap_trace.add_event t memory_store move in
   let t = Bap_trace.add_event t register_read reg in
@@ -106,7 +120,14 @@ let fold_matching t ctxt =
   assert_bool "failed fold_matching"
     (List.for_all s ~f:is_memory && List.length s = 2)
 
-let append t ctxt =   
+let contains t ctxt = 
+  let t = Bap_trace.add_event t pc_update Word.b1 in
+  match Bap_trace.contains t pc_update with
+  | Some r -> assert_bool "contains failed" r
+  | None -> assert_failure "contains failed"
+
+let append ctxt =
+  let t = empty in
   let c = Value.create in
   let t = Bap_trace.add_event t register_read reg in
   let t = Bap_trace.add_event t register_write reg in
@@ -114,32 +135,56 @@ let append t ctxt =
   let expected = Seq.of_list (evs @ test_events) in
   let t = Bap_trace.append t (Seq.of_list test_events) in
   let events = Bap_trace.events t in
-  let cmp s s' = Seq.compare Value.compare s s' = 0 in
-  assert_equal ~ctxt ~cmp events expected
+  assert_equal ~ctxt ~cmp:seq_eql events expected
 
-let unfold ctxt = 
-  let next = 
+let next () = 
     let a = ref test_events in
     fun () -> match !a with
       | [] -> None
-      | hd::tl -> a := tl; Some hd in
-  let t = Bap_trace.unfold tool ~f:next ~init:() in
-  let evs' = Bap_trace.events t in
+      | hd::tl -> a := tl; Some hd 
+
+let unfold ctxt = 
+  let t = Bap_trace.unfold tool ~f:(next ()) ~init:() in
+  let evs = Bap_trace.events t in
+  let evs' = Seq.of_list test_events in
+  assert_equal ~ctxt ~cmp:seq_eql evs evs'
+
+let check_calls ctxt = 
+  let t = Bap_trace.unfold tool ~f:(next ()) ~init:() in
+  let evs = Bap_trace.events t in
   let _ = Bap_trace.find t register_read in
-  match Seq.hd evs' with
-  | Some ev -> 
-    let ev' = Value.create memory_load move in
-    assert_equal ~ctxt ~cmp:Value.equal ev ev'
-  | None -> assert_failure "unfold failed"
+  let evs' = Bap_trace.events t in
+  assert_equal ~ctxt ~cmp:seq_eql evs evs'
+
+let memoize ctxt = 
+  let a = ref 0 in
+  let next = 
+    let evs = ref test_events in
+    fun () -> match !evs with
+      | [] -> None
+      | hd::tl -> 
+        a := !a + 1; evs := tl; Some hd in
+  let t = Bap_trace.unfold tool ~f:next ~init:() in
+  assert_equal ~ctxt !a 0;
+  let _ = Bap_trace.memoize t in
+  assert_equal ~ctxt !a (List.length test_events)
 
 let suite =  
   "Trace" >:::
   [
+    "id"                >:: id;
+    "tool"              >:: trace_tool;
+    "set_attr"          >:: set_attr empty binary bin;
+    "has_attr"          >:: has_attr empty binary bin;
+    "set_meta"          >:: set_meta empty;
     "add_event"         >:: add_event empty memory_load move;
     "find"              >:: find empty memory_load move;
     "find_all"          >:: find_all empty 5 memory_load move;
-    "find_all_matching" >:: find_all_matching empty;
-    "fold_matching"     >:: fold_matching empty;
-    "append"            >:: append empty;
-    "unfold"            >:: unfold ;
+    "find_all_matching" >:: find_all_matching ;
+    "fold_matching"     >:: fold_matching;
+    "contains"          >:: contains empty;
+    "append"            >:: append;
+    "unfold"            >:: unfold;
+    "check_calls"       >:: check_calls;
+    "memoize"           >:: memoize;
   ]
