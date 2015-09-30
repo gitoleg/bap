@@ -84,8 +84,12 @@ let io_with_proto uri (f : proto -> ('a, error) Result.t) =
   | p::[] -> f p 
   | protos -> Error `Ambiguous_uri 
 
-let make_stream yield = 
-  Stream {yield; ready = Queue.create (); after = Seq.empty }
+let make_stream next = 
+  let ready = Queue.create () in
+  let yield () = match next () with 
+    | Some ev as r -> Queue.enqueue ready ev; r
+    | None -> None in
+  Stream {yield; ready; after = Seq.empty }
 
 (** TODO: error generation should be much more clear and full *)
 let load uri = 
@@ -139,26 +143,12 @@ let has_attr t = Dict.mem  t.meta
 let meta t = t.meta
 let tool t = t.tool
 let set_meta t meta = {t with meta}
-
-let supports_by_tool: t -> 'a tag -> bool = fun t tag ->
-  let f = Hashtbl.find_exn tools t.tool in
-  f tag
-
-let supports_by_proto: t -> 'a tag -> bool = fun t tag ->
-  match t.proto with 
-  | None -> false
-  | Some proto ->
-    let ops = Hashtbl.find_exn protos proto in
-    ops.supports tag
-
 let supports t tag = failwith "inimplemented" (** TODO: to do! *)
-
 let add_loaded s ev = Queue.enqueue s.ready ev
 
 let events_of_stream s = 
   let f () = match s.yield () with 
-    | Some ev -> 
-      add_loaded s ev; Some (ev, ())
+    | Some ev -> Some (ev, ())
     | None -> None in
   let evs = Seq.of_list (Queue.to_list s.ready) in
   let evs' = Seq.unfold ~init:() ~f:f in
