@@ -20,8 +20,7 @@ end
 type reader = Reader.t
 
 type stream = {
-  yield: (unit -> event option);
-  ready: event Queue.t;
+  data : event seq; 
   after: event seq;
 }
 
@@ -85,11 +84,12 @@ let io_with_proto uri (f : proto -> ('a, error) Result.t) =
   | protos -> Error `Ambiguous_uri 
 
 let make_stream next = 
-  let ready = Queue.create () in
-  let yield () = match next () with 
-    | Some ev as r -> Queue.enqueue ready ev; r
+  let f () = match next () with
+    | Some ev -> Some (ev, ())
     | None -> None in
-  Stream {yield; ready; after = Seq.empty }
+  let s = Seq.unfold ~init:() ~f in
+  let s = Seq.memoize s in
+  Stream {data = s; after = Seq.empty }
 
 (** TODO: error generation should be much more clear and full *)
 let load uri = 
@@ -144,26 +144,14 @@ let meta t = t.meta
 let tool t = t.tool
 let set_meta t meta = {t with meta}
 let supports t tag = failwith "inimplemented" (** TODO: to do! *)
-let add_loaded s ev = Queue.enqueue s.ready ev
 
-let events_of_stream s = 
-  let f () = match s.yield () with 
-    | Some ev -> Some (ev, ())
-    | None -> None in
-  let evs = Seq.of_list (Queue.to_list s.ready) in
-  let evs' = Seq.unfold ~init:() ~f:f in
-  let evs = Seq.append evs evs' in
-  Seq.append evs s.after
+let events_of_stream s = Seq.append s.data s.after
 
 let memoize t = match t.events with
   | Loaded _ -> t
   | Stream s -> 
-    let rec load = function 
-      | None -> t 
-      | Some ev ->
-        add_loaded s ev;
-        load (s.yield ()) in
-    load (s.yield ())
+    let data = Seq.force_eagerly s.data in
+    { t with events = Stream ({s with data}) }
 
 let events t = match t.events with
   | Loaded evs -> evs

@@ -128,7 +128,6 @@ let unfold ctxt =
   let _ = Bap_trace.find t register_read in
   match Seq.hd evs' with
   | Some ev -> 
-    let () = Printf.printf "event is %s\n" (str_of_ev ev) in
     let ev' = Value.create memory_load move in
     assert_equal ~ctxt ~cmp:Value.equal ev ev'
   | None -> assert_failure "unfold failed"
