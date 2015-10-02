@@ -1,11 +1,14 @@
 open OUnit2
 open Core_kernel.Std
+open Or_error
 
 open Bap_types.Std
 open Bap_trace_meta_types
 open Bap_trace_meta
 open Bap_trace_event_types
 open Bap_trace_events
+
+let () = Bap_trace_binprot.register ()
 
 let move = Move.({cell = Word.b1; data = Word.b1;})
 let var = Var.create ~tmp:true "temp" (Type.Imm 0x1) 
@@ -21,27 +24,57 @@ let test_events =
     c register_write reg;
     c pc_update Word.b1; ]
 
-let tool = Bap_trace.register_tool 
-    ~name:"test_tool" 
-    ~supports:(fun tag -> 
-        let same = Value.Tag.same tag in
-        same memory_load || same memory_store) 
+let test_meta = 
+  let open Dict in
+  let meta = set empty binary bin in
+  set meta tracer trc   
 
-let empty = Bap_trace.create tool
+module Tool : Bap_trace.S = struct
+  let name = "test_tool" 
+  let supports = fun tag -> 
+    let same t = Value.Tag.same tag t in
+    same memory_load || same memory_store
+
+end
+
+let test_tool = Bap_trace.register_tool (module Tool)
+
+let empty = Bap_trace.create test_tool
 
 let seq_eql s s' = Seq.compare Value.compare s s' = 0
+let dict_eql d d' = Value.Dict.compare d d' = 0 
+
+let save_and_load ctxt =
+  let uri = Uri.of_string "file:///tmp/bap_trace.test" in
+  let save () =
+    let t = Bap_trace.append empty (Seq.of_list test_events) in
+    let t = Bap_trace.set_meta t test_meta in
+    let r = Bap_trace.save uri t in
+    assert_equal ~ctxt (Ok ()) r in
+  let load () = 
+    match Bap_trace.load uri with
+    | Ok t -> 
+      let evs = Bap_trace.events t in
+      (* let meta = Bap_trace.meta t in *)
+      (* let tool = Bap_trace.tool t in *)
+      assert_equal ~ctxt ~cmp:seq_eql evs (Seq.of_list test_events);
+      (* assert_equal ~ctxt ~cmp:dict_eql meta test_meta; *)
+      (* assert_equal ~ctxt test_tool tool *)
+    | Error s -> assert_failure "load failed" in
+  save ();
+  load ()
 
 let id ctxt = 
-  let t  = Bap_trace.create tool in
-  let t' = Bap_trace.create tool in
+  let t  = Bap_trace.create test_tool in
+  let t' = Bap_trace.create test_tool in
   let id,id' = Bap_trace.(id t, id t') in
   let not_eql = not (Bap_trace.Id.equal id id') in
   assert_bool "is mustn't be equal, failed" not_eql
 
 let trace_tool ctxt = 
-  let t = Bap_trace.create tool in
-  let tool' = Bap_trace.tool t in
-  assert_equal ~ctxt tool tool'
+  let t = Bap_trace.create test_tool in
+  let tool = Bap_trace.tool t in
+  assert_equal ~ctxt tool test_tool
 
 let set_attr t attr a ctxt = 
   let t = Bap_trace.set_attr t attr a in
@@ -56,12 +89,9 @@ let has_attr t attr a ctxt =
 
 let set_meta t ctxt =
   let open Value.Dict in 
-  let meta = Dict.set empty binary bin in
-  let meta = Dict.set meta tracer trc in
-  let t = Bap_trace.set_meta t meta in
-  let meta' = Bap_trace.meta t in 
-  let cmp d d' = Value.Dict.compare d d' = 0 in
-  assert_equal ~ctxt ~cmp meta meta'
+  let t = Bap_trace.set_meta t test_meta in
+  let meta = Bap_trace.meta t in 
+  assert_equal ~ctxt ~cmp:dict_eql meta test_meta
 
 let add_event t tag v ctxt = 
   let t = Bap_trace.add_event t tag v in
@@ -120,6 +150,12 @@ let fold_matching ctxt =
   assert_bool "failed fold_matching"
     (List.for_all s ~f:is_memory && List.length s = 2)
 
+let supports ctxt = 
+  let m = Bap_trace.supports empty memory_load in
+  let m' = Bap_trace.supports empty memory_store in
+  let r = not (Bap_trace.supports empty register_read) in
+  assert_bool "supports failed" (m && m' && r)
+
 let contains t ctxt = 
   let t = Bap_trace.add_event t pc_update Word.b1 in
   match Bap_trace.contains t pc_update with
@@ -144,13 +180,13 @@ let next () =
       | hd::tl -> a := tl; Some hd 
 
 let unfold ctxt = 
-  let t = Bap_trace.unfold tool ~f:(next ()) ~init:() in
+  let t = Bap_trace.unfold test_tool ~f:(next ()) ~init:() in
   let evs = Bap_trace.events t in
   let evs' = Seq.of_list test_events in
   assert_equal ~ctxt ~cmp:seq_eql evs evs'
 
 let check_calls ctxt = 
-  let t = Bap_trace.unfold tool ~f:(next ()) ~init:() in
+  let t = Bap_trace.unfold test_tool ~f:(next ()) ~init:() in
   let evs = Bap_trace.events t in
   let _ = Bap_trace.find t register_read in
   let evs' = Bap_trace.events t in
@@ -164,7 +200,7 @@ let memoize ctxt =
       | [] -> None
       | hd::tl -> 
         a := !a + 1; evs := tl; Some hd in
-  let t = Bap_trace.unfold tool ~f:next ~init:() in
+  let t = Bap_trace.unfold test_tool ~f:next ~init:() in
   assert_equal ~ctxt !a 0;
   let _ = Bap_trace.memoize t in
   assert_equal ~ctxt !a (List.length test_events)
@@ -172,6 +208,7 @@ let memoize ctxt =
 let suite =  
   "Trace" >:::
   [
+    (* "save_and_load"     >:: save_and_load; *)
     "id"                >:: id;
     "tool"              >:: trace_tool;
     "set_attr"          >:: set_attr empty binary bin;
@@ -182,6 +219,7 @@ let suite =
     "find_all"          >:: find_all empty 5 memory_load move;
     "find_all_matching" >:: find_all_matching ;
     "fold_matching"     >:: fold_matching;
+    "supports"          >:: supports;
     "contains"          >:: contains empty;
     "append"            >:: append;
     "unfold"            >:: unfold;
