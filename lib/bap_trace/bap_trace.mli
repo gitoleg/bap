@@ -32,7 +32,7 @@ open Bap_types.Std
 
 type event = Value.t with bin_io, sexp, compare
 type proto
-type tool
+type tool with bin_io, sexp
 type id
 type t
 
@@ -41,7 +41,7 @@ type error = [
   | `Ambiguous_uri  (** More than one provider for a given URI    *)
   | `Protocol_error of Error.t  (** Data encoding problem         *)
   | `System_error of Error.t    (** System error                  *)
-]
+] with sexp
 
 (** {2 Serialization}
 
@@ -198,15 +198,18 @@ val append : t -> event seq -> t
     from the client side to dynamically control a trace tool.
 
 *)
+module type S = sig
+  val name: string 
+  val supports: 'a tag -> bool
+end
 
-val register_tool :
-  name:string ->
-  supports:('a tag -> bool) -> tool
+module type P = sig
+  include S
+  val probe: Uri.t -> bool
+end
 
-val register_proto :
-  name:string ->
-  probe:(Uri.t -> bool) ->
-  supports:('a tag -> bool) -> proto
+val register_tool  : (module S) -> tool
+val register_proto : (module P) -> proto
 
 
 (** Reader interface.  *)
@@ -218,7 +221,7 @@ module Reader : sig
   type t = {
     tool : tool;                (** a tool descriptor read from trace *)
     meta : dict;                (** meta information read from trace  *)
-    next : unit -> event;        (** a stream function  *)
+    next : unit -> event option; (** a stream function  *)
   }
 end
 

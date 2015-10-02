@@ -6,14 +6,23 @@ open Bap_types.Std
 type event = value  with bin_io, sexp, compare
 type id    = string with bin_io, compare, sexp
 type proto = string
-type tool  = string 
+type tool  = string with bin_io, sexp
 
-(** TODO: ask, if I able to change [next] interface to option *)
+module type S = sig
+  val name: string 
+  val supports: 'a tag -> bool
+end
+
+module type P = sig
+  include S
+  val probe: Uri.t -> bool
+end
+
 module Reader = struct
   type t = {
     tool : tool; 
     meta : dict; 
-    next : unit -> event;
+    next : unit -> event option;
   }
 end
 
@@ -22,20 +31,9 @@ type reader = Reader.t
 type stream = {
   data : event seq; 
   after: event seq;
-}
+} 
 
 type events = | Loaded of event seq | Stream of stream
-
-module Tab = String.Caseless.Table
-
-type 'a tools = ('a tag -> bool) Tab.t
-
-type 'a proto_ops = { 
-  probe: (Uri.t -> bool);
-  supports: 'a tag -> bool;
-}
-
-type 'a protos = ('a proto_ops) Tab.t
 
 type t = {
   id     : id;
@@ -45,14 +43,13 @@ type t = {
   proto  : proto option;
 }
 
-type readers = (Uri.t -> id -> reader) Tab.t
-type writers = (Uri.t -> t -> unit Or_error.t) Tab.t
+module Tab = String.Caseless.Table
 
 let mk_tab = Tab.create
-let tools  : 'a tools  = mk_tab () 
-let protos : 'a protos = mk_tab () 
-let readers: readers  = mk_tab ()
-let writers: writers  = mk_tab ()
+let tools  : (module S) Tab.t = mk_tab () 
+let protos : (module P) Tab.t = mk_tab () 
+let readers: (Uri.t -> id -> reader) Tab.t = mk_tab ()
+let writers: (Uri.t -> t -> unit Or_error.t) Tab.t = mk_tab ()
 
 let make_id () = Uuidm.(to_string (create `V4))
 
@@ -69,12 +66,13 @@ type error = [
   | `Ambiguous_uri  (** More than one provider for a given URI    *)
   | `Protocol_error of Error.t  (** Data encoding problem         *)
   | `System_error of Error.t    (** System error                  *)
-]
+] with sexp
 
 let protocols_of_uri uri = 
   Hashtbl.fold protos ~init:[] 
     ~f:(fun ~key ~data acc -> 
-        if data.probe uri then key::acc
+        let module A = (val data : P) in
+        if A.probe uri then key::acc
         else acc) 
 
 let io_with_proto uri (f : proto -> ('a, error) Result.t) = 
@@ -97,11 +95,9 @@ let load uri =
     let create = Hashtbl.find_exn readers p in
     let id = make_id () in
     let reader = create uri id in
-    (** TODO: wtf ? trace should give tool and proto, not a reader *)
     let tool = Reader.(reader.tool) in 
     let meta = Reader.(reader.meta) in
-    let next () = Some (Reader.(reader.next ())) in    
-    let events = make_stream next in
+    let events = make_stream Reader.(reader.next) in
     Ok {id; meta; tool; events; proto = Some p} in
   io_with_proto uri load_with_proto
 
@@ -143,7 +139,20 @@ let has_attr t = Dict.mem  t.meta
 let meta t = t.meta
 let tool t = t.tool
 let set_meta t meta = {t with meta}
-let supports t tag = failwith "inimplemented" (** TODO: to do! *)
+
+let supports_by_tool t tag = 
+  let t = Hashtbl.find_exn tools t.tool in
+  let module Tool = (val t : S) in
+  Tool.supports tag
+
+let supports_by_proto t tag = match t.proto with
+  | None -> true
+  | Some p ->
+    let p = Hashtbl.find_exn protos p in
+    let module Proto = (val p : P) in
+    Proto.supports tag
+
+let supports t tag = supports_by_tool t tag && supports_by_proto t tag
 
 let memoize t = match t.events with
   | Loaded _ -> t
@@ -199,18 +208,15 @@ let append t evs =
     let s' = {s with after = add s.after evs} in
     {t with events = Stream s'}
 
-(** TODO: remove it  *)
-let stub: 'a tag -> bool = fun _ -> failwith "temp function!"
-
 let add tab key data = Hashtbl.add_exn tab ~key ~data
-
-let register_tool: name:string -> supports:('a tag -> bool) -> tool 
-  = fun ~name ~supports -> 
-    Hashtbl.add_exn tools ~key:name ~data:stub; name
-
 let register_reader proto init = add readers proto init
 let register_writer proto write = add writers proto write
-let register_proto ~name ~probe ~supports = 
-  add protos name {probe; supports=stub}; name
 
+let register_tool : (module S) -> tool = fun s ->
+  let module A = (val s : S) in
+  add tools A.name s; A.name
+  
+let register_proto : (module P) -> proto = fun p -> 
+  let module A = (val p : P) in
+  add protos A.name p; A.name
 
