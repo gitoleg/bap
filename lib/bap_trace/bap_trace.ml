@@ -125,7 +125,7 @@ let unfold tool ~f ~init =
   let meta = Dict.empty in
   let proto = None in
   let events = make_stream next in
-  {id; meta; tool; events; proto}  
+  {id; meta; tool; events; proto;}  
 
 let set_attr t attr v = 
   let meta = match Dict.add t.meta attr v with 

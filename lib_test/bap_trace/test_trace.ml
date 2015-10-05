@@ -55,11 +55,11 @@ let save_and_load ctxt =
     match Bap_trace.load uri with
     | Ok t -> 
       let evs = Bap_trace.events t in
-      (* let meta = Bap_trace.meta t in *)
-      (* let tool = Bap_trace.tool t in *)
+      let meta = Bap_trace.meta t in
+      let tool = Bap_trace.tool t in
       assert_equal ~ctxt ~cmp:seq_eql evs (Seq.of_list test_events);
-      (* assert_equal ~ctxt ~cmp:dict_eql meta test_meta; *)
-      (* assert_equal ~ctxt test_tool tool *)
+      assert_equal ~ctxt ~cmp:dict_eql meta test_meta;
+      assert_equal ~ctxt test_tool tool
     | Error s -> assert_failure "load failed" in
   save ();
   load ()
@@ -208,7 +208,7 @@ let memoize ctxt =
 let suite =  
   "Trace" >:::
   [
-    (* "save_and_load"     >:: save_and_load; *)
+    "save_and_load"     >:: save_and_load;
     "id"                >:: id;
     "tool"              >:: trace_tool;
     "set_attr"          >:: set_attr empty binary bin;
