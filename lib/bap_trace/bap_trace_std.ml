@@ -6,5 +6,3 @@ module Trace = struct
   module Event = Bap_trace_events
   module Meta = Bap_trace_meta
 end
-
-let () = Bap_trace_binprot.register ()

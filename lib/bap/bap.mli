@@ -7660,15 +7660,15 @@ module Std : sig
       *)
 
       type t = {
-        tool : tool;                (** a tool descriptor read from trace *)
-        meta : dict;                (** meta information read from trace  *)
-        next : unit -> event option; (** a stream function  *)
+        tool : tool;           (** a tool descriptor read from trace *)
+        meta : dict;           (** meta information  read from trace *)
+        next : unit -> event option Or_error.t; (** a stream function *)
       }
     end
 
     type reader = Reader.t
 
-    val register_reader : proto -> (Uri.t -> id -> reader) -> unit
+    val register_reader : proto -> (Uri.t -> id -> reader Or_error.t) -> unit
     val register_writer : proto -> (Uri.t -> t -> unit Or_error.t) -> unit
 
     module Id : Regular with type t := id

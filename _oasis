@@ -137,6 +137,7 @@ Library types
                    Bap_var,
                    Bap_vector,
                    Bap_visitor,
+                   Bap_uuid,
                    Graphlib
 
 Library conceval
@@ -401,7 +402,7 @@ Library trace
   FindlibParent:   bap
   FindLibName:     trace
   CompiledObject:  best
-  InternalModules: Bap_trace, 
+  InternalModules: Bap_trace,
                    Bap_trace_binprot,
                    Bap_trace_events,  
                    Bap_trace_event_types, 
