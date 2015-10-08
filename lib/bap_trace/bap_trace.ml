@@ -20,11 +20,22 @@ module type P = sig
   val probe: Uri.t -> bool
 end
 
+type io_error = [ 
+  | `Protocol_error of Error.t  (** Data encoding problem         *)
+  | `System_error of Error.t    (** System error                  *)
+] with sexp
+
+type error = [
+  | io_error
+  | `No_provider    (** No provider for a given URI               *)
+  | `Ambiguous_uri  (** More than one provider for a given URI    *)
+] with sexp
+
 module Reader = struct
   type t = {
     tool : tool; 
     meta : dict; 
-    next : unit -> event option Or_error.t;
+    next : unit -> (event option, io_error) Result.t;
   }
 end
 
@@ -44,13 +55,6 @@ type t = {
   tool   : tool;
   proto  : proto option;
 }
-
-type error = [
-  | `No_provider    (** No provider for a given URI               *)
-  | `Ambiguous_uri  (** More than one provider for a given URI    *)
-  | `Protocol_error of Error.t  (** Data encoding problem         *)
-  | `System_error of Error.t    (** System error                  *)
-] with sexp
 
 module Tab = String.Caseless.Table
 
@@ -91,15 +95,6 @@ let make_stream next : events =
     | Error err -> return () in
   let traverse' = return () >>= fun () -> traverse () in
   let s = run traverse' in
-  let s = Seq.memoize s in
-  Stream {data = s; after = Seq.empty }
-
-let make_stream' next = 
-  let f () = match next () with
-    | Ok (Some ev) -> Some (ev, ())
-    | Ok None -> None
-    | Error err -> None in
-  let s = Seq.unfold ~init:() ~f in
   let s = Seq.memoize s in
   Stream {data = s; after = Seq.empty }
 
@@ -199,8 +194,7 @@ let find_all_matching t matcher =
 
 let contains t tag = 
   let in_trace = Seq.exists (events t) ~f:(Value.is tag) in
-  if in_trace then Some true
-  else if supports t tag then Some false
+  if in_trace || supports t tag then Some in_trace
   else None
 
 let add_event t tag e = 

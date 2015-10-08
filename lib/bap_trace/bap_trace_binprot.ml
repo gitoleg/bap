@@ -59,16 +59,16 @@ let write uri trace =
     let evs = Bap_trace.events trace in
     Seq.iter evs ~f:(fun ev -> Proto.write_event ev ch);
     Ok (Out_channel.close ch)
-  with ex -> error_string (Exn.to_string ex)
-     
+  with exn -> error_string (Exn.to_string exn)
+
 let next_event ch = 
   try 
     Ok (Proto.read_event ch)
   with 
-  | End_of_file -> 
-    In_channel.close ch; 
-    Ok None 
-  | ex -> error_string (Exn.to_string ex)
+  | End_of_file -> In_channel.close ch; Ok None 
+  | exn -> 
+    let err = Error.of_info (Info.of_exn exn) in
+    Error (`Protocol_error err)
 
 let read uri id =
   try 
@@ -77,7 +77,7 @@ let read uri id =
     let tool = Option.value_exn (Proto.read_tool ch) in
     let meta = Option.value_exn (Proto.read_meta ch) in
     Ok (Bap_trace.Reader.({tool; meta; next;}))
-  with ex -> error_string (Exn.to_string ex)
+  with exn -> error_string (Exn.to_string exn)
     
 let register () =
   let open Bap_trace in

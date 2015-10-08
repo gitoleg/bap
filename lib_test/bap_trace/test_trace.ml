@@ -53,8 +53,7 @@ let save_and_load ctxt =
     let t = Trace.set_meta t test_meta in
     let r = Trace.save uri t in
     assert_bool "save failed" (Result.is_ok r) in
-  let load () = 
-    match Trace.load uri with
+  let load () = match Trace.load uri with
     | Ok t -> 
       let evs = Trace.events t in
       let meta = Trace.meta t in
@@ -81,7 +80,7 @@ let trace_tool ctxt =
 let set_and_get_attr t attr a ctxt = 
   let t = Trace.set_attr t attr a in
   match Trace.get_attr t attr with
-  | None -> assert_failure "get attribute failed"
+  | None -> assert_failure "set/get attribute failed"
   | Some a' -> assert_equal ~ctxt a a'
 
 let has_attr t attr a ctxt = 

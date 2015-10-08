@@ -36,11 +36,15 @@ type tool with bin_io, sexp
 type id
 type t
 
-type error = [
-  | `No_provider    (** No provider for a given URI               *)
-  | `Ambiguous_uri  (** More than one provider for a given URI    *)
+type io_error = [ 
   | `Protocol_error of Error.t  (** Data encoding problem         *)
   | `System_error of Error.t    (** System error                  *)
+] with sexp
+
+type error = [
+  | io_error
+  | `No_provider    (** No provider for a given URI               *)
+  | `Ambiguous_uri  (** More than one provider for a given URI    *)
 ] with sexp
 
 (** {2 Serialization}
@@ -221,7 +225,7 @@ module Reader : sig
   type t = {
     tool : tool;                (** a tool descriptor read from trace *)
     meta : dict;                (** meta information  read from trace *)
-    next : unit -> event option Or_error.t;     (**  a stream function *)
+    next : unit -> (event option, io_error) Result.t; (** a stream function *)
   }
 end
 
