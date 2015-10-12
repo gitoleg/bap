@@ -31,6 +31,7 @@ open Bap_types.Std
 *)
 
 type event = value with bin_io, sexp, compare
+type monitor
 type proto
 type tool
 type id
@@ -49,6 +50,8 @@ type error = [
     destination. URI contains enough information to uniquely designate
     data format and transporting options.
 *)
+
+
 
 
 (** [load uri] fetches trace from a provided [uri]*)
@@ -135,7 +138,7 @@ val contains : t -> 'a tag -> bool option
 (** [event trace] returns a sequence of events of the [trace].
     This function should be used if the above specified functions
     doesn't answer your needs.*)
-val events : t -> event seq
+val events : t -> 'a seq
 
 (** {2 Trace construction}  *)
 
@@ -230,3 +233,30 @@ val register_writer : proto -> (Uri.t -> t -> unit Or_error.t) -> unit
 
 
 module Id : Regular with type t = id
+
+
+(** Monitor defines an error handling policy.*)
+module Monitor : sig
+  type t = monitor
+
+  (** [ignore_errors] filters good events and silently drops error events  *)
+  val ignore_errors : t
+  (** [warn_on_error on_error] same as [ignore_errors] but calls
+      [on_error] function when an error has occured *)
+  val warn_on_error : (Error.t -> unit) -> t
+
+  (** [fail_on_error] will fail with an [error] [Error.raise error] *)
+  val fail_on_error : t
+
+  (** [stop_on_error] will silently finish a stream in case of error.  *)
+  val stop_on_error : t
+
+  (** [pack_errors pack] will transform any occured error into event
+      using [pack] function.  *)
+  val pack_errors : (Error.t -> event) -> t
+
+  (** [create filter] creates a user defined monitor from function
+      [filter] that is applied to a sequence of events or errors, and
+      returns a sequence of events.  *)
+  val create : (event Or_error.t seq -> event seq) -> t
+end
