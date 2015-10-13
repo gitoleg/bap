@@ -30,22 +30,23 @@ open Bap_types.Std
     with [tag] value.
 *)
 
-type event = Value.t with bin_io, sexp, compare
+type event = value with bin_io, sexp, compare
+type monitor
 type proto
 type tool with bin_io, sexp
 type id
 type t
 
-type io_error = [ 
+type io_error = [
   | `Protocol_error of Error.t  (** Data encoding problem         *)
-  | `System_error of Error.t    (** System error                  *)
-] with sexp, bin_io, compare
+  | `System_error of Error.t    (** System error                  *)  
+]
 
 type error = [
   | io_error
   | `No_provider    (** No provider for a given URI               *)
   | `Ambiguous_uri  (** More than one provider for a given URI    *)
-] with sexp
+]
 
 (** {2 Serialization}
 
@@ -55,9 +56,8 @@ type error = [
 *)
 
 
-(** [load ~policy uri] fetches trace from a provided [uri]. 
-    policy is Raise by default *)
-val load : ?policy:policy -> Uri.t -> (t,error) Result.t
+(** [load uri] fetches trace from a provided [uri]*)
+val load : ?monitor:monitor -> Uri.t -> (t,error) Result.t
 
 (** [save uri] pushes trace to a provided [uri] *)
 val save : Uri.t -> t -> (unit,error) Result.t
@@ -109,7 +109,6 @@ val find : t -> 'a tag -> 'a option
 (** [find_all trace tag] returns a sequence of all event with a given tag  *)
 val find_all : t -> 'a tag -> 'a seq
 
-
 (** [find_all_matching trace matcher] returns a sequence of events
     matching with a provided [matcher]. *)
 val find_all_matching : t -> 'a Value.Match.t -> 'a seq
@@ -149,7 +148,7 @@ val events : t -> event seq
     of events. *)
 val create : tool -> t
 
-(** [unfold ~ploicy tool ~f] creates a trace by unfolding a function [f].
+(** [unfold tool ~f] creates a trace by unfolding a function [f].
     Effectively the trace is sequence built of function compositions,
     [f (... ((f (f init))))], where the innermost function application
     corresponds to a first element of the sequence, and the outermost
@@ -157,10 +156,8 @@ val create : tool -> t
 
     The produces sequence is lazy, i.e., functions are called as
     demanded.
-
-    policy is Raise by default.
 *)
-val unfold: tool -> f:('a -> event option) -> init:'a -> t
+val unfold :  ?monitor:monitor -> tool -> f:('a -> event option) -> init:'a -> t
 
 (** [add_event trace tag] appends an event to a sequence of events of
     [trace]. *)
@@ -205,6 +202,7 @@ val append : t -> event seq -> t
     from the client side to dynamically control a trace tool.
 
 *)
+
 module type S = sig
   val name: string 
   val supports: 'a tag -> bool
@@ -218,7 +216,6 @@ end
 val register_tool  : (module S) -> tool
 val register_proto : (module P) -> proto
 
-
 (** Reader interface.  *)
 module Reader : sig
   (** This is an interface that should be implemented to add a new
@@ -227,8 +224,8 @@ module Reader : sig
 
   type t = {
     tool : tool;                (** a tool descriptor read from trace *)
-    meta : dict;                (** meta information  read from trace *)
-    next : unit -> (event option, io_error) Result.t; (** a stream function *)
+    meta : dict;                (** meta information read from trace  *)
+    next : unit -> (event option, io_error) Result.t; (** a stream function  *)
   }
 end
 
@@ -239,4 +236,31 @@ val register_reader : proto -> (Uri.t -> id -> reader Or_error.t) -> unit
 val register_writer : proto -> (Uri.t -> t -> unit Or_error.t) -> unit
 
 
-module Id : Regular with type t := id
+module Id : Regular with type t = id
+
+
+(** Monitor defines an error handling policy.*)
+module Monitor : sig
+  type t = monitor
+
+  (** [ignore_errors] filters good events and silently drops error events  *)
+  val ignore_errors : t
+  (** [warn_on_error on_error] same as [ignore_errors] but calls
+      [on_error] function when an error has occured *)
+  val warn_on_error : (Error.t -> unit) -> t
+
+  (** [fail_on_error] will fail with an [error] [Error.raise error] *)
+  val fail_on_error : t
+
+  (** [stop_on_error] will silently finish a stream in case of error.  *)
+  val stop_on_error : t
+
+  (** [pack_errors pack] will transform any occured error into event
+      using [pack] function.  *)
+  val pack_errors : (Error.t -> event) -> t
+
+  (** [create filter] creates a user defined monitor from function
+      [filter] that is applied to a sequence of events or errors, and
+      returns a sequence of events.  *)
+  val create : (event Or_error.t seq -> event seq) -> t
+end
