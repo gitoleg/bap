@@ -4,21 +4,31 @@ open Result
 open Bap_types.Std
 
 type event = value  with bin_io, sexp, compare
-type monitor
+
+type on_error = [
+  | `Fail
+  | `Miss
+  | `Stop
+  | `Pack of (Error.t -> event) 
+  | `Warn of (Error.t -> unit)
+]
+
+type monitor = [
+  | on_error
+  | `User of (event Or_error.t seq -> event seq)
+]
+
 type proto = string
 type tool  = string with bin_io, sexp
 
 module Monitor = struct
   type t = monitor
-
-  let ignore_errors : t = failwith "unimplemented"
-  let warn_on_error : (Error.t -> unit) -> t = fun f -> failwith "unimplemented"
-  let fail_on_error : t = failwith "unimplemented"
-  let stop_on_error : t = failwith "unimplemented"
-  let pack_errors : (Error.t -> event) -> t 
-    = fun f -> failwith "unimplemented"
-  let create : (event Or_error.t seq -> event seq) -> t 
-    = fun f -> failwith "unimplemented"
+  let fail_on_error   = `Fail
+  let ignore_errors   = `Miss
+  let stop_on_error   = `Stop
+  let warn_on_error f = `Warn f
+  let pack_errors f   = `Pack f
+  let create f        = `User f
 end
 
 module Id = Bap_uuid
@@ -49,7 +59,7 @@ module Reader = struct
   type t = {
     tool : tool; 
     meta : dict; 
-    next : unit -> (event option, io_error) Result.t;
+    next : unit -> event Or_error.t option;  
   }
 end
 
@@ -71,8 +81,6 @@ type t = {
 }
 
 module Tab = String.Caseless.Table
-
-
 
 let mk_tab = Tab.create
 let tools  : (module S) Tab.t = mk_tab () 
@@ -103,22 +111,34 @@ let create_reader create uri id =
   | Ok rd as r -> r
   | Error err -> Error (`System_error err)
 
-let make_stream next : events = 
+let make_stream next monitor = 
   let open Seq.Generator in
-  let rec traverse () = match next () with
-    | Ok (Some ev) -> yield ev >>= traverse
-    | Ok None -> return ()
-    | Error err -> return () in
-  let traverse' = return () >>= fun () -> traverse () in
-  let s = run traverse' in
+  let make m =
+    let rec traverse () = match next () with
+      | Some (Ok ev) -> yield ev
+      | Some (Error er) -> of_error er
+      | None -> return () and
+    of_error = match m with
+      | `Fail -> Error.raise 
+      | `Miss -> fun err -> traverse ()
+      | `Pack f -> fun err -> yield (f err) >>= traverse
+      | `Stop -> fun err -> return () 
+      | `Warn f -> fun err -> f err; traverse () in
+    traverse in
+  let rec traverse' () = match next () with
+    | Some elt -> yield elt >>= traverse'
+    | None -> return () in
+  let s = match monitor with 
+    | #on_error as m -> run (return () >>= make m)
+    | `User f -> run (return () >>= traverse') |> f in
   let s = Seq.memoize s in
   Stream {data = s; after = Seq.empty }
 
-let of_reader reader id proto =  
+let of_reader reader id proto monitor =  
   let tool = reader.Reader.tool in 
   let meta = reader.Reader.meta in
-  let events = make_stream reader.Reader.next in
-  {id; meta; tool; events; proto = Some proto}
+  let events = make_stream reader.Reader.next monitor in
+  {id; meta; tool; events; proto = Some proto;}
 
 let load ?(monitor=Monitor.fail_on_error) uri =  
   find_proto uri >>= 
@@ -126,7 +146,7 @@ let load ?(monitor=Monitor.fail_on_error) uri =
   fun create ->
   let id = make_id () in
   create_reader create uri id >>=
-  fun reader -> Ok (of_reader reader id proto)
+  fun reader -> Ok (of_reader reader id proto monitor)
 
 let save uri t = 
   find_proto uri >>= 
@@ -146,11 +166,13 @@ let create tool = {
 (** TODO: I bet f should return some new 'a too. Ask what the function
     behavior  *)
 let unfold ?(monitor=Monitor.fail_on_error) tool ~f ~init = 
-  let next () = Ok (f init) in
+  let next () = match f init with
+    | Some ev -> Some (Ok ev)
+    | None -> None in
   let id = make_id () in
   let meta = Dict.empty in
   let proto = None in
-  let events = make_stream next in
+  let events = make_stream next monitor in
   {id; meta; tool; events; proto;}  
 
 let set_attr t attr v = 

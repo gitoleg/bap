@@ -225,7 +225,7 @@ module Reader : sig
   type t = {
     tool : tool;                (** a tool descriptor read from trace *)
     meta : dict;                (** meta information read from trace  *)
-    next : unit -> (event option, io_error) Result.t; (** a stream function  *)
+    next : unit -> event Or_error.t option;     (** a stream function  *)
   }
 end
 
