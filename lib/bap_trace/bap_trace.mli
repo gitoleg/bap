@@ -39,7 +39,7 @@ type t
 type io_error = [ 
   | `Protocol_error of Error.t  (** Data encoding problem         *)
   | `System_error of Error.t    (** System error                  *)
-] with sexp
+] with sexp, bin_io, compare
 
 type error = [
   | io_error
@@ -55,8 +55,9 @@ type error = [
 *)
 
 
-(** [load uri] fetches trace from a provided [uri]*)
-val load : Uri.t -> (t,error) Result.t
+(** [load ~policy uri] fetches trace from a provided [uri]. 
+    policy is Raise by default *)
+val load : ?policy:policy -> Uri.t -> (t,error) Result.t
 
 (** [save uri] pushes trace to a provided [uri] *)
 val save : Uri.t -> t -> (unit,error) Result.t
@@ -148,7 +149,7 @@ val events : t -> event seq
     of events. *)
 val create : tool -> t
 
-(** [unfold tool ~f] creates a trace by unfolding a function [f].
+(** [unfold ~ploicy tool ~f] creates a trace by unfolding a function [f].
     Effectively the trace is sequence built of function compositions,
     [f (... ((f (f init))))], where the innermost function application
     corresponds to a first element of the sequence, and the outermost
@@ -156,8 +157,10 @@ val create : tool -> t
 
     The produces sequence is lazy, i.e., functions are called as
     demanded.
+
+    policy is Raise by default.
 *)
-val unfold : tool -> f:('a -> event option) -> init:'a -> t
+val unfold: tool -> f:('a -> event option) -> init:'a -> t
 
 (** [add_event trace tag] appends an event to a sequence of events of
     [trace]. *)

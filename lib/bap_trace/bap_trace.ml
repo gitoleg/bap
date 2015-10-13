@@ -23,7 +23,7 @@ end
 type io_error = [ 
   | `Protocol_error of Error.t  (** Data encoding problem         *)
   | `System_error of Error.t    (** System error                  *)
-] with sexp
+] with sexp, bin_io, compare
 
 type error = [
   | io_error
@@ -92,7 +92,11 @@ let make_stream next : events =
   let rec traverse () = match next () with
     | Ok (Some ev) -> yield ev >>= traverse
     | Ok None -> return ()
-    | Error err -> return () in
+    | Error err -> 
+      let ev = Value.create error err in
+      match err with
+      | `Protocol_error _ -> yield ev >>= traverse
+      | `System_error _ ->  yield ev >>= return in 
   let traverse' = return () >>= fun () -> traverse () in
   let s = run traverse' in
   let s = Seq.memoize s in
@@ -171,20 +175,14 @@ let memoize t = match t.events with
     { t with events = Stream ({s with data}) }
 
 let events t = match t.events with
-  | Loaded evs -> evs
-  | Stream s -> Seq.append s.data s.after
+    | Loaded evs -> evs
+    | Stream s -> Seq.append s.data s.after 
 
-let find t tag = 
-  match Seq.find (events t) ~f:(Value.is tag) with
-  | None -> None
-  | Some ev -> Some (Value.get_exn tag ev)
+let find t tag = Seq.find_map (events t) ~f:(Value.get tag) 
+let find_all t tag = Seq.filter_map (events t) ~f:(Value.get tag)
+let errors t = find_all t error
+let has_errors t = Option.is_some (Seq.hd (events t))
 
-let find_all t tag = 
-  Seq.filter_map (events t) 
-    ~f:(fun v -> 
-      if Value.is tag v then Some (Value.get_exn tag v)
-      else None)
- 
 let fold_matching t matcher ~f ~init =
   let f' acc ev = f acc (Value.Match.switch ev matcher) in
   Seq.fold (events t) ~init ~f:f' 
@@ -225,4 +223,5 @@ let register_tool : (module S) -> tool = fun s ->
 let register_proto : (module P) -> proto = fun p -> 
   let module A = (val p : P) in
   add protos A.name p; A.name
+
 
