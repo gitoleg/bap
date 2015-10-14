@@ -56,7 +56,8 @@ type error = [
 *)
 
 
-(** [load uri] fetches trace from a provided [uri]*)
+(** [load ~monitor uri] fetches trace from a provided [uri]. 
+    [monitor] is fail_on_error by default. *)
 val load : ?monitor:monitor -> Uri.t -> (t,error) Result.t
 
 (** [save uri] pushes trace to a provided [uri] *)
@@ -148,11 +149,12 @@ val events : t -> event seq
     of events. *)
 val create : tool -> t
 
-(** [unfold tool ~f] creates a trace by unfolding a function [f].
+(** [unfold ~monitor tool ~f ~init] creates a trace by unfolding a function [f].
     The produces sequence is lazy, i.e., functions are called as
-    demanded. *)
+    demanded. [monitor] is fail_on_error by default. *)
 val unfold : ?monitor:monitor -> tool -> f:('a -> (event Or_error.t * 'a) option) -> init:'a -> t
 
+(** [unfold' ~monitor tool ~f] is a simplified version of [unfold] *)
 val unfold' : ?monitor:monitor -> tool -> f:(unit -> event Or_error.t option) -> t
 
 (** [add_event trace tag] appends an event to a sequence of events of

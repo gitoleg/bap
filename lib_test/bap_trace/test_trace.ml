@@ -180,23 +180,18 @@ let append ctxt =
   let events = Trace.events t in
   assert_seq_equal ~ctxt events expected
 
-let next () = 
-    let a = ref test_events in
-    fun () -> match !a with
-      | [] -> None
-      | hd::tl -> a := tl; Some (Ok hd, ())
+let make_next evs = 
+  let a = ref evs in
+  fun () -> match !a with
+    | [] -> None
+    | hd::tl -> a := tl; Some hd
 
 let unfold ctxt = 
-  let t = Trace.unfold test_tool ~f:(next ()) ~init:() in
+  let evs = List.map test_events ~f:(fun ev -> Ok ev, ()) in
+  let next = make_next evs in
+  let t = Trace.unfold test_tool ~f:next ~init:() in
   let evs = Trace.events t in
   let evs' = Seq.of_list test_events in
-  assert_seq_equal ~ctxt evs evs'
-
-let check_calls_order ctxt = 
-  let t = Trace.unfold test_tool ~f:(next ()) ~init:() in
-  let evs = Trace.events t in
-  let _ = Trace.find t register_read in
-  let evs' = Trace.events t in
   assert_seq_equal ~ctxt evs evs'
 
 let memoize ctxt = 
@@ -211,6 +206,60 @@ let memoize ctxt =
   assert_equal ~ctxt !a 0;
   let _ = Trace.memoize t in
   assert_equal ~ctxt !a (List.length test_events)
+
+let error = Error.of_string "syscall failed"
+
+let events_with_error = 
+  Error error ::
+  List.map test_events ~f:(fun ev -> Ok ev)
+
+let unfold_with_monitor monitor = 
+  let next = make_next events_with_error in
+  Trace.unfold' ~monitor test_tool ~f:next 
+
+let fail_monitor ctxt = 
+  let monitor = Trace.Monitor.fail_on_error in
+  let t = unfold_with_monitor monitor in
+  let f () = Trace.find t memory_load in 
+  assert_raises (Info.to_exn (Error.to_info error)) f
+
+let miss_monitor ctxt = 
+  let monitor = Trace.Monitor.ignore_errors in
+  let t = unfold_with_monitor monitor in
+  let events = Trace.events t in
+  assert_seq_equal ~ctxt events (Seq.of_list test_events)
+
+let stop_monitor ctxt =
+  let monitor = Trace.Monitor.stop_on_error in
+  let t = unfold_with_monitor monitor in
+  let evs = Seq.to_list (Trace.events t) in
+  assert_equal ~ctxt evs []
+
+let pack_monitor ctxt =
+  let pack _ = Value.create memory_load move in
+  let monitor = Trace.Monitor.pack_errors pack in
+  let t = unfold_with_monitor monitor in  
+  let len = Seq.length (Trace.events t) in
+  let len' = List.length test_events in
+  assert_equal ~ctxt len (len' + 1)
+
+let warn_monitor ctxt = 
+  let a = ref 0 in
+  let warn _ = a := !a + 1 in
+  let monitor = Trace.Monitor.warn_on_error warn in
+  let t = unfold_with_monitor monitor in
+  let t = Trace.memoize t in
+  assert_equal ~ctxt !a 1;
+  assert_seq_equal ~ctxt (Trace.events t) (Seq.of_list test_events)
+
+let user_monitor ctxt = 
+  let filter seq = 
+    Seq.filter_map seq ~f:(fun e -> match e with
+        | Ok e -> Some e
+        | Error _ -> None) in
+  let monitor = Trace.Monitor.create filter in
+  let t = unfold_with_monitor monitor in
+  assert_seq_equal ~ctxt (Trace.events t) (Seq.of_list test_events)
 
 let suite =  
   "Trace" >:::
@@ -231,6 +280,11 @@ let suite =
     "supports"          >:: supports;
     "append"            >:: append;
     "unfold"            >:: unfold;
-    "check_calls"       >:: check_calls_order;
     "memoize"           >:: memoize;
+    "fail_monitor"      >:: fail_monitor;
+    "miss_monitor"      >:: miss_monitor;
+    "stop_monitor"      >:: stop_monitor;
+    "pack_monitor"      >:: pack_monitor;
+    "warn_monitor"      >:: warn_monitor;
+    "user_monitor"      >:: user_monitor;
   ]

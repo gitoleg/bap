@@ -13,9 +13,11 @@ type error_handler = [
   | `Warn of (Error.t -> unit)
 ]
 
+type users_handler = [ `User of (event Or_error.t seq -> event seq) ]
+
 type monitor = [
   | error_handler
-  | `User of (event Or_error.t seq -> event seq)
+  | users_handler
 ]
 
 type proto = string
@@ -121,12 +123,15 @@ let make_stream next init monitor =
     | `User handle -> Seq.unfold_step ~init ~f:ident |> handle in
   Seq.memoize s
 
+let wrap_next f = 
+  fun () -> match f () with
+    | None -> None 
+    | Some elt -> Some (elt, ())
+
 let of_reader reader id proto monitor =  
   let tool = reader.Reader.tool in 
   let meta = reader.Reader.meta in 
-  let next () = match reader.Reader.next () with 
-    | None -> None
-    | Some elt -> Some (elt, ()) in
+  let next = wrap_next reader.Reader.next in
   let events = make_stream next () monitor in
   {id; meta; tool; events; proto = Some proto;}
 
@@ -166,14 +171,7 @@ let unfold ?(monitor=`Fail) tool ~f ~init =
   {id; meta; tool; events; proto;}  
 
 let unfold' ?(monitor=`Fail) tool ~f =
-  let id = make_id () in
-  let meta = Dict.empty in
-  let proto = None in
-  let next () = match f () with 
-    | None -> None
-    | Some elt -> Some (elt, ()) in
-  let events = make_stream next () monitor in
-  {id; meta; tool; events; proto;}    
+  unfold ~monitor tool ~f:(wrap_next f) ~init:()
 
 let set_attr t attr v = 
   let meta = match Dict.add t.meta attr v with 
