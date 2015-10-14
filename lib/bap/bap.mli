@@ -7473,22 +7473,23 @@ module Std : sig
       with [tag] value.
   *)
   module Trace : sig
-    type event = Value.t with bin_io, sexp, compare
+    type event = value with bin_io, sexp, compare
+    type monitor
     type proto
     type tool with bin_io, sexp
     type id
     type t
 
     type io_error = [
-      | `Protocol_error of Error.t  (** Data encoding problem         *)
-      | `System_error of Error.t    (** System error                  *)      
-    ] with sexp
+      | `Protocol_error of Error.t   (** Data encoding problem         *)
+      | `System_error of Unix.error  (** System error                  *)  
+    ]
 
     type error = [
       | io_error
       | `No_provider    (** No provider for a given URI               *)
       | `Ambiguous_uri  (** More than one provider for a given URI    *)
-    ] with sexp
+    ]
 
     (** {2 Serialization}
 
@@ -7498,8 +7499,9 @@ module Std : sig
     *)
 
 
-    (** [load uri] fetches trace from a provided [uri]*)
-    val load : Uri.t -> (t,error) Result.t
+    (** [load ~monitor uri] fetches trace from a provided [uri]. 
+        [monitor] is fail_on_error by default. *)
+    val load : ?monitor:monitor -> Uri.t -> (t,error) Result.t
 
     (** [save uri] pushes trace to a provided [uri] *)
     val save : Uri.t -> t -> (unit,error) Result.t
@@ -7590,20 +7592,16 @@ module Std : sig
         of events. *)
     val create : tool -> t
 
-    (** [unfold tool ~f] creates a trace by unfolding a function [f].
-        Effectively the trace is sequence built of function compositions,
-        [f (... ((f (f init))))], where the innermost function application
-        corresponds to a first element of the sequence, and the outermost
-        is the last element.
-
+    (** [unfold ~monitor tool ~f ~init] creates a trace by unfolding a function [f].
         The produces sequence is lazy, i.e., functions are called as
-        demanded.
-    *)
-    val unfold : tool -> f:('a -> event option) -> init:'a -> t
+        demanded. [monitor] is fail_on_error by default. *)
+    val unfold : ?monitor:monitor -> tool -> f:('a -> (event Or_error.t * 'a) option) -> init:'a -> t
+
+    (** [unfold' ~monitor tool ~f] is a simplified version of [unfold] *)
+    val unfold' : ?monitor:monitor -> tool -> f:(unit -> event Or_error.t option) -> t
 
     (** [add_event trace tag] appends an event to a sequence of events of
         [trace]. *)
-
     val add_event : t -> 'a tag -> 'a -> t
 
     (** [append trace events] creates a trace with a sequence of events
@@ -7644,6 +7642,7 @@ module Std : sig
         from the client side to dynamically control a trace tool.
 
     *)
+
     module type S = sig
       val name: string 
       val supports: 'a tag -> bool
@@ -7664,18 +7663,45 @@ module Std : sig
       *)
 
       type t = {
-        tool : tool;           (** a tool descriptor read from trace *)
-        meta : dict;           (** meta information  read from trace *)
-        next : unit -> (event option, io_error) Result.t (** a stream function *)
+        tool : tool;                (** a tool descriptor read from trace *)
+        meta : dict;                (** meta information read from trace  *)
+        next : unit -> event Or_error.t option;     (** a stream function  *)
       }
     end
 
     type reader = Reader.t
 
-    val register_reader : proto -> (Uri.t -> id -> reader Or_error.t) -> unit
-    val register_writer : proto -> (Uri.t -> t -> unit Or_error.t) -> unit
+    val register_reader : proto -> (Uri.t -> id -> (reader, io_error) Result.t) -> unit
 
-    module Id : Regular with type t := id
+    val register_writer : proto -> (Uri.t -> t -> (unit, io_error) Result.t) -> unit
+
+    module Id : Regular with type t = id
+
+    (** Monitor defines an error handling policy.*)
+    module Monitor : sig
+      type t = monitor
+
+      (** [ignore_errors] filters good events and silently drops error events  *)
+      val ignore_errors : t
+      (** [warn_on_error on_error] same as [ignore_errors] but calls
+          [on_error] function when an error has occured *)
+      val warn_on_error : (Error.t -> unit) -> t
+
+      (** [fail_on_error] will fail with an [error] [Error.raise error] *)
+      val fail_on_error : t
+
+      (** [stop_on_error] will silently finish a stream in case of error.  *)
+      val stop_on_error : t
+
+      (** [pack_errors pack] will transform any occured error into event
+          using [pack] function.  *)
+      val pack_errors : (Error.t -> event) -> t
+
+      (** [create filter] creates a user defined monitor from function
+          [filter] that is applied to a sequence of events or errors, and
+          returns a sequence of events.  *)
+      val create : (event Or_error.t seq -> event seq) -> t
+    end
 
     module Move : sig
       type 'a t = {
@@ -7737,7 +7763,7 @@ module Std : sig
     type call = Call.t with bin_io,compare,sexp
     type return = Return.t with bin_io,compare,sexp
 
-    module Event : sig 
+    module Event : sig
 
       (** an read access to a memory cell  *)
       val memory_load : addr move tag

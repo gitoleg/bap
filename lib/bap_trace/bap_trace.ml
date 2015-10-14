@@ -82,6 +82,7 @@ let tools  : (module S) Tab.t = mk_tab ()
 let protos : (module P) Tab.t = mk_tab () 
 let readers: (Uri.t -> id -> (reader, io_error) Result.t) Tab.t = mk_tab ()
 let writers: (Uri.t -> t -> (unit, io_error) Result.t) Tab.t = mk_tab ()
+
 let make_id () = Bap_uuid.create `V4
 
 let protocols_of_uri uri = 
@@ -139,7 +140,7 @@ let convert_io_error = function
   | `System_error err -> Error (`System_error err)
   | `Protocol_error err -> Error (`Protocol_error err)
 
-let load ?(monitor=`Fail) uri : (t, error) Result.t =
+let load ?(monitor=`Fail) uri =
   find_proto uri >>= 
   fun proto -> find_by_proto readers proto >>=
   fun create ->
@@ -239,5 +240,3 @@ let register_tool : (module S) -> tool = fun s ->
 let register_proto : (module P) -> proto = fun p -> 
   let module A = (val p : P) in
   add protos A.name p; A.name
-
-
