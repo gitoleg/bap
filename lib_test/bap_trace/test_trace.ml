@@ -184,7 +184,7 @@ let next () =
     let a = ref test_events in
     fun () -> match !a with
       | [] -> None
-      | hd::tl -> a := tl; Some hd 
+      | hd::tl -> a := tl; Some (Ok hd, ())
 
 let unfold ctxt = 
   let t = Trace.unfold test_tool ~f:(next ()) ~init:() in
@@ -206,7 +206,7 @@ let memoize ctxt =
     fun () -> match !evs with
       | [] -> None
       | hd::tl -> 
-        a := !a + 1; evs := tl; Some hd in
+        a := !a + 1; evs := tl; Some (Ok hd, ()) in
   let t = Trace.unfold test_tool ~f:next ~init:() in
   assert_equal ~ctxt !a 0;
   let _ = Trace.memoize t in

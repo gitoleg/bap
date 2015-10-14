@@ -5,7 +5,7 @@ open Bap_types.Std
 
 type event = value  with bin_io, sexp, compare
 
-type on_error = [
+type error_handler = [
   | `Fail
   | `Miss
   | `Stop
@@ -14,7 +14,7 @@ type on_error = [
 ]
 
 type monitor = [
-  | on_error
+  | error_handler
   | `User of (event Or_error.t seq -> event seq)
 ]
 
@@ -46,14 +46,14 @@ end
 
 type io_error = [ 
   | `Protocol_error of Error.t  (** Data encoding problem         *)
-  | `System_error of Error.t    (** System error                  *)
-] with sexp, bin_io, compare
+  | `System_error of Unix.error    (** System error               *)
+] 
 
 type error = [
   | io_error
   | `No_provider    (** No provider for a given URI               *)
   | `Ambiguous_uri  (** More than one provider for a given URI    *)
-] with sexp
+] 
 
 module Reader = struct
   type t = {
@@ -65,17 +65,10 @@ end
 
 type reader = Reader.t
 
-type stream = {
-  data : event seq; 
-  after: event seq;
-} 
-
-type events = | Loaded of event seq | Stream of stream
-
 type t = {
   id     : id;
   meta   : dict;
-  events : events;
+  events : event seq;
   tool   : tool;
   proto  : proto option;
 }
@@ -85,8 +78,8 @@ module Tab = String.Caseless.Table
 let mk_tab = Tab.create
 let tools  : (module S) Tab.t = mk_tab () 
 let protos : (module P) Tab.t = mk_tab () 
-let readers: (Uri.t -> id -> reader Or_error.t) Tab.t = mk_tab ()
-let writers: (Uri.t -> t -> unit Or_error.t) Tab.t = mk_tab ()
+let readers: (Uri.t -> id -> (reader, io_error) Result.t) Tab.t = mk_tab ()
+let writers: (Uri.t -> t -> (unit, io_error) Result.t) Tab.t = mk_tab ()
 let make_id () = Bap_uuid.create `V4
 
 let protocols_of_uri uri = 
@@ -96,7 +89,8 @@ let protocols_of_uri uri =
         if A.probe uri then key::acc
         else acc) 
 
-let find_proto uri = match protocols_of_uri uri with
+let find_proto uri  = 
+  match protocols_of_uri uri with
   | [] -> Error `No_provider
   | p::[] -> Ok p 
   | protos -> Error `Ambiguous_uri 
@@ -106,74 +100,80 @@ let find_by_proto tab proto =
     Ok (Hashtbl.find_exn tab proto)
   with Not_found -> Error `No_provider
 
-let create_reader create uri id =
-  match create uri id with
-  | Ok rd as r -> r
-  | Error err -> Error (`System_error err)
-
-let make_stream next monitor = 
-  let open Seq.Generator in
-  let make m =
-    let rec traverse () = match next () with
-      | Some (Ok ev) -> yield ev
-      | Some (Error er) -> of_error er
-      | None -> return () and
-    of_error = match m with
-      | `Fail -> Error.raise 
-      | `Miss -> fun err -> traverse ()
-      | `Pack f -> fun err -> yield (f err) >>= traverse
-      | `Stop -> fun err -> return () 
-      | `Warn f -> fun err -> f err; traverse () in
-    traverse in
-  let rec traverse' () = match next () with
-    | Some elt -> yield elt >>= traverse'
-    | None -> return () in
+let make_stream next init monitor = 
+  let open Seq.Step in
+  let if_error m = 
+    fun a -> match next a with 
+      | None -> Done
+      | Some (Ok ev, a') -> Yield (ev, a')
+      | Some (Error err, a') -> 
+        match m with 
+        | `Fail -> Error.raise err
+        | `Miss -> Skip a'
+        | `Pack f -> Yield (f err, a') 
+        | `Stop -> Done
+        | `Warn f -> f err; Skip a' in
+  let ident a = match next a with 
+    | None -> Done
+    | Some (elt, a') -> Yield (elt, a') in
   let s = match monitor with 
-    | #on_error as m -> run (return () >>= make m)
-    | `User f -> run (return () >>= traverse') |> f in
-  let s = Seq.memoize s in
-  Stream {data = s; after = Seq.empty }
+    | #error_handler as m -> Seq.unfold_step ~init ~f:(if_error m)
+    | `User handle -> Seq.unfold_step ~init ~f:ident |> handle in
+  Seq.memoize s
 
 let of_reader reader id proto monitor =  
   let tool = reader.Reader.tool in 
-  let meta = reader.Reader.meta in
-  let events = make_stream reader.Reader.next monitor in
+  let meta = reader.Reader.meta in 
+  let next () = match reader.Reader.next () with 
+    | None -> None
+    | Some elt -> Some (elt, ()) in
+  let events = make_stream next () monitor in
   {id; meta; tool; events; proto = Some proto;}
 
-let load ?(monitor=Monitor.fail_on_error) uri =  
+let convert_io_error = function
+  | `System_error err -> Error (`System_error err)
+  | `Protocol_error err -> Error (`Protocol_error err)
+
+let load ?(monitor=`Fail) uri : (t, error) Result.t =
   find_proto uri >>= 
   fun proto -> find_by_proto readers proto >>=
   fun create ->
   let id = make_id () in
-  create_reader create uri id >>=
-  fun reader -> Ok (of_reader reader id proto monitor)
+  match create uri id with
+  | Ok reader -> Ok (of_reader reader id proto monitor)
+  | Error err -> convert_io_error err
 
 let save uri t = 
-  find_proto uri >>= 
+  find_proto uri >>=
   fun proto -> find_by_proto writers proto >>=
-  fun write -> match write uri t with
-  | Ok () as r -> r
-  | Error err -> Error (`System_error err)
+  fun write -> match write uri t with 
+  | Ok () -> Ok ()
+  | Error err -> convert_io_error err
 
 let create tool = {
   id = make_id (); 
   meta = Dict.empty; 
-  events = Loaded Seq.empty;
+  events = Seq.empty;
   tool; 
   proto = None;
 }
 
-(** TODO: I bet f should return some new 'a too. Ask what the function
-    behavior  *)
-let unfold ?(monitor=Monitor.fail_on_error) tool ~f ~init = 
-  let next () = match f init with
-    | Some ev -> Some (Ok ev)
-    | None -> None in
+let unfold ?(monitor=`Fail) tool ~f ~init = 
   let id = make_id () in
   let meta = Dict.empty in
   let proto = None in
-  let events = make_stream next monitor in
+  let events = make_stream f init monitor in
   {id; meta; tool; events; proto;}  
+
+let unfold' ?(monitor=`Fail) tool ~f =
+  let id = make_id () in
+  let meta = Dict.empty in
+  let proto = None in
+  let next () = match f () with 
+    | None -> None
+    | Some elt -> Some (elt, ()) in
+  let events = make_stream next () monitor in
+  {id; meta; tool; events; proto;}    
 
 let set_attr t attr v = 
   let meta = match Dict.add t.meta attr v with 
@@ -200,18 +200,12 @@ let supports_by_proto t tag = match t.proto with
     let module Proto = (val p : P) in
     Proto.supports tag
 
+let memoize t =
+  let events = Seq.force_eagerly t.events in
+  { t with events }
+
 let supports t tag = supports_by_tool t tag && supports_by_proto t tag
-
-let memoize t = match t.events with
-  | Loaded _ -> t
-  | Stream s -> 
-    let data = Seq.force_eagerly s.data in
-    { t with events = Stream ({s with data}) }
-
-let events t = match t.events with
-    | Loaded evs -> evs
-    | Stream s -> Seq.append s.data s.after 
-
+let events t = t.events 
 let find t tag = Seq.find_map (events t) ~f:(Value.get tag) 
 let find_all t tag = Seq.filter_map (events t) ~f:(Value.get tag)
 
@@ -229,20 +223,12 @@ let contains t tag =
 
 let add_event t tag e = 
   let ev = Value.create tag e in
-  let add s ev = Seq.append s (Seq.singleton ev) in
-  match t.events with
-  | Loaded evs -> {t with events = Loaded (add evs ev)}
-  | Stream s -> 
-    let s' = {s with after = add s.after ev} in
-    {t with events = Stream s'}
+  let events = Seq.append (events t) (Seq.singleton ev) in
+  {t with events}
 
 let append t evs = 
-  let add s s' = Seq.append s s' in
-  match t.events with 
-  | Loaded evs' -> {t with events = Loaded (add evs' evs)}
-  | Stream s -> 
-    let s' = {s with after = add s.after evs} in
-    {t with events = Stream s'}
+  let events = Seq.append (events t) evs in
+  {t with events}
 
 let add tab key data = Hashtbl.add_exn tab ~key ~data
 let register_reader proto init = add readers proto init

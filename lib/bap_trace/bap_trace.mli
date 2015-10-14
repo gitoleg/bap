@@ -38,8 +38,8 @@ type id
 type t
 
 type io_error = [
-  | `Protocol_error of Error.t  (** Data encoding problem         *)
-  | `System_error of Error.t    (** System error                  *)  
+  | `Protocol_error of Error.t   (** Data encoding problem         *)
+  | `System_error of Unix.error  (** System error                  *)  
 ]
 
 type error = [
@@ -149,19 +149,14 @@ val events : t -> event seq
 val create : tool -> t
 
 (** [unfold tool ~f] creates a trace by unfolding a function [f].
-    Effectively the trace is sequence built of function compositions,
-    [f (... ((f (f init))))], where the innermost function application
-    corresponds to a first element of the sequence, and the outermost
-    is the last element.
-
     The produces sequence is lazy, i.e., functions are called as
-    demanded.
-*)
-val unfold :  ?monitor:monitor -> tool -> f:('a -> event option) -> init:'a -> t
+    demanded. *)
+val unfold : ?monitor:monitor -> tool -> f:('a -> (event Or_error.t * 'a) option) -> init:'a -> t
+
+val unfold' : ?monitor:monitor -> tool -> f:(unit -> event Or_error.t option) -> t
 
 (** [add_event trace tag] appends an event to a sequence of events of
     [trace]. *)
-
 val add_event : t -> 'a tag -> 'a -> t
 
 (** [append trace events] creates a trace with a sequence of events
@@ -231,13 +226,11 @@ end
 
 type reader = Reader.t
 
-val register_reader : proto -> (Uri.t -> id -> reader Or_error.t) -> unit
+val register_reader : proto -> (Uri.t -> id -> (reader, io_error) Result.t) -> unit
 
-val register_writer : proto -> (Uri.t -> t -> unit Or_error.t) -> unit
-
+val register_writer : proto -> (Uri.t -> t -> (unit, io_error) Result.t) -> unit
 
 module Id : Regular with type t = id
-
 
 (** Monitor defines an error handling policy.*)
 module Monitor : sig
