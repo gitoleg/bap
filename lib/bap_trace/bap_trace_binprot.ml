@@ -1,6 +1,6 @@
 
 open Core_kernel.Std
-open Or_error
+open Result
 open Bin_prot
 
 open Bap_types.Std
@@ -34,33 +34,38 @@ module Proto = struct
     let total = data_len + Utils.size_header_length in
     let buf = Bigstring.create total in
     let pos = Utils.bin_write_size_header buf ~pos:0 data_len in
-    let pos' = writer.Type_class.write buf ~pos value in
-    if pos' <> total then failwith "trace writing failed"
-    else 
-      Out_channel.output_string chan (Bigstring.to_string buf)
+    let _ = writer.Type_class.write buf ~pos value in
+    Out_channel.output_string chan (Bigstring.to_string buf)
 
   let read_tool   = read  Bap_trace.bin_reader_tool
-  let read_meta   = read  Value.Dict.bin_reader_t
+  let read_meta   = read  Value.Dict.bin_reader_t 
   let read_event  = read  Bap_trace.bin_reader_event
   let write_tool  = write Bap_trace.bin_writer_tool
   let write_meta  = write Value.Dict.bin_writer_t
   let write_event = write Bap_trace.bin_writer_event 
-  
+
 end
 
-let make_in_channel uri = In_channel.create (Uri.path uri)
-let make_out_channel uri = Out_channel.create (Uri.path uri)
+let make_in_channel path = 
+  try 
+    let () = Unix.(access path [R_OK]) in
+    Ok (In_channel.create path)
+  with Unix.Unix_error (er,_,_) -> Error (`System_error er)
+
+let make_out_channel path =
+  try
+    let fd = Unix.(openfile path [O_WRONLY; O_TRUNC; O_CREAT] 0o666) in
+    Ok (Unix.out_channel_of_descr fd)
+  with Unix.Unix_error (er,_,_) -> Error (`System_error er)
 
 let write uri trace =
-  try
-    let ch = make_out_channel uri in
-    let () = Proto.write_tool (Bap_trace.tool trace) ch in
-    let () = Proto.write_meta (Bap_trace.meta trace) ch in
-    let evs = Bap_trace.events trace in
-    Seq.iter evs ~f:(fun ev -> Proto.write_event ev ch);
-    Ok (Out_channel.close ch)
-  with 
-  | Unix.Unix_error (err, _, _) -> Error (`System_error err)
+  make_out_channel (Uri.path uri) >>=
+  fun ch ->
+  let () = Proto.write_tool (Bap_trace.tool trace) ch in
+  let () = Proto.write_meta (Bap_trace.meta trace) ch in
+  let evs = Bap_trace.events trace in
+  Seq.iter evs ~f:(fun ev -> Proto.write_event ev ch);
+  Ok (Out_channel.close ch)
 
 let next_event ch = 
   try 
@@ -74,16 +79,16 @@ let next_event ch =
     Some (Error err)
 
 let read uri id =
-  try 
-    let ch = make_in_channel uri in
+  make_in_channel (Uri.path uri) >>=
+  fun ch ->
+  try
     let next () = next_event ch in
     let tool = Option.value_exn (Proto.read_tool ch) in
     let meta = Option.value_exn (Proto.read_meta ch) in
     Ok (Bap_trace.Reader.({tool; meta; next;}))
   with 
-  | Unix.Unix_error (err, _, _) -> Error (`System_error err)
   | exn -> 
-    let err = Error.of_info (Info.of_string (Exn.to_string exn)) in
+    let err = Error.of_info (Info.of_exn exn) in
     Error (`Protocol_error err)
     
 let register () =
