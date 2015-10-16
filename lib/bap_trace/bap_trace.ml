@@ -129,32 +129,32 @@ let wrap_next f =
     | None -> None 
     | Some elt -> Some (elt, ())
 
-let of_reader reader id proto monitor =  
+let of_reader id proto monitor reader =  
   let tool = reader.Reader.tool in 
   let meta = reader.Reader.meta in 
   let next = wrap_next reader.Reader.next in
   let events = make_stream next () monitor in
   {id; meta; tool; events; proto = Some proto;}
 
-let convert_io_error = function
-  | `System_error err -> Error (`System_error err)
-  | `Protocol_error err -> Error (`Protocol_error err)
+let convert_io_error = function 
+  | #io_error as err -> err
 
+let map_result ok_f err_f = function
+  | Ok v -> Ok (ok_f v)
+  | Error err -> Error (err_f err)
+  
 let load ?(monitor=`Fail) uri =
   find_proto uri >>= 
   fun proto -> find_by_proto readers proto >>=
-  fun create ->
+  fun make ->
   let id = make_id () in
-  match create uri id with
-  | Ok reader -> Ok (of_reader reader id proto monitor)
-  | Error err -> convert_io_error err
+  let reader = make uri id in
+  map_result (of_reader id proto monitor) convert_io_error reader
 
 let save uri t = 
   find_proto uri >>=
   fun proto -> find_by_proto writers proto >>=
-  fun write -> match write uri t with 
-  | Ok () -> Ok ()
-  | Error err -> convert_io_error err
+  fun write -> map_result ident convert_io_error (write uri t)
 
 let create tool = {
   id = make_id (); 
