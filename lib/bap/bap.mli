@@ -7756,12 +7756,21 @@ module Std : sig
       } with bin_io, compare, sexp
     end
 
+    module Modload : sig
+      type t = {
+        name : string;
+        low : addr;
+        high : addr;
+      } with bin_io, compare, sexp
+    end
+
     type 'a move = 'a Move.t with bin_io, compare, sexp
     type chunk = Chunk.t with bin_io, compare, sexp
     type syscall = Syscall.t with bin_io, compare, sexp
     type exn = Exn.t with bin_io,compare,sexp
     type call = Call.t with bin_io,compare,sexp
     type return = Return.t with bin_io,compare,sexp
+    type modload = Modload.t with bin_io,compare,sexp
 
     module Event : sig
 
@@ -7804,6 +7813,8 @@ module Std : sig
       (** a return from a call has occured  *)
       val return : return tag
 
+      (** represent an executable module being loaded *)
+      val modload : modload tag
     end
 
     module Tracer : sig

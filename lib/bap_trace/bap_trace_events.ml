@@ -53,6 +53,12 @@ module Return = struct
   let pp ppf s = failwith "unimplemented"
 end
 
+module Modload = struct
+  include Modload
+  let pp fmt t =
+    Format.fprintf fmt "%s: %a - %a" t.name Addr.pp t.low Addr.pp t.high
+end
+
 let memory_load =
   Value.Tag.register (module Load)
     ~name:"memory_load"
@@ -112,3 +118,8 @@ let return =
   Value.Tag.register (module Return)
     ~name:"return"
     ~uuid:"2cae388a-69cb-48a0-8355-d3f9d39ac8eb"
+
+let modload =
+  Value.Tag.register (module Modload)
+    ~name:"modload"
+    ~uuid:"7f842d03-6c9f-4745-af39-002f468f7fc8"

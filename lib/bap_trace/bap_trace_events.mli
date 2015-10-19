@@ -46,3 +46,6 @@ val call : call tag
 
 (** a return from a call has occured  *)
 val return : return tag
+
+(** represent an executable module being loaded *)
+val modload : modload tag

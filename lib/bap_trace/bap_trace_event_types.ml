@@ -54,9 +54,18 @@ module Return = struct
   } with bin_io, compare, sexp
 end
 
+module Modload = struct
+  type t = {
+    name : string;
+    low : addr;
+    high : addr;
+  } with bin_io, compare, sexp
+end
+
 type 'a move = 'a Move.t with bin_io, compare, sexp
 type chunk = Chunk.t with bin_io, compare, sexp
 type syscall = Syscall.t with bin_io, compare, sexp
 type exn = Exn.t with bin_io,compare,sexp
 type call = Call.t with bin_io,compare,sexp
 type return = Return.t with bin_io,compare,sexp
+type modload = Modload.t with bin_io,compare,sexp
