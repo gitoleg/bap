@@ -13,8 +13,8 @@ end
 module Binary = struct
   include Binary
   let pp ppf t =
-    Format.fprintf ppf "%s: %a executable%s"
-      t.path Arch.pp t.arch
+    Format.fprintf ppf "%s: executable%s"
+      t.path
       (match t.stripped with
        | Some true -> " stripped"
        | Some false -> " not stripped"
@@ -36,6 +36,11 @@ let binary =
   Value.Tag.register (module Binary)
     ~name:"binary"
     ~uuid:"391bb6c3-2c93-4592-b292-43e8ec52e786"
+
+let arch =
+  Value.Tag.register (module Arch)
+    ~name:"arch"
+    ~uuid:"4bffe6d7-c554-45ec-9fb3-102f18e8f390"
 
 let binary_file_stats =
   Value.Tag.register (module File_stats)

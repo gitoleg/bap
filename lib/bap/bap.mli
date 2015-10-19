@@ -7817,7 +7817,6 @@ module Std : sig
     module Binary : sig
       type t = {
         path : string;
-        arch : arch;
         stripped : bool option;     (* yes, no, unknown *)
       } with bin_io, compare, sexp
     end
@@ -7842,6 +7841,9 @@ module Std : sig
 
       (** description of a target binary (executable) that was traced.*)
       val binary : binary tag
+
+      (** description of binary architecture. *)
+      val arch : arch tag
 
       (** file stats of the traced binary  *)
       val binary_file_stats : file_stats tag

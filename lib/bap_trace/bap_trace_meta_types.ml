@@ -13,7 +13,6 @@ end
 module Binary = struct
   type t = {
     path : string;
-    arch : arch;
     stripped : bool option;     (* yes, no, unknown *)
   } with bin_io, compare, sexp
 end

@@ -15,6 +15,9 @@ val tracer : tracer tag
 (** description of a target binary (executable) that was traced.*)
 val binary : binary tag
 
+(** description of binary architecture. *)
+val arch : arch tag
+
 (** file stats of the traced binary  *)
 val binary_file_stats : file_stats tag
 
