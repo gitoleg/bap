@@ -235,10 +235,8 @@ std::unique_ptr<object::Binary> get_binary(const char* data, std::size_t size) {
     StringRef data_ref(data, size);
     MemoryBufferRef buf(data_ref, "binary");
     auto binary = createBinary(buf);
-    if (error_code ec = binary.getError()) {
-        std::cerr << "llvm::object::createBinary failed with error code " << ec << std::endl;
-        return NULL;
-    }
+    if (binary.getError())
+        return NULL;    
     return move(*binary);
 }
 
