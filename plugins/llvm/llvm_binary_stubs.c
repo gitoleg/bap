@@ -128,6 +128,8 @@ CAMLprim value llvm_binary_create_stub(value arg) {
         caml_invalid_argument("invalid bigarray dimension");
     const struct image* obj =
         image_create((const char*)(array->data), array->dim[0]);
+    if (!obj) 
+        caml_failwith("input binary is malformed ");
     CAMLreturn(image_to_value(obj));
 }
 

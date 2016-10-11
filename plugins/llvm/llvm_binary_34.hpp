@@ -371,7 +371,7 @@ std::unique_ptr<object::Binary> get_binary(const char* data, std::size_t size) {
     MemoryBuffer* buff(MemoryBuffer::getMemBufferCopy(data_ref, "binary"));
     OwningPtr<object::Binary> bin;
     if (error_code ec = createBinary(buff, bin)) {
-	std::cerr << ec << "\n";
+        std::cerr << "llvm::object::createBinary failed with error code " << ec << std::endl;
         return NULL;
     }
     std::unique_ptr<object::Binary> binary(bin.take());
