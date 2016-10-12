@@ -11,6 +11,9 @@ addons:
   apt:
     sources:
     - avsm
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-precise
+    - llvm-toolchain-precise-3.8
     packages:
     - camlp4
     - camlp4-extra
@@ -22,6 +25,7 @@ addons:
     - libzip-dev
     - llvm
     - llvm-3.4-dev
+    - llvm-3.8-dev
     - m4
     - ocaml
     - ocaml-base
@@ -34,4 +38,4 @@ addons:
     - dejagnu
 
 env:
-  - FORK_USER=talex5 FORK_BRANCH=containers OPAMYES=true PACKAGE=bap OCAML_VERSION=latest TESTS=false
+  - FORK_USER=talex5 FORK_BRANCH=containers OPAMYES=true PACKAGE=bap OCAML_VERSION=latest TESTS=false llvm_version=3.8
