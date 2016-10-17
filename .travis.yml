@@ -24,7 +24,6 @@ addons:
     - libssl-dev
     - libzip-dev
     - llvm
-    - llvm-3.4-dev
     - llvm-3.8-dev
     - m4
     - ocaml
