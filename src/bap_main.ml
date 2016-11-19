@@ -119,6 +119,10 @@ let process options project =
 
 let main o =
   let digest = digest o in
+
+  Printf.printf "digest for %s is %s\n"
+    o.filename
+    (Sexp.to_string (sexp_of_digest digest));
   let project = match Project.Cache.load digest with
     | Some proj ->
       Project.restore_state proj;
