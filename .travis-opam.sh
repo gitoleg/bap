@@ -17,7 +17,7 @@ get() {
 TMP_BUILD=$(mktemp -d)
 cd ${TMP_BUILD}
 
-get .travis-ocaml.sh
+#get .travis-ocaml.sh
 get yorick.mli
 get yorick.ml
 get travis_opam.ml
