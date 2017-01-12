@@ -68,7 +68,7 @@ let of_data data : Backend.Img.t option =
   try Some (of_data_exn ()) with
   | exn -> error "Can't create binary: %a%!" Exn.pp exn; None
 
-let () =
+let init () =
   match Image.register_backend ~name of_data with
   | `Ok -> ()
   | `Duplicate ->

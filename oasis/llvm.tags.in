@@ -1,1 +1,1 @@
-<plugins/llvm/llvm_*.cpp>: use_libllvm
+<lib/llvm_disasm/llvm_*.cpp>: use_libllvm
