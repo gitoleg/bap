@@ -195,5 +195,6 @@ module T_34 = Make(Ver_34)
 module T_38 = Make(Ver_38)
 
 let () =
-  if Llvm_disasm.version = "3.4" then T_34.register ()
+  printf "llvm version is %s\n "X86_llvm_config.llvm_version;
+  if X86_llvm_config.llvm_version = "3.4" then T_34.register ()
   else T_38.register ()
