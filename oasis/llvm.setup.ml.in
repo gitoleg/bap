@@ -3,6 +3,12 @@ let strip_patch ver =
   else String.sub ver 0 3
 
 
+let print_config () =
+  let llvm_config = BaseEnv.var_get "llvm_config" in
+  let x = OASISExec.run_read_one_line ~ctxt llvm_config ["--version"]  in
+  Printf.printf "config is %s\n" x
+
+
 let llvm var () : unit =
   BaseEnv.var_define
     ~hide:true
@@ -10,10 +16,11 @@ let llvm var () : unit =
     ~short_desc:(fun () -> "llvm-config --"^var)
     ("llvm_"^var)
     (fun () ->
+       print_config ();
        let llvm_config = BaseEnv.var_get "llvm_config" in
        let llvm_version = BaseEnv.var_get "llvm_version" in
        let extract v =
-	 OASISExec.run_read_one_line ~ctxt llvm_config ["--"^v] in
+     OASISExec.run_read_one_line ~ctxt llvm_config ["--"^v] in
        if strip_patch llvm_version > "3.4" && var = "ldflags"
        then extract var ^ " " ^ extract "system-libs"
        else extract var) |>
