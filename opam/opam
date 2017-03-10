@@ -8,7 +8,7 @@ bug-reports: "https://github.com/BinaryAnalysisPlatform/bap/issues"
 dev-repo: "git://github.com/BinaryAnalysisPlatform/bap/"
 license: "MIT"
 build: [
-  ["./configure"
+  ["BAP_DEBUG=1 ./configure"
   "--prefix=%{prefix}%"
   "--with-cxx=`which clang++`"
   "--mandir=%{man}%"
