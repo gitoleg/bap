@@ -1,5 +1,9 @@
 open Core_kernel.Std
 open Bap.Std
+open Monads.Std
+
+module Fact = Ogre.Make(Monad.Ident)
+module Result = Monad.Result.Error
 
 open Bap_llvm_binary
 
@@ -88,7 +92,54 @@ let of_data data : Backend.Img.t option =
   Some (Backend.Img.Fields.create
           ~arch ~entry ~segments ~symbols ~sections)
 
+module Check = struct
+  open Fact.Syntax
+  open Ogre.Type
+
+  let loader_feedback what =
+    let msg = "message"  %: str in
+    Ogre.declare ("loader-" ^ what) (scheme msg) ident
+
+  let loader_error   () = loader_feedback "error"
+  let loader_warning () = loader_feedback "warning"
+
+  let error = Fact.request loader_error
+
+  let make =
+    Fact.foreach Ogre.Query.(select (from loader_warning)) ~f:ident >>=
+    fun ws -> Seq.iter ~f:(Format.printf "loader-warning: %s\n") ws;
+    Fact.request loader_error
+end
+
+module Ogre_loader = struct
+  open Result.Syntax
+
+  exception Llvm_loader_fail of int
+
+  let _ = Callback.register_exception
+      "Llvm_loader_fail" (Llvm_loader_fail 0)
+
+  let from_data data =
+    try
+      let s = bap_llvm_load data in
+      match Ogre.Doc.from_string s with
+      | Error er -> Or_error.errorf "can't construct doc"
+      | Ok doc ->
+        Fact.eval Check.make doc >>= function
+        | None -> Ok (Some doc)
+        | Some er -> Or_error.error_string er
+    with (Llvm_loader_fail n) ->
+    match n with
+    | 1 -> Ok None  (** loader doesn't suppot a give file type *)
+    | 2 -> Or_error.error_string "file corrupted"
+    | n -> Or_error.errorf "fail with unexpeced error code %d" n
+
+  let from_file path = Bap_fileutils.readfile path |> from_data
+
+end
+
 let init () =
-  match Image.register_backend ~name:"llvm" of_data with
+  Image.register_loader ~name:"llvm" (module Ogre_loader);
+  match Image.register_backend ~name:"llvm-legacy" of_data with
   | `Ok -> Ok ()
-  | `Duplicate -> Or_error.errorf "llvm loader: duplicate name"
+  | `Duplicate -> Or_error.errorf "llvm-legacy loader: duplicate name"

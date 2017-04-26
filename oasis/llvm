@@ -29,7 +29,15 @@ Library bap_llvm
                  llvm_binary_38.c,
                  llvm_binary_38.h,
                  llvm_error_or.c,
-                 llvm_error_or.h
+                 llvm_error_or.h,
+                 llvm_loader_scheme.c,
+                 llvm_loader_scheme.h,
+                 llvm_elf_loader.c,
+                 llvm_elf_loader.h,
+                 llvm_loader.c,
+                 llvm_loader.h,
+                 llvm_loader_stubs.c,
+                 llvm_loader_stubs.h
 
 Library llvm_plugin
   XMETADescription: provide loader and disassembler using LLVM library
