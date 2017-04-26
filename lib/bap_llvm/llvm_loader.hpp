@@ -41,17 +41,14 @@ const T* cast(const object::Binary *binary) {
     return llvm::dyn_cast<T>(binary);
 }
 
-error_or<std::string> unsupported() { return error_or(""); }
-bool is_supported(const error_or<std::string> &loaded) {
-    return (loaded && loaded->get().size() != 0)
-}
+error_or<std::string> unsupported_filetype() { return success(""); }
 
 template <typename T>
 error_or<std::string> load_elf(const object::Binary *binary) {
     if (auto bin = cast<T>(binary))
         return elf_loader::load(*bin);
     else
-        return unsupported; //("Unrecognized ELF format");
+        return unsupported_filetype();
 }
 
 error_or<std::string> load_elf(const object::Binary *binary) {
@@ -63,50 +60,59 @@ error_or<std::string> load_elf(const object::Binary *binary) {
         return load_elf<ELF64LEObjectFile>(binary);
     else if (isa<ELF64BEObjectFile>(*binary))
         return load_elf<ELF64BEObjectFile>(binary);
-    else return unsupported; //failure("Unrecognized ELF format");
+    else return unsupported_filetype();
+}
+
+void verbose_fails(const error_or<std::string> &loaded) {
+    if(const char* env_p = std::getenv("BAP_DEBUG")) {
+        if (std::string(env_p) == "1")
+            if (!loaded)
+                std::cerr << "ogre llvm loader error: " << loaded.message() << std::endl;
+            for (auto w : loaded.warnings())
+                std::cerr << "ogre llvm loader warning:  " << w << std::endl;
+    }
 }
 
 error_or<std::string> load_coff(const object::Binary *binary) {
-    return unsupported(); // "COFF is not supported in ogre loader"
+    return unsupported_filetype();
 }
 
 error_or<std::string> load_macho(const object::Binary *binary) {
-    return unsupported(); // "Macho is not supported in ogre loader"
+    return unsupported_filetype();
+}
+
+error_or<std::string> load(const char* data, std::size_t size) {
+    error_or<object::Binary> bin = get_binary(data, size);
+    if (!bin)
+        return unsupported_filetype();
+    else if (bin->isCOFF())
+        return load_coff(bin.get());
+    else if (bin->isELF())
+        return load_elf(bin.get());
+    else if (bin->isMachO())
+        return load_macho(bin.get());
+    else
+        return unsupported_filetype();
 }
 
 typedef error_or<std::string> bap_llvm_loader;
 
-bap_llvm_loader * make_loader(const error_or<std::string> &loaded) {
-    if (loaded && is_supported(loaded))
-        return new bap_llvm_loader(loaded);
-    else if (!loaded)
-        return new bap_llvm_loader(loaded);
-    else
-        return nullptr;
+const bap_llvm_loader * create(const char* data, std::size_t size) {
+    auto loaded = load(data, size);
+    verbose_fails(loaded);
+    return new bap_llvm_loader(std::move(loaded));
 }
 
-const bap_llvm_loader * create(const char* data, std::size_t size) {
-    error_or<object::Binary> bin = get_binary(data, size);
-    bap_llvm_loader *loader;
-    if (!bin) {
-        loader = make_loader(failure("Bad file format"));
-    }
-    else {
-        if (bin->isCOFF())
-            loader = make_loader(load_coff(bin.get()));
-        else if (bin->isELF())
-            loader = make_loader(load_elf(bin.get()));
-        else if (bin->isMachO())
-            loader = make_loaded(load_macho(bin.get()));
-        else
-            loader = make_loader(failure("Unrecognized object format"));
-    }
-    return loader;
+bool loader_failed(const bap_llvm_loader * loader) {
+    return loader->has_error();
+}
+
+bool file_not_supported(const bap_llvm_loader * loader) {
+    return (!loader->has_error() && (*loader)->size() == 0);
 }
 
 void destroy(const bap_llvm_loader *loader) {
-    if (loader)
-        delete loader;
+    delete loader;
 }
 
 } // namespace loader

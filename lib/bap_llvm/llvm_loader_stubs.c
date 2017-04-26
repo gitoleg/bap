@@ -9,16 +9,6 @@
 #include "llvm_loader.h"
 #include "llvm_loader_stubs.h"
 
-/* exception codes:
-   1 - loader doesn't support type for a given file
-   2 - file is corrupted
-
-   and a logic is simple:
-      - loader_failed() == true means error occured during loading,
-        i.e. something wrong with file
-      - loader ptr == nullptr means that current file type is not supported.
-*/
-
 void failn(int n) {
     caml_raise_with_arg(*caml_named_value("Llvm_loader_fail"), Val_int(n));
 }
@@ -36,8 +26,8 @@ value bap_llvm_load_stub(value arg) {
         failn(2);
     const struct bap_llvm_loader *loader =
         bap_llvm_loader_create((const char*)(array->data), array->dim[0]);
-    if (!loader)
-        failn(1);
+    if (bap_llvm_file_not_supported(loader))
+        loader_fail(loader, 1);
     if (bap_llvm_loader_failed(loader))
         loader_fail(loader, 2);
     const char *d = bap_llvm_loader_data(loader);
