@@ -72,16 +72,14 @@ void provide_symbols(ostream &s, const ELFObjectFile<T> &obj) {
     auto sections = obj.getELFFile()->sections();
     bool is_dyn = std::any_of(sections.begin(), sections.end(),
                               [](const sec_hdr &hdr) { return (hdr.sh_type == ELF::SHT_DYNSYM); });
-
-    for (auto it = obj.symbol_begin(); it != obj.symbol_end(); ++it)
-        provide_symbol(s, *it);
+    for (auto sym : obj.symbols())
+        provide_symbol(s, sym);
 //  due to a bug in llvm 3.8 with stripped static binaries, we have to perform such check
     if  (!sym_count && !is_dyn)
         return;
-    for (auto it = obj.dynamic_symbol_begin(); it != obj.dynamic_symbol_end(); ++it)
-        provide_symbol(s, *it);
+    for (auto sym : obj.getDynamicSymbolIterators())
+        provide_symbol(s, sym);
 }
-
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
 
 template <typename T>
