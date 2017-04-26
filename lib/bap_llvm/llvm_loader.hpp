@@ -63,13 +63,14 @@ error_or<std::string> load_elf(const object::Binary *binary) {
     else return unsupported_filetype();
 }
 
-void verbose_fails(const error_or<std::string> &loaded) {
+template <typename T>
+void verbose_fails(const error_or<T> &loaded) {
     if(const char* env_p = std::getenv("BAP_DEBUG")) {
-        if (std::string(env_p) == "1")
+        if (std::string(env_p) == "1" || std::string(env_p) == "true")
             if (!loaded)
                 std::cerr << "ogre llvm loader error: " << loaded.message() << std::endl;
-            for (auto w : loaded.warnings())
-                std::cerr << "ogre llvm loader warning:  " << w << std::endl;
+        for (auto w : loaded.warnings())
+            std::cerr << "ogre llvm loader warning:  " << w << std::endl;
     }
 }
 
@@ -83,16 +84,11 @@ error_or<std::string> load_macho(const object::Binary *binary) {
 
 error_or<std::string> load(const char* data, std::size_t size) {
     error_or<object::Binary> bin = get_binary(data, size);
-    if (!bin)
-        return unsupported_filetype();
-    else if (bin->isCOFF())
-        return load_coff(bin.get());
-    else if (bin->isELF())
-        return load_elf(bin.get());
-    else if (bin->isMachO())
-        return load_macho(bin.get());
-    else
-        return unsupported_filetype();
+    if (!bin) { verbose_fails(bin); return unsupported_filetype(); }
+    else if (bin->isCOFF())   return load_coff(bin.get());
+    else if (bin->isELF())    return load_elf(bin.get());
+    else if (bin->isMachO())  return load_macho(bin.get());
+    else return unsupported_filetype();
 }
 
 typedef error_or<std::string> bap_llvm_loader;
@@ -103,17 +99,11 @@ const bap_llvm_loader * create(const char* data, std::size_t size) {
     return new bap_llvm_loader(std::move(loaded));
 }
 
-bool loader_failed(const bap_llvm_loader * loader) {
-    return loader->has_error();
-}
-
 bool file_not_supported(const bap_llvm_loader * loader) {
     return (!loader->has_error() && (*loader)->size() == 0);
 }
 
-void destroy(const bap_llvm_loader *loader) {
-    delete loader;
-}
+void destroy(const bap_llvm_loader *loader) { delete loader; }
 
 } // namespace loader
 

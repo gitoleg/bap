@@ -29,6 +29,11 @@ void provide_symbol(ostream &s, const std::string &name, uint64_t addr, uint64_t
     }
 }
 
+template <typename T>
+void skip_symbol(ostream &s, const T &er) {
+    s.warning() << "skipping symbol: " << er.message();
+}
+
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
 
 template <typename T>
@@ -54,8 +59,8 @@ void provide_symbol(ostream &s, const SymbolRef &gen_sym) {
     ELFSymbolRef sym(gen_sym);
     auto name = sym.getName();
     auto addr = sym.getAddress();
-    if (!name) { s.warning() << "skipping symbol: " << name.getError().message(); return; }
-    if (!addr) { s.warning() << "skipping symbol: " << addr.getError().message(); return; }
+    if (!name) { skip_symbol(s, name.getError()); return; }
+    if (!addr) { skip_symbol(s, addr.getError()); return; }
     provide_symbol(s, name.get().str(), addr.get(), sym.getSize(),
                    (sym.getType() == SymbolRef::ST_Function));
 }
@@ -102,19 +107,15 @@ void provide(ostream &s, const SectionRef &sec) {
     provide_section(s, name.str(), addr, size);
 }
 
-void skip_symbol(ostream &s, const error_code &er) {
-    s.warning() << "skipping symbol: " << er.message();
-}
-
 template <>
 void provide(ostream &s, const SymbolRef &sym) {
     StringRef name;
     uint64_t addr, size;
     SymbolRef::Type kind;
-    if (auto er = sym.getName(name))    { skyp_symbol(s, er); return; }
-    if (auto er = sym.getAddress(addr)) { skyp_symbol(s, er); return; }
-    if (auto er = sym.getSize(size))    { skyp_symbol(s, er); return; }
-    if (auto er = sym.getType(kind))    { skyp_symbol(s, er); return; }
+    if (auto er = sym.getName(name))    { skip_symbol(s, er); return; }
+    if (auto er = sym.getAddress(addr)) { skip_symbol(s, er); return; }
+    if (auto er = sym.getSize(size))    { skip_symbol(s, er); return; }
+    if (auto er = sym.getType(kind))    { skip_symbol(s, er); return; }
     provide_symbol(s, name.str(), addr, size, (kind == SymbolRef::ST_Function));
 }
 

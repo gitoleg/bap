@@ -12,7 +12,7 @@ extern "C" {
     }
 
     bool bap_llvm_loader_failed(const loader::bap_llvm_loader *loader) {
-        return loader::loader_failed(loader);
+        return loader->has_error();
     }
 
     bool bap_llvm_file_not_supported(const loader::bap_llvm_loader *loader) {
