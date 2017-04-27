@@ -214,6 +214,8 @@ void provide_sections(ostream &s, const COFFObjectFile& obj) {
 #error LLVM version is not supported
 #endif
 
+//TODO: why don't just computeSymbols in 3.8 ?
+//TODO: check size inference
 template <typename Syms>
 void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols) {
     for (symbol_iterator it : symbols) {

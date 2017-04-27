@@ -17,21 +17,15 @@ using namespace llvm::object;
 
 typedef error_or<std::ostringstream> ostream;
 
-template <typename Secs>
-void provide_sections(ostream &s, const Secs &sections) {
-    for (auto sec : sections) {
-        StringRef name;
-        if (auto er = sec.getName(name)) { s.fail(er.message()); return; };
-        *s << scheme::section(sec.getAddress(), sec.getSize());
-        *s << scheme::named_region(sec.getAddress(), sec.getSize(), name.str());
-    }
+void provide_section(ostream &s, const std::string &name, uint64_t addr, uint64_t size) {
+    *s << scheme::section(addr, size) << scheme::named_region(addr, size, name);
 }
 
 void provide_symbol(ostream &s, const std::string &name, uint64_t addr, uint64_t size, bool is_fun) {
-    *s << scheme::named_symbol(addr, name);
+    *s << scheme::named_symbol(addr, name) << std::endl;
     if (is_fun) {
-        *s << scheme::code_start(addr);
-        *s << scheme::symbol_chunk(addr, size, addr);
+        *s << scheme::code_start(addr) << std::endl;
+        *s << scheme::symbol_chunk(addr, size, addr) << std::endl ;
     }
 }
 
@@ -61,7 +55,11 @@ iterator_range<MachOObjectFile::load_command_iterator> load_commands(const MachO
 }
 
 void provide_sections(ostream &s, const MachOObjectFile &obj) {
-    provide_sections(s, obj.sections());
+    for (auto sec : obj.sections()) {
+        StringRef name;
+        if (auto er = sec.getName(name)) { s.fail(er.message()); return; };
+        provide_section(s, name.str(), sec.getAddress(), sec.getSize());
+    }
 }
 
 void provide_symbols(ostream &s, const MachOObjectFile &obj) {
@@ -83,8 +81,13 @@ void provide_symbols(ostream &s, const MachOObjectFile &obj) {
 typedef MachOObjectFile::LoadCommandInfo command_info;
 typedef std::vector<command_info> macho_commands;
 
-macho_commands load_commands(const macho& obj) {
-    macho_commands cmds;
+macho_commands load_commands(const MachOObjectFile &obj) {
+    std::size_t cmd_count = 0;
+    if (obj.is64Bit())
+        cmd_count = obj.getHeader64().ncmds;
+    else
+        cmd_count = obj.getHeader().ncmds;
+    macho_commands cmds(cmd_count);
     command_info info = obj.getFirstLoadCommandInfo();
     for (std::size_t i = 0; i < cmd_count; ++i) {
         cmds.push_back(info);
@@ -96,31 +99,29 @@ macho_commands load_commands(const macho& obj) {
 void provide_sections(ostream &s, const MachOObjectFile &obj) {
     std::vector<SectionRef> secs;
     error_code ec;
-    for (auto it = obj.begin_sections; it != obj.end_sectons(); it.increment(ec)) {
-        if (ec) { return s.fail(ec.message()); return }
-        secs.push_back(*it);
+    StringRef name;
+    uint64_t addr, size;
+    for (auto it = obj.begin_sections(); it != obj.end_sections(); it.increment(ec)) {
+        if (ec) { return s.fail(ec.message()); return; }
+        if (auto er = it->getName(name))    { skip_symbol(s, er); return; }
+        if (auto er = it->getAddress(addr)) { skip_symbol(s, er); return; }
+        if (auto er = it->getSize(size))    { skip_symbol(s, er); return; }
+        provide_symbol(s, name.str(), addr, size);
     }
     provide_sections(s, secs);
-}
-
-error_or<symbols_sizes> getSymbolSizes(const MachOObjectFile& obj) {
-    symbols_sizes sizes;
-    error_code ec;
-    fill_symbols(obj.begin_symbols(), obj.end_symbols(), sizes, ec);
-    return success(std::move(sizes));
 }
 
 void provide_symbols(ostream &s, const MachOObjectFile& obj) {
     error_code ec;
     for (auto it = obj.begin_symbols(); it != obj.end_symbols(); it.increment(ec)) {
-        if (ec) { return s.fail(ec.message()); return }
+        if (ec) { return s.fail(ec.message()); return; }
         StringRef name;
         uint64_t addr, size;
         SymbolRef::Type kind;
-        if (auto er = sym.getName(name))    { skip_symbol(s, er); return; }
-        if (auto er = sym.getAddress(addr)) { skip_symbol(s, er); return; }
-        if (auto er = sym.getSize(size))    { skip_symbol(s, er); return; }
-        if (auto er = sym.getType(kind))    { skip_symbol(s, er); return; }
+        if (auto er = it->getName(name))    { skip_symbol(s, er); return; }
+        if (auto er = it->getAddress(addr)) { skip_symbol(s, er); return; }
+        if (auto er = it->getSize(size))    { skip_symbol(s, er); return; }
+        if (auto er = it->getType(kind))    { skip_symbol(s, er); return; }
         provide_symbol(s, name.str(), addr, size, (kind == SymbolRef::ST_Function));
     }
 }
