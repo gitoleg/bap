@@ -22,10 +22,10 @@ void provide_section(ostream &s, const std::string &name, uint64_t addr, uint64_
 }
 
 void provide_symbol(ostream &s, const std::string &name, uint64_t addr, uint64_t size, bool is_fun) {
-    *s << scheme::named_symbol(addr, name) << std::endl;
+    *s << scheme::named_symbol(addr, name);
     if (is_fun) {
-        *s << scheme::code_start(addr) << std::endl;
-        *s << scheme::symbol_chunk(addr, size, addr) << std::endl ;
+        *s << scheme::code_start(addr);
+        *s << scheme::symbol_chunk(addr, size, addr);
     }
 }
 
