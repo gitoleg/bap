@@ -1,12 +1,10 @@
 #ifndef LLVM_COFF_LOADER_HPP
 #define LLVM_COFF_LOADER_HPP
 
-#include <iostream> ///
 #include <sstream>
 
 #include <llvm/Object/COFF.h>
 #include <llvm/ADT/Triple.h>
-#include <llvm/Object/SymbolSize.h> ///
 
 #include "llvm_loader_scheme.hpp"
 #include "llvm_error_or.hpp"
@@ -57,37 +55,6 @@ void skip_symbol(ostream &s, const T &er) { s.warning() << "skipping symbol: " <
 
 template <typename Syms>
 void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols);
-//     for (symbol_iterator it : symbols) {
-//         auto sym = obj.getCOFFSymbol(*it);
-//         const coff_section *sec = nullptr;
-
-//         if (sym.getSectionNumber() == COFF::IMAGE_SYM_UNDEFINED)
-//             continue;
-//         if (auto er = obj.getSection(sym.getSectionNumber(), sec)) {
-//             skip_symbol(s, er);
-//             continue;
-//         }
-//         if (!sec) continue;
-//         uint64_t size = sec->VirtualAddress + sec->SizeOfRawData - sym.getValue();
-
-//         for (symbol_iterator it : symbols) {
-//             auto next = obj.getCOFFSymbol(*it);
-//             if (next.getSectionNumber() == sym.getSectionNumber()) {
-//                 auto new_size = next.getValue() > sym.getValue() ?
-//                     next.getValue() - sym.getValue() : size;
-//                 size = new_size < size ? new_size : size;
-//             }
-//         }
-//         auto name = it->getName();
-//         auto addr = it->getAddress();
-//         if (!addr) { skip_symbol(s, addr.getError()); continue; }
-//         if (!name) { skip_symbol(s, addr.getError()); continue; }
-//         std::cout << name.get().str() << " " << size << std::endl;
-
-//         provide_symbol(s, name.get().str(), addr.get(), size,
-//                        (sym.getType() == SymbolRef::ST_Function));
-//     }
-// }
 
 template <typename Secs>
 void provide_sections(ostream &s, const COFFObjectFile &obj, const Secs &sections, uint64_t image_base) {
@@ -110,6 +77,14 @@ void provide_segments(ostream &s, const COFFObjectFile& obj, const Segs &segment
 
 COFFSymbolRef get_coff_symbol(const COFFObjectFile& obj, symbol_iterator it) {
     return obj.getCOFFSymbol(*it);
+}
+
+uint64_t coff_symbol_value(const COFFSymbolRef &sym)   {
+    return static_cast<uint64_t>(sym.getValue());
+}
+
+uint64_t coff_section_number(const COFFSymbolRef &sym) {
+    return static_cast<uint64_t>(sym.getSectionNumber());
 }
 
 void provide_sections(ostream &s, const COFFObjectFile &obj) {
@@ -143,6 +118,14 @@ const coff_symbol get_coff_symbol(const COFFObjectFile& obj, symbol_iterator it)
     return *obj.getCOFFSymbol(it);
 }
 
+uint64_t coff_symbol_value(const coff_symbol &s)   {
+    return static_cast<uint64_t>(s->Value);
+}
+
+uint64_t coff_section_number(const coff_symbol &s) {
+    return static_cast<uint64_t>(s->SectionNumber);
+}
+
 // #include "llvm/Support/system_error.h"
 error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& obj) {
     uint64_t cur_ptr = 0;
@@ -168,7 +151,7 @@ error_or<uint64_t> getImageBase(const COFFObjectFile &obj) {
     if (obj.getBytesInAddress() == 4) {
         const pe32_header *hdr;
         if (auto ec = obj.getPE32Header(hdr))
-            return failure_of_error(ec);
+            return failure(ec.message());
         return error_or<uint64_t>(hdr->ImageBase);
     } else {
         error_or<pe32plus_header> hdr = getPE32PlusHeader(obj);
@@ -188,16 +171,16 @@ void provide_symbols(ostream &s, const COFFObjectFile& obj) {
 }
 
 void provide_sections(ostream &s, const COFFObjectFile& obj) {
-    std::vector<symbol_iterator> secs;
+    std::vector<section_iterator> secs;
     error_code ec;
-    for (auto it = obj.begin_sections; it != obj.end_sectons(); it.increment(ec)) {
+    for (auto it = obj.begin_sections(); it != obj.end_sections(); it.increment(ec)) {
         if (ec) { return s.fail(ec.message()); return; }
         secs.push_back(it);
     }
     auto base = getImageBase(obj);
     if (!base) { s.fail(base.message()); return; }
-    provide_sections(s, obj, secs);
-    provide_segments(s, obj, secs);
+    provide_sections(s, obj, secs, *base);
+    provide_segments(s, obj, secs, *base);
 }
 
 #else
@@ -210,23 +193,25 @@ template <typename Syms>
 void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols) {
     for (symbol_iterator it : symbols) {
         auto sym = get_coff_symbol(obj, it);
-
         const coff_section *sec = nullptr;
+        auto sec_num = coff_section_number(sym);
 
-        if (sym.getSectionNumber() == COFF::IMAGE_SYM_UNDEFINED)
+        if (sec_num == COFF::IMAGE_SYM_UNDEFINED)
             continue;
-        if (auto er = obj.getSection(sym.getSectionNumber(), sec)) {
+        if (auto er = obj.getSection(sec_num, sec)) {
             skip_symbol(s, er);
             continue;
         }
         if (!sec) continue;
-        uint64_t size = sec->VirtualAddress + sec->SizeOfRawData - sym.getValue();
+        auto sym_val = coff_symbol_value(sym);
+        uint64_t size = sec->VirtualAddress + sec->SizeOfRawData - sym_val;
 
         for (symbol_iterator it : symbols) {
             auto next = get_coff_symbol(obj, it);
-            if (next.getSectionNumber() == sym.getSectionNumber()) {
-                auto new_size = next.getValue() > sym.getValue() ?
-                    next.getValue() - sym.getValue() : size;
+            auto next_sec_num = coff_section_number(next);
+            auto next_sym_val = coff_symbol_value(next);
+            if (next_sec_num == sec_num ) {
+                auto new_size = next_sym_val > sym_val ? next_sym_val - sym_val : size;
                 size = new_size < size ? new_size : size;
             }
         }
@@ -234,7 +219,6 @@ void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols)
         auto addr = it->getAddress();
         if (!addr) { skip_symbol(s, addr.getError()); continue; }
         if (!name) { skip_symbol(s, addr.getError()); continue; }
-        std::cout << name.get().str() << " " << size << std::endl;
 
         provide_symbol(s, name.get().str(), addr.get(), size,
                        (sym.getType() == SymbolRef::ST_Function));
