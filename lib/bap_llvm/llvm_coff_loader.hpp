@@ -75,16 +75,32 @@ void provide_segments(ostream &s, const COFFObjectFile& obj, const Segs &segment
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
 
-COFFSymbolRef get_coff_symbol(const COFFObjectFile& obj, symbol_iterator it) {
+COFFSymbolRef get_symbol(const COFFObjectFile& obj, symbol_iterator it) {
     return obj.getCOFFSymbol(*it);
 }
 
-uint64_t coff_symbol_value(const COFFSymbolRef &sym)   {
+uint64_t symbol_value(const COFFSymbolRef &sym)   {
     return static_cast<uint64_t>(sym.getValue());
 }
 
-uint64_t coff_section_number(const COFFSymbolRef &sym) {
+uint64_t section_number(const COFFSymbolRef &sym) {
     return static_cast<uint64_t>(sym.getSectionNumber());
+}
+
+error_or<std::string> get_name(const SymbolRef &s) {
+    auto n = s.getName();
+    if (!n) return failure(n.getError().message());
+    else return success(n.get().str());
+}
+
+error_or<uint64_t> get_addr(const SymbolRef &s) {
+    auto a = s.getAddress();
+    if (!a) return failure(a.getError().message());
+    else return success(a.get());
+}
+
+error_or<SymbolRef::Type> get_kind(const SymbolRef &s) {
+    return success(s.getType());
 }
 
 void provide_sections(ostream &s, const COFFObjectFile &obj) {
@@ -114,16 +130,36 @@ void provide_symbols(ostream &s, const COFFObjectFile &obj) {
 
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
 
-const coff_symbol get_coff_symbol(const COFFObjectFile& obj, symbol_iterator it) {
+const coff_symbol get_symbol(const COFFObjectFile& obj, symbol_iterator it) {
     return *obj.getCOFFSymbol(it);
 }
 
-uint64_t coff_symbol_value(const coff_symbol &s)   {
-    return static_cast<uint64_t>(s->Value);
+uint64_t symbol_value(const coff_symbol &s) {
+    return static_cast<uint64_t>(s.Value);
 }
 
-uint64_t coff_section_number(const coff_symbol &s) {
-    return static_cast<uint64_t>(s->SectionNumber);
+uint64_t section_number(const coff_symbol &s) {
+    return static_cast<uint64_t>(s.SectionNumber);
+}
+
+error_or<std::string> get_name(const SymbolRef &s) {
+    StringRef name;
+    if(error_code ec = s.getName(name))
+        return failure_of_error(ec);
+    return success(name.str());
+}
+
+error_or<uint64_t> get_addr(const SymbolRef &s) {
+    uint64_t addr;
+    if (error_code ec = s.getAddress(addr))
+        return failure_of_error(ec);
+    return success(addr);
+}
+error_or<SymbolRef::Type> get_kind(const SymbolRef &s) {
+    kind_type kind;
+    if (error_code ec = s.getType(kind))
+        return failure_of_error(ec);
+    return success(kind);
 }
 
 // #include "llvm/Support/system_error.h"
@@ -187,14 +223,12 @@ void provide_sections(ostream &s, const COFFObjectFile& obj) {
 #error LLVM version is not supported
 #endif
 
-
-
 template <typename Syms>
 void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols) {
     for (symbol_iterator it : symbols) {
-        auto sym = get_coff_symbol(obj, it);
+        auto sym = get_symbol(obj, it);
         const coff_section *sec = nullptr;
-        auto sec_num = coff_section_number(sym);
+        auto sec_num = section_number(sym);
 
         if (sec_num == COFF::IMAGE_SYM_UNDEFINED)
             continue;
@@ -203,29 +237,27 @@ void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols)
             continue;
         }
         if (!sec) continue;
-        auto sym_val = coff_symbol_value(sym);
+        auto sym_val = symbol_value(sym);
         uint64_t size = sec->VirtualAddress + sec->SizeOfRawData - sym_val;
 
         for (symbol_iterator it : symbols) {
-            auto next = get_coff_symbol(obj, it);
-            auto next_sec_num = coff_section_number(next);
-            auto next_sym_val = coff_symbol_value(next);
+            auto next = get_symbol(obj, it);
+            auto next_sec_num = section_number(next);
+            auto next_sym_val = symbol_value(next);
             if (next_sec_num == sec_num ) {
                 auto new_size = next_sym_val > sym_val ? next_sym_val - sym_val : size;
                 size = new_size < size ? new_size : size;
             }
         }
-        auto name = it->getName();
-        auto addr = it->getAddress();
-        if (!addr) { skip_symbol(s, addr.getError()); continue; }
-        if (!name) { skip_symbol(s, addr.getError()); continue; }
-
-        provide_symbol(s, name.get().str(), addr.get(), size,
-                       (sym.getType() == SymbolRef::ST_Function));
+        auto name = get_name(*it);
+        auto addr = get_addr(*it);
+        auto kind = get_kind(*it);
+        if (!addr) { skip_symbol(s, name); continue; }
+        if (!name) { skip_symbol(s, addr); continue; }
+        if (!kind) { skip_symbol(s, kind); continue; }
+        provide_symbol(s, *name, *addr, size, (*kind == SymbolRef::ST_Function));
     }
 }
-
-
 
 error_or<std::string> load(const COFFObjectFile &obj) {
     ostream s = success(std::ostringstream());
