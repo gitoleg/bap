@@ -148,7 +148,7 @@ error_or<uint64_t> get_addr(const SymbolRef &s) {
     return success(addr);
 }
 error_or<SymbolRef::Type> get_kind(const SymbolRef &s) {
-    kind_type kind;
+    SymbolRef::Type kind;
     if (error_code ec = s.getType(kind))
         return failure(ec.message());
     return success(kind);
@@ -209,22 +209,6 @@ void provide_sections(ostream &s, const COFFObjectFile& obj) {
     provide_sections(s, obj, secs, *base);
     provide_segments(s, obj, secs, *base);
 }
-
-error_or<uint64_t> image_entry(const COFFObjectFile& obj) {
-    if (obj.getBytesInAddress() == 4) {
-        const pe32_header* hdr = 0;
-        if (error_code ec = obj.getPE32Header(hdr))
-            return failure(ec.message());
-        if (!hdr)
-            return failure("PE header not found");
-        return error_or<uint64_t>(hdr->AddressOfEntryPoint + hdr->ImageBase);
-    } else {
-        error_or<pe32plus_header> hdr = getPE32PlusHeader(obj);
-        if (!hdr) return hdr;
-        return error_or<uint64_t>(hdr->AddressOfEntryPoint + hdr->ImageBase);
-    }
-}
-
 
 #else
 #error LLVM version is not supported
