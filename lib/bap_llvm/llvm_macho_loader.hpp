@@ -16,7 +16,6 @@ using namespace llvm;
 using namespace llvm::object;
 
 typedef error_or<std::ostringstream> ostream;
-//typedef llvm::object::MachOObjectFile macho;
 
 template <typename Secs>
 void provide_sections(ostream &s, const Secs &sections) {
@@ -81,7 +80,7 @@ void provide_symbols(ostream &s, const MachOObjectFile &obj) {
 
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
 
-typedef macho::LoadCommandInfo command_info;
+typedef MachOObjectFile::LoadCommandInfo command_info;
 typedef std::vector<command_info> macho_commands;
 
 macho_commands load_commands(const macho& obj) {

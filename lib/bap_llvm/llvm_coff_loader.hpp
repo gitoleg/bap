@@ -1,10 +1,12 @@
 #ifndef LLVM_COFF_LOADER_HPP
 #define LLVM_COFF_LOADER_HPP
 
+#include <iostream> ///
 #include <sstream>
 
 #include <llvm/Object/COFF.h>
 #include <llvm/ADT/Triple.h>
+#include <llvm/Object/SymbolSize.h> ///
 
 #include "llvm_loader_scheme.hpp"
 #include "llvm_error_or.hpp"
@@ -54,59 +56,65 @@ template <typename T>
 void skip_symbol(ostream &s, const T &er) { s.warning() << "skipping symbol: " << er.message(); }
 
 template <typename Syms>
-void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols) {
-    for (symbol_iterator it : symbols) {
-        auto sym = obj.getCOFFSymbol(*it);
-        const coff_section *sec = nullptr;
+void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols);
+//     for (symbol_iterator it : symbols) {
+//         auto sym = obj.getCOFFSymbol(*it);
+//         const coff_section *sec = nullptr;
 
-        if (sym.getSectionNumber() == COFF::IMAGE_SYM_UNDEFINED)
-            continue;
-        if (auto er = obj.getSection(sym.getSectionNumber(), sec)) {
-            skip_symbol(s, er);
-            continue;
-        }
-        if (!sec) continue;
-        uint64_t size = sec->VirtualAddress + sec->SizeOfRawData - sym.getValue();
+//         if (sym.getSectionNumber() == COFF::IMAGE_SYM_UNDEFINED)
+//             continue;
+//         if (auto er = obj.getSection(sym.getSectionNumber(), sec)) {
+//             skip_symbol(s, er);
+//             continue;
+//         }
+//         if (!sec) continue;
+//         uint64_t size = sec->VirtualAddress + sec->SizeOfRawData - sym.getValue();
 
-        for (symbol_iterator it : symbols) {
-            auto next = obj.getCOFFSymbol(*it);
-            if (next.getSectionNumber() == sym.getSectionNumber()) {
-                auto new_size = next.getValue() > sym.getValue() ?
-                    next.getValue() - sym.getValue() : size;
-                size = new_size < size ? new_size : size;
-            }
-        }
-        auto name = it->getName();
-        auto addr = it->getAddress();
-        if (!addr) { skip_symbol(s, addr.getError()); continue; }
-        if (!name) { skip_symbol(s, addr.getError()); continue; }
-        provide_symbol(s, name.get(), addr.get(), size,
-                       (sym.getType() == SymbolRef::ST_Function));
-    }
-}
+//         for (symbol_iterator it : symbols) {
+//             auto next = obj.getCOFFSymbol(*it);
+//             if (next.getSectionNumber() == sym.getSectionNumber()) {
+//                 auto new_size = next.getValue() > sym.getValue() ?
+//                     next.getValue() - sym.getValue() : size;
+//                 size = new_size < size ? new_size : size;
+//             }
+//         }
+//         auto name = it->getName();
+//         auto addr = it->getAddress();
+//         if (!addr) { skip_symbol(s, addr.getError()); continue; }
+//         if (!name) { skip_symbol(s, addr.getError()); continue; }
+//         std::cout << name.get().str() << " " << size << std::endl;
+
+//         provide_symbol(s, name.get().str(), addr.get(), size,
+//                        (sym.getType() == SymbolRef::ST_Function));
+//     }
+// }
 
 template <typename Secs>
-void provide_sections(ostream &s, const COFFObjectFile &obj, const Secs &sections) {
-    for (section_iterator it : sections)
-        provide_section(s, *obj.getCOFFSection(*it), obj.getImageBase());
+void provide_sections(ostream &s, const COFFObjectFile &obj, const Secs &sections, uint64_t image_base) {
+    for (auto it : sections)
+        provide_section(s, *obj.getCOFFSection(it), image_base);
 }
 
 
 template <typename Segs>
-void provide_segments(ostream &s, const COFFObjectFile& obj, const Segs &segments) {
+void provide_segments(ostream &s, const COFFObjectFile& obj, const Segs &segments, uint64_t image_base) {
     for (auto it : segments) {
         const coff_section *sec = obj.getCOFFSection(it);
         if (is_segment(*sec))
-            provide_segment(s, *sec, obj.getImageBase());
+            provide_segment(s, *sec, image_base);
     }
 }
 
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
 
+COFFSymbolRef get_coff_symbol(const COFFObjectFile& obj, symbol_iterator it) {
+    return obj.getCOFFSymbol(*it);
+}
+
 void provide_sections(ostream &s, const COFFObjectFile &obj) {
-    provide_segments(s, obj, obj.sections());
-    provide_sections(s, obj, obj.sections());
+    provide_segments(s, obj, obj.sections(), obj.getImageBase());
+    provide_sections(s, obj, obj.sections(), obj.getImageBase());
 }
 
 error_or<uint64_t> image_entry(const COFFObjectFile& obj) {
@@ -130,6 +138,10 @@ void provide_symbols(ostream &s, const COFFObjectFile &obj) {
 }
 
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
+
+const coff_symbol get_coff_symbol(const COFFObjectFile& obj, symbol_iterator it) {
+    return *obj.getCOFFSymbol(it);
+}
 
 // #include "llvm/Support/system_error.h"
 error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& obj) {
@@ -169,7 +181,7 @@ void provide_symbols(ostream &s, const COFFObjectFile& obj) {
     std::vector<symbol_iterator> syms;
     error_code ec;
     for (auto it = obj.begin_symbols(); it != obj.end_symbols(); it.increment(ec)) {
-        if (ec) { return s.fail(ec.message()); return }
+        if (ec) { return s.fail(ec.message()); return; }
         syms.push_back(it);
     }
     provide_symbols(s, obj, syms);
@@ -179,9 +191,11 @@ void provide_sections(ostream &s, const COFFObjectFile& obj) {
     std::vector<symbol_iterator> secs;
     error_code ec;
     for (auto it = obj.begin_sections; it != obj.end_sectons(); it.increment(ec)) {
-        if (ec) { return s.fail(ec.message()); return }
+        if (ec) { return s.fail(ec.message()); return; }
         secs.push_back(it);
     }
+    auto base = getImageBase(obj);
+    if (!base) { s.fail(base.message()); return; }
     provide_sections(s, obj, secs);
     provide_segments(s, obj, secs);
 }
@@ -189,6 +203,44 @@ void provide_sections(ostream &s, const COFFObjectFile& obj) {
 #else
 #error LLVM version is not supported
 #endif
+
+
+
+template <typename Syms>
+void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols) {
+    for (symbol_iterator it : symbols) {
+        auto sym = get_coff_symbol(obj, it);
+
+        const coff_section *sec = nullptr;
+
+        if (sym.getSectionNumber() == COFF::IMAGE_SYM_UNDEFINED)
+            continue;
+        if (auto er = obj.getSection(sym.getSectionNumber(), sec)) {
+            skip_symbol(s, er);
+            continue;
+        }
+        if (!sec) continue;
+        uint64_t size = sec->VirtualAddress + sec->SizeOfRawData - sym.getValue();
+
+        for (symbol_iterator it : symbols) {
+            auto next = get_coff_symbol(obj, it);
+            if (next.getSectionNumber() == sym.getSectionNumber()) {
+                auto new_size = next.getValue() > sym.getValue() ?
+                    next.getValue() - sym.getValue() : size;
+                size = new_size < size ? new_size : size;
+            }
+        }
+        auto name = it->getName();
+        auto addr = it->getAddress();
+        if (!addr) { skip_symbol(s, addr.getError()); continue; }
+        if (!name) { skip_symbol(s, addr.getError()); continue; }
+        std::cout << name.get().str() << " " << size << std::endl;
+
+        provide_symbol(s, name.get().str(), addr.get(), size,
+                       (sym.getType() == SymbolRef::ST_Function));
+    }
+}
+
 
 
 error_or<std::string> load(const COFFObjectFile &obj) {
