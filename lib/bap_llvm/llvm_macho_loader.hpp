@@ -106,9 +106,8 @@ void provide_sections(ostream &s, const MachOObjectFile &obj) {
         if (auto er = it->getName(name))    { skip_symbol(s, er); return; }
         if (auto er = it->getAddress(addr)) { skip_symbol(s, er); return; }
         if (auto er = it->getSize(size))    { skip_symbol(s, er); return; }
-        provide_symbol(s, name.str(), addr, size);
+        provide_section(s, name.str(), addr, size);
     }
-    provide_sections(s, secs);
 }
 
 void provide_symbols(ostream &s, const MachOObjectFile& obj) {

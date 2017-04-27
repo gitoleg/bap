@@ -121,7 +121,7 @@ template <typename T>
 void iter(content_iterator<T> first, content_iterator<T> last, ostream &s) {
     error_code er;
     while (first != last) {
-        provide(*first, s);
+        provide(s, *first);
         first.increment(er);
         if (er) {
             s.fail(er.message());
