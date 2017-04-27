@@ -88,7 +88,7 @@ void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols)
 template <typename Secs>
 void provide_sections(ostream &s, const COFFObjectFile &obj, const Secs &sections) {
     for (section_iterator it : sections)
-        provide_section(s, *obj.getCOFFSection(it), obj.getImageBase());
+        provide_section(s, *obj.getCOFFSection(*it), obj.getImageBase());
 }
 
 
@@ -106,7 +106,7 @@ void provide_segments(ostream &s, const COFFObjectFile& obj, const Segs &segment
 
 void provide_sections(ostream &s, const COFFObjectFile &obj) {
     provide_segments(s, obj, obj.sections());
-     provide_sections(s, obj, obj.sections());
+    provide_sections(s, obj, obj.sections());
 }
 
 error_or<uint64_t> image_entry(const COFFObjectFile& obj) {
@@ -206,8 +206,6 @@ error_or<std::string> load(const COFFObjectFile &obj) {
     if (!s) return failure(s.message());
     return std::move(success(s->str()) << s.warnings());
 }
-
-
 
 } // namespace coff_loader
 

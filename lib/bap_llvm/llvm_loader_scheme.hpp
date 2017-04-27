@@ -24,15 +24,12 @@ std::string nonempty(const std::string &s) {
 }
 
 std::string declare() {
-    return "(declare arch (name str))\
-            (declare code-start (addr int))\
-            (declare entry-point (addr int))\
-            (declare mapped (addr int) (size int) (off int))\
-            (declare named-region (addr int) (size int) (name str))\
-            (declare named-symbol (addr int) (name str))\
-            (declare section (addr int) (size int))\
-            (declare segment (addr int) (size int) (r bool) (w bool) (x bool))\
-            (declare symbol-chunk (addr int) (size int) (root int))";
+    return
+"(declare arch (name str))(declare code-start (addr int))(declare entry-point (addr int))\
+(declare mapped (addr int) (size int) (off int))(declare named-region (addr int) (size int) (name str))\
+(declare named-symbol (addr int) (name str))(declare section (addr int) (size int))\
+(declare segment (addr int) (size int) (r bool) (w bool) (x bool))\
+(declare symbol-chunk (addr int) (size int) (root int))";
 }
 
 std::string arch(std::string arch) { return sexp("arch") << arch; }

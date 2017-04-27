@@ -3,7 +3,7 @@
 
 #include "llvm_coff_loader.hpp"
 #include "llvm_elf_loader.hpp"
-#include "llvm_loader_scheme.hpp"
+#include "llvm_macho_loader.hpp"
 
 namespace loader {
 
@@ -82,9 +82,11 @@ error_or<std::string> load_coff(const object::Binary *binary) {
 }
 
 error_or<std::string> load_macho(const object::Binary *binary) {
-    return unsupported_filetype();
+    if (auto bin = cast<MachOObjectFile>(binary))
+        return macho_loader::load(*bin);
+    else
+        return unsupported_filetype();
 }
-
 
 error_or<std::string> load(const char* data, std::size_t size) {
     error_or<object::Binary> bin = get_binary(data, size);
