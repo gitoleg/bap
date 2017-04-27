@@ -145,20 +145,20 @@ uint64_t section_number(const coff_symbol &s) {
 error_or<std::string> get_name(const SymbolRef &s) {
     StringRef name;
     if(error_code ec = s.getName(name))
-        return failure_of_error(ec);
+        return failure(ec.message());
     return success(name.str());
 }
 
 error_or<uint64_t> get_addr(const SymbolRef &s) {
     uint64_t addr;
     if (error_code ec = s.getAddress(addr))
-        return failure_of_error(ec);
+        return failure(ec.message());
     return success(addr);
 }
 error_or<SymbolRef::Type> get_kind(const SymbolRef &s) {
     kind_type kind;
     if (error_code ec = s.getType(kind))
-        return failure_of_error(ec);
+        return failure(ec.message());
     return success(kind);
 }
 
