@@ -14,7 +14,8 @@ Library bap_llvm
   Modules:       Bap_llvm_disasm, Bap_llvm_loader
   InternalModules:
                  Bap_llvm_config,
-                 Bap_llvm_binary
+                 Bap_llvm_binary,
+                 Bap_llvm_ogre_loader
   CCOpt:         $cc_optimization
   CCLib:         $llvm_lib $cxxlibs $llvm_ldflags
   CSources:      llvm_disasm.h,
@@ -32,12 +33,6 @@ Library bap_llvm
                  llvm_error_or.h,
                  llvm_loader.c,
                  llvm_loader.h,
-                 llvm_coff_loader.c,
-                 llvm_coff_loader.h,
-                 llvm_elf_loader.c,
-                 llvm_elf_loader.h,
-                 llvm_macho_loader.c,
-                 llvm_macho_loader.h,
                  llvm_loader_utils.c,
                  llvm_loader_utils.h,
                  llvm_loader_stubs.c,
