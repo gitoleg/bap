@@ -1,6 +1,8 @@
 #ifndef LLVM_LOADER_HPP
 #define LLVM_LOADER_HPP
 
+#include <iostream>
+
 #include "llvm_coff_loader.hpp"
 #include "llvm_elf_loader.hpp"
 #include "llvm_macho_loader.hpp"
@@ -36,31 +38,35 @@ error_or<object::Binary> get_binary(const char* data, std::size_t size) {
 #error LLVM version is not supported
 #endif
 
-template <typename T>
-const T* cast(const object::Binary *binary) {
-    return llvm::dyn_cast<T>(binary);
-}
-
 error_or<std::string> unsupported_filetype() { return success(""); }
 
 template <typename T>
-error_or<std::string> load_elf(const object::Binary *binary) {
-    if (auto bin = cast<T>(binary))
-        return elf_loader::load(*bin);
+error_or<std::string> load_base(const object::Binary *binary) {
+    if (auto bin = llvm::dyn_cast<T>(binary))
+        return load(*bin);
     else
         return unsupported_filetype();
 }
 
 error_or<std::string> load_elf(const object::Binary *binary) {
     if (isa<ELF32LEObjectFile>(*binary))
-        return load_elf<ELF32LEObjectFile>(binary);
+        return load_base<ELF32LEObjectFile>(binary);
     else if (isa<ELF32BEObjectFile>(*binary))
-        return load_elf<ELF32BEObjectFile>(binary);
+        return load_base<ELF32BEObjectFile>(binary);
     else if (isa<ELF64LEObjectFile>(*binary))
-        return load_elf<ELF64LEObjectFile>(binary);
+        return load_base<ELF64LEObjectFile>(binary);
     else if (isa<ELF64BEObjectFile>(*binary))
-        return load_elf<ELF64BEObjectFile>(binary);
-    else return unsupported_filetype();
+        return load_base<ELF64BEObjectFile>(binary);
+    else
+        return unsupported_filetype();
+}
+
+error_or<std::string> load_coff(const object::Binary *binary) {
+    return load_base<COFFObjectFile>(binary);
+}
+
+error_or<std::string> load_macho(const object::Binary *binary) {
+    return load_base<MachOObjectFile>(binary);
 }
 
 template <typename T>
@@ -74,20 +80,6 @@ void verbose_fails(const error_or<T> &loaded) {
     }
 }
 
-error_or<std::string> load_coff(const object::Binary *binary) {
-    if (auto bin = cast<COFFObjectFile>(binary))
-        return coff_loader::load(*bin);
-    else
-        return unsupported_filetype();
-}
-
-error_or<std::string> load_macho(const object::Binary *binary) {
-    if (auto bin = cast<MachOObjectFile>(binary))
-        return macho_loader::load(*bin);
-    else
-        return unsupported_filetype();
-}
-
 error_or<std::string> load(const char* data, std::size_t size) {
     error_or<object::Binary> bin = get_binary(data, size);
     if (!bin) { verbose_fails(bin); return unsupported_filetype(); }
@@ -98,6 +90,10 @@ error_or<std::string> load(const char* data, std::size_t size) {
 }
 
 typedef error_or<std::string> bap_llvm_loader;
+
+//TODO: don't forget to check all loops for checking ostream value
+//TODO: run bap with echo macho file from my binaries
+//TODO: check what size used and where (segments especially)
 
 const bap_llvm_loader * create(const char* data, std::size_t size) {
     auto loaded = load(data, size);

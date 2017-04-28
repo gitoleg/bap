@@ -6,72 +6,26 @@
 #include <llvm/Object/COFF.h>
 #include <llvm/ADT/Triple.h>
 
-#include "llvm_loader_scheme.hpp"
+#include "llvm_loader_utils.hpp"
 #include "llvm_error_or.hpp"
 
-namespace coff_loader {
+
+namespace loader {
+
 
 using namespace llvm;
 using namespace llvm::object;
 
-typedef error_or<std::ostringstream> ostream;
-
-// why static casts ???
-void provide_segment(ostream &s, const coff_section &sec, uint64_t image_base) {
-    int offset = static_cast<int>(sec.PointerToRawData);
-    uint64_t addr = static_cast<uint64_t>(sec.VirtualAddress + image_base);
-    uint64_t size = static_cast<uint64_t>(sec.SizeOfRawData);
-    bool r = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_READ);
-    bool w = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_WRITE);
-    bool x = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_EXECUTE);
-    *s << scheme::segment(addr, size, r, w, x);
-    *s << scheme::mapped(addr, size, offset);
-    *s << scheme::named_region(addr, size, sec.Name);
-}
-
-void provide_section(ostream &s, const coff_section &sec, uint64_t image_base) {
-    auto addr = sec.VirtualAddress + image_base;
-    auto size = sec.SizeOfRawData;
-    *s << scheme::section(addr, size) << scheme::named_region(addr, size, sec.Name);
-}
-
-void provide_symbol(ostream &s, const std::string &name, uint64_t addr, uint64_t size, bool is_fun) {
-    *s << scheme::named_symbol(addr, name);
-    if (is_fun) {
-        *s << scheme::code_start(addr);
-        *s << scheme::symbol_chunk(addr, size, addr);
-    }
-}
-
-bool is_segment(const coff_section &s) {
-    uint64_t c = static_cast<uint64_t>(s.Characteristics);
-    return (c & COFF::IMAGE_SCN_CNT_CODE ||
-            c & COFF::IMAGE_SCN_CNT_INITIALIZED_DATA ||
-            c & COFF::IMAGE_SCN_CNT_UNINITIALIZED_DATA);
-}
-
-template <typename T>
-void skip_symbol(ostream &s, const T &er) { s.warning() << "skipping symbol: " << er.message(); }
+namespace coff {
 
 template <typename Syms>
-void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols);
+void provide_symbols(utils::ostream &s, const COFFObjectFile &obj, const Syms &symbols);
 
 template <typename Secs>
-void provide_sections(ostream &s, const COFFObjectFile &obj, const Secs &sections, uint64_t image_base) {
-    for (auto it : sections)
-        provide_section(s, *obj.getCOFFSection(it), image_base);
-}
-
+void provide_sections(utils::ostream &s, const COFFObjectFile &obj, const Secs &sections, uint64_t image_base);
 
 template <typename Segs>
-void provide_segments(ostream &s, const COFFObjectFile& obj, const Segs &segments, uint64_t image_base) {
-    for (auto it : segments) {
-        const coff_section *sec = obj.getCOFFSection(it);
-        if (is_segment(*sec))
-            provide_segment(s, *sec, image_base);
-    }
-}
-
+void provide_segments(utils::ostream &s, const COFFObjectFile& obj, const Segs &segments, uint64_t image_base);
 
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
@@ -104,7 +58,7 @@ error_or<SymbolRef::Type> get_kind(const SymbolRef &s) {
     return success(s.getType());
 }
 
-void provide_sections(ostream &s, const COFFObjectFile &obj) {
+void provide_sections(utils::ostream &s, const COFFObjectFile &obj) {
     provide_segments(s, obj, obj.sections(), obj.getImageBase());
     provide_sections(s, obj, obj.sections(), obj.getImageBase());
 }
@@ -116,7 +70,7 @@ error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& 
     else return success(hdr);
 }
 
-void provide_symbols(ostream &s, const COFFObjectFile &obj) {
+void provide_symbols(utils::ostream &s, const COFFObjectFile &obj) {
     provide_symbols(s, obj, obj.symbols());
 }
 
@@ -187,7 +141,7 @@ error_or<uint64_t> getImageBase(const COFFObjectFile &obj) {
     }
 }
 
-void provide_symbols(ostream &s, const COFFObjectFile& obj) {
+void provide_symbols(utils::ostream &s, const COFFObjectFile& obj) {
     std::vector<symbol_iterator> syms;
     error_code ec;
     for (auto it = obj.begin_symbols(); it != obj.end_symbols(); it.increment(ec)) {
@@ -197,7 +151,7 @@ void provide_symbols(ostream &s, const COFFObjectFile& obj) {
     provide_symbols(s, obj, syms);
 }
 
-void provide_sections(ostream &s, const COFFObjectFile& obj) {
+void provide_sections(utils::ostream &s, const COFFObjectFile& obj) {
     std::vector<section_iterator> secs;
     error_code ec;
     for (auto it = obj.begin_sections(); it != obj.end_sections(); it.increment(ec)) {
@@ -214,10 +168,43 @@ void provide_sections(ostream &s, const COFFObjectFile& obj) {
 #error LLVM version is not supported
 #endif
 
+bool is_segment(const coff_section &s) {
+    uint64_t c = static_cast<uint64_t>(s.Characteristics);
+    return (c & COFF::IMAGE_SCN_CNT_CODE ||
+            c & COFF::IMAGE_SCN_CNT_INITIALIZED_DATA ||
+            c & COFF::IMAGE_SCN_CNT_UNINITIALIZED_DATA);
+}
+
+template <typename Secs>
+void provide_sections(utils::ostream &s, const COFFObjectFile &obj, const Secs &sections, uint64_t image_base) {
+    for (auto it : sections) {
+        auto sec = *obj.getCOFFSection(it);
+        utils::provide_section(s, sec.Name, sec.VirtualAddress + image_base, sec.SizeOfRawData);
+    }
+}
+
+template <typename Segs>
+void provide_segments(utils::ostream &s, const COFFObjectFile& obj, const Segs &segments, uint64_t image_base) {
+    for (auto it : segments) {
+        const coff_section *sec = obj.getCOFFSection(it);
+        if (is_segment(*sec)) {
+            int offset = static_cast<int>(sec->PointerToRawData);
+            uint64_t addr = static_cast<uint64_t>(sec->VirtualAddress + image_base);
+            uint64_t size = static_cast<uint64_t>(sec->SizeOfRawData);
+            bool r = static_cast<bool>(sec->Characteristics & COFF::IMAGE_SCN_MEM_READ);
+            bool w = static_cast<bool>(sec->Characteristics & COFF::IMAGE_SCN_MEM_WRITE);
+            bool x = static_cast<bool>(sec->Characteristics & COFF::IMAGE_SCN_MEM_EXECUTE);
+            *s << scheme::segment(addr, size, r, w, x);
+            *s << scheme::mapped(addr, size, offset);
+            *s << scheme::named_region(addr, size, sec->Name);
+        }
+    }
+}
+
 //TODO: why don't just computeSymbols in 3.8 ?
 //TODO: check size inference
 template <typename Syms>
-void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols) {
+void provide_symbols(utils::ostream &s, const COFFObjectFile &obj, const Syms &symbols) {
     for (symbol_iterator it : symbols) {
         auto sym = get_symbol(obj, it);
         const coff_section *sec = nullptr;
@@ -226,7 +213,7 @@ void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols)
         if (sec_num == COFF::IMAGE_SYM_UNDEFINED)
             continue;
         if (auto er = obj.getSection(sec_num, sec)) {
-            skip_symbol(s, er);
+            utils::skip_symbol(s, er);
             continue;
         }
         if (!sec) continue;
@@ -245,10 +232,10 @@ void provide_symbols(ostream &s, const COFFObjectFile &obj, const Syms &symbols)
         auto name = get_name(*it);
         auto addr = get_addr(*it);
         auto kind = get_kind(*it);
-        if (!addr) { skip_symbol(s, name); continue; }
-        if (!name) { skip_symbol(s, addr); continue; }
-        if (!kind) { skip_symbol(s, kind); continue; }
-        provide_symbol(s, *name, *addr, size, (*kind == SymbolRef::ST_Function));
+        if (!addr) { utils::skip_symbol(s, name); continue; }
+        if (!name) { utils::skip_symbol(s, addr); continue; }
+        if (!kind) { utils::skip_symbol(s, kind); continue; }
+        utils::provide_symbol(s, *name, *addr, size, (*kind == SymbolRef::ST_Function));
     }
 }
 
@@ -266,22 +253,24 @@ error_or<uint64_t> image_entry(const COFFObjectFile& obj) {
     }
 }
 
+} // namespace coff
+
 error_or<std::string> load(const COFFObjectFile &obj) {
-    ostream s = success(std::ostringstream());
+    utils::ostream s = success(std::ostringstream());
     auto arch_str = Triple::getArchTypeName(static_cast<Triple::ArchType>(obj.getArch()));
-    auto entry = image_entry(obj);
+    auto entry = coff::image_entry(obj);
     if (!entry)
         return failure(entry.message());
     *s << scheme::declare();
     *s << scheme::arch(arch_str);
     *s << scheme::entry_point(*entry);
-    provide_sections(s, obj);
+    coff::provide_sections(s, obj);
     if (!s) return failure(s.message());
-    provide_symbols(s, obj);
+    coff::provide_symbols(s, obj);
     if (!s) return failure(s.message());
     return std::move(success(s->str()) << s.warnings());
 }
 
-} // namespace coff_loader
+} // namespace loader
 
 #endif // LLVM_COFF_LOADER_HPP

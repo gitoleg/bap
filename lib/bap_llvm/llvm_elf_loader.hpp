@@ -1,38 +1,21 @@
 #ifndef LLVM_ELF_LOADER_HPP
 #define LLVM_ELF_LOADER_HPP
 
-#include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <sstream>
 #include <tuple>
 
 #include <llvm/Object/ELFObjectFile.h>
 #include "llvm_error_or.hpp"
-#include "llvm_loader_scheme.hpp"
+#include "llvm_loader_utils.hpp"
 
-namespace elf_loader {
+namespace loader {
+
+namespace elf {
 
 using namespace llvm;
 using namespace llvm::object;
-
-typedef error_or<std::ostringstream> ostream;
-
-void provide_section(ostream &s, const std::string &name, uint64_t addr, uint64_t size) {
-    *s << scheme::section(addr, size) << scheme::named_region(addr, size, name);
-}
-
-void provide_symbol(ostream &s, const std::string &name, uint64_t addr, uint64_t size, bool is_fun) {
-    *s << scheme::named_symbol(addr, name);
-    if (is_fun) {
-        *s << scheme::code_start(addr);
-        *s << scheme::symbol_chunk(addr, size, addr);
-    }
-}
-
-template <typename T>
-void skip_symbol(ostream &s, const T &er) {
-    s.warning() << "skipping symbol: " << er.message();
-}
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
 
@@ -47,26 +30,26 @@ const typename ELFFile<T>::Elf_Phdr* header_end(const ELFFile<T> *elf) {
 }
 
 template <typename T>
-void provide_sections(ostream &s, const ELFObjectFile<T> &obj) {
+void provide_sections(utils::ostream &s, const ELFObjectFile<T> &obj) {
     for (auto sec : obj.sections()) {
         StringRef name;
         if (auto er = sec.getName(name)) { s.fail(er.message()); return; };
-        provide_section(s, name.str(), sec.getAddress(), sec.getSize());
+        utils::provide_section(s, name.str(), sec.getAddress(), sec.getSize());
     }
 }
 
-void provide_symbol(ostream &s, const SymbolRef &gen_sym) {
+void provide_symbol(utils::ostream &s, const SymbolRef &gen_sym) {
     ELFSymbolRef sym(gen_sym);
     auto name = sym.getName();
     auto addr = sym.getAddress();
-    if (!name) { skip_symbol(s, name.getError()); return; }
-    if (!addr) { skip_symbol(s, addr.getError()); return; }
-    provide_symbol(s, name.get().str(), addr.get(), sym.getSize(),
-                   (sym.getType() == SymbolRef::ST_Function));
+    if (!name) { utils::skip_symbol(s, name.getError()); return; }
+    if (!addr) { utils::skip_symbol(s, addr.getError()); return; }
+    utils::provide_symbol(s, name.get().str(), addr.get(), sym.getSize(),
+                          (sym.getType() == SymbolRef::ST_Function));
 }
 
 template <typename T>
-void provide_symbols(ostream &s, const ELFObjectFile<T> &obj) {
+void provide_symbols(utils::ostream &s, const ELFObjectFile<T> &obj) {
     typedef typename ELFFile<T>::Elf_Shdr sec_hdr;
     std::size_t sym_count = std::distance(obj.symbol_begin(), obj.symbol_end());
     auto sections = obj.getELFFile()->sections();
@@ -93,32 +76,32 @@ const typename ELFFile<T>::Elf_Phdr_Iter header_end(const ELFFile<T> *elf) {
 }
 
 template <typename T>
-void provide(ostream &s, const T &t) {}
+void provide(utils::ostream &s, const T &t) {}
 
 template <>
-void provide(ostream &s, const SectionRef &sec) {
+void provide(utils::ostream &s, const SectionRef &sec) {
     StringRef name;
     uint64_t addr, size;
     if (auto er = sec.getName(name))    { return s.fail(er.message()); }
     if (auto er = sec.getAddress(addr)) { return s.fail(er.message()); }
     if (auto er = sec.getSize(size))    { return s.fail(er.message()); }
-    provide_section(s, name.str(), addr, size);
+    utils::provide_section(s, name.str(), addr, size);
 }
 
 template <>
-void provide(ostream &s, const SymbolRef &sym) {
+void provide(utils::ostream &s, const SymbolRef &sym) {
     StringRef name;
     uint64_t addr, size;
     SymbolRef::Type kind;
-    if (auto er = sym.getName(name))    { skip_symbol(s, er); return; }
-    if (auto er = sym.getAddress(addr)) { skip_symbol(s, er); return; }
-    if (auto er = sym.getSize(size))    { skip_symbol(s, er); return; }
-    if (auto er = sym.getType(kind))    { skip_symbol(s, er); return; }
-    provide_symbol(s, name.str(), addr, size, (kind == SymbolRef::ST_Function));
+    if (auto er = sym.getName(name))    { utils::skip_symbol(s, er); return; }
+    if (auto er = sym.getAddress(addr)) { utils::skip_symbol(s, er); return; }
+    if (auto er = sym.getSize(size))    { utils::skip_symbol(s, er); return; }
+    if (auto er = sym.getType(kind))    { utils::skip_symbol(s, er); return; }
+    utils::provide_symbol(s, name.str(), addr, size, (kind == SymbolRef::ST_Function));
 }
 
 template <typename T>
-void iter(content_iterator<T> first, content_iterator<T> last, ostream &s) {
+void iter(content_iterator<T> first, content_iterator<T> last, utils::ostream &s) {
     error_code er;
     while (first != last) {
         provide(s, *first);
@@ -131,13 +114,13 @@ void iter(content_iterator<T> first, content_iterator<T> last, ostream &s) {
 }
 
 template <typename T>
-void provide_symbols(ostream &s, const ELFObjectFile<T> &obj) {
+void provide_symbols(utils::ostream &s, const ELFObjectFile<T> &obj) {
     iter(obj.begin_symbols(), obj.begin_symbols(), s);
     iter(obj.begin_dynamic_symbols(), obj.begin_dynamic_symbols(), s);
 }
 
 template <typename T>
-void provide_sections(ostream &s, const ELFObjectFile<T> &obj) {
+void provide_sections(utils::ostream &s, const ELFObjectFile<T> &obj) {
     iter(obj.begin_sections(), obj.end_sections(), s);
 }
 
@@ -146,7 +129,7 @@ void provide_sections(ostream &s, const ELFObjectFile<T> &obj) {
 #endif
 
 template <typename T>
-void provide_segments(ostream &s, const ELFObjectFile<T> &obj) {
+void provide_segments(utils::ostream &s, const ELFObjectFile<T> &obj) {
     auto begin = header_begin(obj.getELFFile());
     auto end = header_end(obj.getELFFile());
     auto it = begin;
@@ -165,21 +148,23 @@ void provide_segments(ostream &s, const ELFObjectFile<T> &obj) {
     }
 }
 
+} // namespace elf
+
 template <typename T>
 error_or<std::string> load(const ELFObjectFile<T> &obj) {
-    ostream s = success(std::ostringstream());
+    utils::ostream s = success(std::ostringstream());
     auto arch_str = Triple::getArchTypeName(static_cast<Triple::ArchType>(obj.getArch()));
     *s << scheme::declare();
     *s << scheme::arch(arch_str);
     *s << scheme::entry_point(obj.getELFFile()->getHeader()->e_entry);
-    provide_segments(s, obj);
-    provide_sections(s, obj);
+    elf::provide_segments(s, obj);
+    elf::provide_sections(s, obj);
     if (!s) return failure(s.message());
-    provide_symbols(s, obj);
+    elf::provide_symbols(s, obj);
     if (!s) return failure(s.message());
     return std::move(success(s->str()) << s.warnings());
 }
 
-} // namespace elf_loader
+} // namespace loader
 
 #endif // LLVM_ELF_LOADER_HPP
