@@ -33,6 +33,8 @@ Library bap_llvm
                  llvm_error_or.h,
                  llvm_loader.c,
                  llvm_loader.h,
+                 llvm_elf_loader.c,
+                 llvm_elf_loader.h,
                  llvm_loader_utils.c,
                  llvm_loader_utils.h,
                  llvm_loader_stubs.c,

@@ -90,6 +90,7 @@ let of_data data : Backend.Img.t option =
           ~arch ~entry ~segments ~symbols ~sections)
 
 let init () =
-  match Image.register_backend ~name:"llvm" of_data with
+  Image.register_loader ~name:"llvm" (module Bap_llvm_ogre_loader.Loader);
+  match Image.register_backend ~name:"legacy-llvm" of_data with
   | `Ok -> Ok ()
-  | `Duplicate -> Or_error.errorf "llvm loader: duplicate name"
+  | `Duplicate -> Or_error.errorf "legacy-llvm loader: duplicate name"

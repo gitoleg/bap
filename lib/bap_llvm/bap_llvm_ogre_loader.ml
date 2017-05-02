@@ -10,132 +10,40 @@ module Elf_scheme = struct
 
   let declare name scheme f = Ogre.declare ~name scheme f
 
-  (** p stands for physical, v - for virtual  *)
-  let p_off = "p-offset"  %: int
-  let p_size = "p-size"  %: int
-  let p_addr = "p-addr"  %: int
-  let v_size = "v-size"  %: int
-  let v_addr = "v-addr"  %: int
-  let e_type = "entry-type" %: int
-  let index = "index" %: int
+  (** v - for virtual  *)
+  let off = "offset"  %: int
+  let size = "size"  %: int
+  let v_size = "v-size" %: int
+  let v_addr = "v-addr" %: int
   let name  = "name"   %: str
-  let flags = "flags"  %: int
-  let align = "align"  %: int
-
-  module Phdr = struct
-    type t = {
-      p_type   : int64;
-      p_offset : int64;
-      p_vaddr  : int64;
-      p_paddr  : int64;
-      p_filesz : int64;
-      p_memsz  : int64;
-      p_flags  : int64;
-      p_align  : int64;
-    } [@@deriving fields]
-
-    let t () =
-      declare "program-header"
-        (scheme
-           e_type $ p_off $ v_addr $ p_addr $ p_size $ v_size
-         $ flags $ align)
-        (fun p_type p_offset p_vaddr p_paddr p_filesz p_memsz p_flags p_align ->
-           Fields.create ~p_type ~p_offset ~p_vaddr ~p_paddr ~p_filesz ~p_memsz ~p_flags ~p_align)
-  end
-
-  module Shdr = struct
-    type t = {
-      sh_name : int64;
-      sh_type : int64;
-      sh_flags : int64;
-      sh_addr : int64;
-      sh_offset : int64;
-      sh_size : int64;
-      sh_link : int64;
-      sh_info : int64;
-      sh_addralign : int64;
-      sh_entsize : int64;
-    } [@@deriving fields]
-
-    let sec_name = "sec-name" %: str
-    let sh_link = "sh-link" %: int
-    let sh_info = "sh-info" %: int
-    let sh_entsize = "sh-entsize" %: int
-
-    let t () =
-      declare "section-header"
-        (scheme index $ e_type $ flags $ v_addr $ p_off
-         $ p_size $ sh_link $ sh_info $ align $ sh_entsize)
-        (fun sh_name sh_type sh_flags sh_addr sh_offset sh_size sh_link
-          sh_info sh_addralign sh_entsize ->
-          Fields.create
-            ~sh_name ~sh_type ~sh_flags ~sh_addr ~sh_offset ~sh_size ~sh_link
-            ~sh_info ~sh_addralign ~sh_entsize)
-
-    let string_table () =
-      declare "string-table"
-        (scheme sec_name $ index $ name)
-        (fun sec_name index name -> sec_name, index, name)
-  end
-
-  module Sym = struct
-    type t = {
-      st_name  : int64;
-      st_value : int64;
-      st_size  : int64;
-      st_info  : int64;
-      st_other : int64;
-      st_shndx : int64;
-    } [@@deriving fields]
-
-
-    let value  = "value"   %: int
-    let st_info = "st-info" %: int
-    let st_other = "st-other" %: int
-    let st_shndx = "st-shndx" %: int
-
-    let t () =
-      declare "symbol-entry"
-        (scheme index $ value $ p_size $ st_info $ st_other $ st_shndx)
-        (fun st_name st_value st_size st_info st_other st_shndx ->
-           Fields.create ~st_name ~st_value ~st_size ~st_info ~st_other ~st_shndx)
-  end
-
-  let value  = "value"   %: int (** not a good place for this *)
-  let sh_link = "sh-link" %: int (** not a good place for this *)
-  let sh_info = "sh-info" %: int (** not a good place for this *)
-  let sh_entsize = "sh-entsize" %: int (** not a good place for this *)
-  let is_fun = "is-function" %: bool (** will be deleted  *)
+  let ld = "load" %: bool
+  let r = "read"  %: bool
+  let w = "write"  %: bool
+  let x = "execute" %: bool
+  let is_fun = "is-funciton" %: bool
 
   let program_header () =
-    declare "program-header"
-      (scheme
-         e_type $ p_off $ v_addr $ p_addr $ p_size $ v_size
-       $ flags $ align)
-      (fun p_type p_offset p_vaddr p_paddr p_filesz p_memsz p_flags p_align ->
-         Phdr.Fields.create ~p_type ~p_offset ~p_vaddr ~p_paddr ~p_filesz ~p_memsz ~p_flags ~p_align)
+    declare "program-header" (scheme off $ size)
+      (fun offset size -> offset, size)
+
+  let virtual_pheader () =
+    declare "virtual-pheader" (scheme off $ size $ v_addr $ v_size)
+      (fun offset size addr vsize -> offset, size, addr, vsize)
+
+  let pheader_flags () =
+    declare "pheader-flags"
+      (scheme off $ size $ ld $ r $ w $ x)
+      (fun offset size ld r w x -> offset, size, ld, r, w, x)
 
   let section_header () =
     declare "section-header"
-      (scheme index $ e_type $ flags $ v_addr $ p_off
-       $ p_size $ sh_link $ sh_info $ align $ sh_entsize)
-      (fun sh_name sh_type sh_flags sh_addr sh_offset sh_size sh_link
-        sh_info sh_addralign sh_entsize ->
-        Shdr.Fields.create
-          ~sh_name ~sh_type ~sh_flags ~sh_addr ~sh_offset ~sh_size ~sh_link
-          ~sh_info ~sh_addralign ~sh_entsize)
+      (scheme name $ v_addr $ size)
+      (fun name addr size -> name,addr,size)
 
-
-  let shstrtab_entry () =
-    declare "shstrtab-entry" (scheme index $ name) (fun index name -> index,name)
-
-  let strtab_entry () =
-    declare "strtab-entry" (scheme index $ name) (fun index name -> index,name)
-
-  let symbol_entry () = declare "symbol-entry"
-      (scheme value $ p_size $ is_fun $ name)
-      (fun addr size is_fun name -> addr, size, is_fun, name)
-
+  let symbol_entry () =
+    declare "symbol-entry"
+      (scheme name $ v_addr $ size $ is_fun)
+      (fun name addr size is_fun -> name,addr,size,is_fun)
 end
 
 module Image_ogre_of_elf = struct
@@ -143,55 +51,35 @@ module Image_ogre_of_elf = struct
   open Elf_scheme
   open Fact.Syntax
 
-  module Strtab = Int64.Map
-
-  let is flag expected = Int64.(bit_and flag (of_int expected) = one)
-
-  let base_strtab tab_name =
-    Fact.foreach Ogre.Query.(begin
-        select (from Shdr.string_table)
-          ~where:(Shdr.string_table.(Shdr.sec_name) = str(".shstrtab"))
-      end)
-      ~f:(fun (_,i,n) -> i,n) >>= fun s ->
-    Fact.return (Strtab.of_alist_exn (Sequence.to_list s))
-
-  let shstrtab = base_strtab shstrtab_entry
-  let strtab = base_strtab strtab_entry
-
   let segments =
-    let is_r flags = is flags 4 in
-    let is_w flags = is flags 2 in
-    let is_x flags = is flags 1 in
-    let is_loadable typ = is typ 1 in
     let name_of_number n = sprintf "%02d" n in
-    Fact.foreach Ogre.Query.(select (from program_header))
-      ~f:ident >>= fun s ->
+    Fact.foreach Ogre.Query.(begin
+        select (from program_header $ virtual_pheader $ pheader_flags)
+          ~join:[[field off];[field size]]
+      end)
+      ~f:(fun (off, size) (_,_,addr,vsize) (_,_,ld,r,w,x) ->
+          (off,size), (addr, vsize), (ld,r,w,x)) >>= fun s ->
     Fact.Seq.fold s ~init:0
-      ~f:(fun n {Phdr.p_type; p_flags; p_vaddr; p_filesz; p_memsz; p_offset} ->
-          let r,w,x = is_r p_flags, is_w p_flags, is_x p_flags in
-          if is_loadable p_type then
-            Fact.provide segment p_vaddr p_memsz r w x >>= fun () ->
-            Fact.provide mapped p_vaddr p_filesz p_offset >>= fun () ->
-            Fact.provide named_region p_vaddr p_memsz (name_of_number n) >>= fun () ->
+      ~f:(fun n ((off,size), (addr, vsize), (ld,r,w,x)) ->
+          if ld then
+            Fact.provide segment addr vsize r w x >>= fun () ->
+            Fact.provide mapped addr size off >>= fun () ->
+            Fact.provide named_region addr vsize (name_of_number n) >>= fun () ->
             Fact.return (n + 1)
           else Fact.return (n + 1)) >>= fun _ -> Fact.return ()
 
   let sections =
     Fact.foreach Ogre.Query.(select (from section_header))
       ~f:ident >>= fun s ->
-    shstrtab >>= fun tab ->
     Fact.Seq.iter s
-      ~f:(fun {Shdr.sh_name; sh_addr; sh_offset; sh_size} ->
-          Fact.provide section sh_addr sh_size >>= fun () ->
-          match Strtab.find tab sh_name with
-          | None -> Fact.return ()
-          | Some name ->
-            Fact.provide named_region sh_addr sh_size name)
+      ~f:(fun (name, addr, size) ->
+          Fact.provide section addr size >>= fun () ->
+          Fact.provide named_region addr size name)
 
   let symbols =
     Fact.foreach Ogre.Query.(select (from symbol_entry))
-      ~f:(fun (addr, size, is_fun, name) -> (addr, size, is_fun, name)) >>= fun s ->
-    Fact.Seq.iter s ~f:(fun (addr, size, is_fun, name) ->
+      ~f:ident >>= fun s ->
+    Fact.Seq.iter s ~f:(fun (name, addr, size, is_fun) ->
         Fact.provide named_symbol addr name >>= fun () ->
         Fact.provide symbol_chunk addr size addr >>= fun () ->
         if is_fun then

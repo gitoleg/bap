@@ -3,9 +3,7 @@
 
 #include <iostream>
 
-#include "llvm_coff_loader.hpp"
 #include "llvm_elf_loader.hpp"
-#include "llvm_macho_loader.hpp"
 
 namespace loader {
 
@@ -62,11 +60,11 @@ error_or<std::string> load_elf(const object::Binary *binary) {
 }
 
 error_or<std::string> load_coff(const object::Binary *binary) {
-    return load_base<COFFObjectFile>(binary);
+    return unsupported_filetype();
 }
 
 error_or<std::string> load_macho(const object::Binary *binary) {
-    return load_base<MachOObjectFile>(binary);
+    return unsupported_filetype();
 }
 
 template <typename T>
@@ -90,10 +88,6 @@ error_or<std::string> load(const char* data, std::size_t size) {
 }
 
 typedef error_or<std::string> bap_llvm_loader;
-
-//TODO: don't forget to check all loops for checking ostream value
-//TODO: run bap with echo macho file from my binaries
-//TODO: check what size used and where (segments especially)
 
 const bap_llvm_loader * create(const char* data, std::size_t size) {
     auto loaded = load(data, size);
