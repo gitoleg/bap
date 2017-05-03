@@ -20,7 +20,7 @@ module Elf_scheme = struct
   let r = "read"  %: bool
   let w = "write"  %: bool
   let x = "execute" %: bool
-  let is_fun = "is-funciton" %: bool
+  let is_fun = "is-function" %: bool
 
   let program_header () =
     declare "program-header" (scheme off $ size)
