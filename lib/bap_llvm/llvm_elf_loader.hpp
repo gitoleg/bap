@@ -25,36 +25,32 @@ struct elf_wrapper {
     typedef const typename ELFFile<T>::Elf_Phdr phdr;
     typedef const typename ELFFile<T>::Elf_Shdr shdr;
     const phdr* pheaders_begin() const { return file().program_header_begin(); }
-    const phdr* pheaders_end() const { return file().program_header_end(); }
-    const shdr* begin_sections() const { return file().section_begin();}
-    const shdr* end_sections() const { return file().section_end();}
+    const phdr* pheaders_end()   const { return file().program_header_end(); }
+    const shdr* begin_sections() const { return file().section_begin(); }
+    const shdr* end_sections()   const { return file().section_end(); }
     symbol_iterator begin_symbols() const { return e_.symbol_begin(); }
-    symbol_iterator end_symbols() const { return e_.symbol_end(); }
-
-    symbol_iterator begin_dynamic_symbols() const {
-        bool is_dyn = std::any_of(begin_sections(), end_sections(),
-                                  [](const shdr &hdr) { return (hdr.sh_type == ELF::SHT_DYNSYM); });
-        if (is_dyn) return e_.dynamic_symbol_begin();
-        else return e_.dynamic_symbol_end();
-    }
-
+    symbol_iterator end_symbols()   const { return e_.symbol_end(); }
+    symbol_iterator begin_dynamic_symbols() const { return e_.dynamic_symbol_begin(); }
     symbol_iterator end_dynamic_symbols() const { return e_.dynamic_symbol_end(); }
     ErrorOr<StringRef> symbol_name(symbol_iterator it) const { return it->getName();}
-    ErrorOr<uint64_t> symbol_addr(symbol_iterator it) const { return it->getAddress(); }
+    ErrorOr<uint64_t>  symbol_addr(symbol_iterator it) const { return it->getAddress(); }
     uint64_t symbol_size(symbol_iterator it) const { return ELFSymbolRef(*it).getSize(); }
     SymbolRef::Type symbol_type(symbol_iterator it) const { return it->getType(); }
+    template <typename I> void next(I &it, I max) const { ++it; }
+    ErrorOr<StringRef> section_name(const shdr* h) const {return file().getSectionName(h); }
 
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
-    typedef const typename ELFFile<T>::Elf_Phdr_ITer phdr;
+    typedef const typename ELFFile<T>::Elf_Phdr_Iter phdr;
     typedef const typename ELFFile<T>::Elf_Shdr_Iter shdr;
     phdr pheaders_begin() const { return file().begin_program_headers(); }
-    phdr pheaders_end() const  { return file().end_program_headers(); }
+    phdr pheaders_end()   const { return file().end_program_headers(); }
     shdr begin_sections() const { return file().begin_sections();}
-    shdr end_sections() const  { return file().end_sections();}
+    shdr end_sections()   const { return file().end_sections();}
     symbol_iterator begin_symbols() const { return e_.begin_symbols(); }
     symbol_iterator end_symbols() const { return e_.end_symbols(); }
     symbol_iterator begin_dynamic_symbols() const { return e_.begin_dynamic_symbols(); }
     symbol_iterator end_dynamic_symbols() const { return e_.end_dynamic_symbols(); }
+    ErrorOr<StringRef> section_name(const shdr h) const {return elf.file().getSectionName(*h); }
 
     error_or<StringRef> symbol_name(symbol_iterator it) const {
         StringRef name;
@@ -80,9 +76,21 @@ struct elf_wrapper {
         return typ;
     }
 
+    template <typename I>
+    void next(I &it, I max) const {
+        error_code ec;
+        it.increment(ec);
+        if (ec) it = max;
+    }
+
 #else
 #error LLVM version is not supported
 #endif
+
+    bool is_dyn() const {
+        return std::any_of(begin_sections(), end_sections(),
+                           [](const shdr &hdr) { return (hdr.sh_type == ELF::SHT_DYNSYM); });
+    }
 
     const elf_obj & origin() const { return e_; }
     const elf_file & file() const { return *(e_.getELFFile()); }
@@ -121,14 +129,14 @@ void program_headers(const elf_wrapper<T> &elf, std::ostringstream &s) {
 
 template <typename T>
 void section_headers(const elf_wrapper<T> &elf, std::ostringstream &s) {
-    for (auto it = elf.begin_sections(); it != elf.end_sections(); ++it)
-        if (auto name = elf.file().getSectionName(it))
+    for (auto it = elf.begin_sections(); it != elf.end_sections(); elf.next(it, elf.end_sections()))
+        if (auto name = elf.section_name(it))
             s << (sexp("section-header") << quoted(name.get().str()) << it->sh_addr << it->sh_size);
 }
 
 template <typename T>
 void symbol_entries(const elf_wrapper<T> &elf, symbol_iterator begin, symbol_iterator end, std::ostringstream &s) {
-    for (auto it = begin; it != end; ++it) {
+    for (auto it = begin; it != end; elf.next(it, end)) {
         auto name = elf.symbol_name(it);
         auto addr = elf.symbol_addr(it);
         if (!name || !addr) return;
@@ -140,7 +148,8 @@ void symbol_entries(const elf_wrapper<T> &elf, symbol_iterator begin, symbol_ite
 template <typename T>
 void symbol_entries(const elf_wrapper<T> &elf, std::ostringstream &s) {
     symbol_entries(elf, elf.begin_symbols(), elf.end_symbols(), s);
-    symbol_entries(elf, elf.begin_dynamic_symbols(), elf.end_dynamic_symbols(), s);
+    if (elf.is_dyn()) // primary preventing from llvm 3.8 fail in case of .dynsym absence
+        symbol_entries(elf, elf.begin_dynamic_symbols(), elf.end_dynamic_symbols(), s);
 }
 
 void arch(const ObjectFile& obj, std::ostringstream &s) {
@@ -151,7 +160,7 @@ void arch(const ObjectFile& obj, std::ostringstream &s) {
 
 //TODO: rework returning type .. possible
 template <typename T>
-error_or<std::string> load(const ELFObjecctFile<T> &obj) {
+error_or<std::string> load(const ELFObjectFile<T> &obj) {
     elf_wrapper<T> elf(obj);
     std::ostringstream s;
     s << declarations;
