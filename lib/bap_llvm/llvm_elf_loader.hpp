@@ -37,7 +37,7 @@ struct elf_wrapper {
     uint64_t symbol_size(symbol_iterator it) const { return ELFSymbolRef(*it).getSize(); }
     SymbolRef::Type symbol_type(symbol_iterator it) const { return it->getType(); }
     template <typename I> void next(I &it, I max) const { ++it; }
-    ErrorOr<StringRef> section_name(const shdr* h) const {return file().getSectionName(h); }
+    ErrorOr<StringRef> section_name(const shdr* h) const { return file().getSectionName(h); }
 
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
     typedef const typename ELFFile<T>::Elf_Phdr_Iter phdr;
@@ -50,7 +50,7 @@ struct elf_wrapper {
     symbol_iterator end_symbols() const { return e_.end_symbols(); }
     symbol_iterator begin_dynamic_symbols() const { return e_.begin_dynamic_symbols(); }
     symbol_iterator end_dynamic_symbols() const { return e_.end_dynamic_symbols(); }
-    ErrorOr<StringRef> section_name(const shdr h) const {return elf.file().getSectionName(*h); }
+    ErrorOr<StringRef> section_name(const shdr h) const { return file().getSectionName(*h); }
 
     error_or<StringRef> symbol_name(symbol_iterator it) const {
         StringRef name;
@@ -129,7 +129,7 @@ void program_headers(const elf_wrapper<T> &elf, std::ostringstream &s) {
 
 template <typename T>
 void section_headers(const elf_wrapper<T> &elf, std::ostringstream &s) {
-    for (auto it = elf.begin_sections(); it != elf.end_sections(); elf.next(it, elf.end_sections()))
+    for (auto it = elf.begin_sections(); it != elf.end_sections(); ++it)
         if (auto name = elf.section_name(it))
             s << (sexp("section-header") << quoted(name.get().str()) << it->sh_addr << it->sh_size);
 }
