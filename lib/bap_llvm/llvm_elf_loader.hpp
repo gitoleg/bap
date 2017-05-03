@@ -65,8 +65,7 @@ void section_headers(const ELFObjectFile<T> &obj, std::ostringstream &s) {
             section_header(*it, name.get().str(), s);
 }
 
-template <typename T>
-void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_iterator end, std::ostringstream &s) {
+void symbol_entries(symbol_iterator begin, symbol_iterator end, std::ostringstream &s) {
     for (auto it = begin; it != end; ++it) {
         ELFSymbolRef sym(*it);
         auto name = sym.getName();
@@ -80,11 +79,11 @@ template <typename T>
 void symbol_entries(const ELFObjectFile<T> &obj, std::ostringstream &s) {
     typedef typename ELFFile<T>::Elf_Shdr sec_hdr;
     auto elf = obj.getELFFile();
-    symbol_entries(obj, obj.symbol_begin(), obj.symbol_end(), s);
+    symbol_entries(obj.symbol_begin(), obj.symbol_end(), s);
     bool is_dyn = std::any_of(elf->section_begin(), elf->section_end(),
                               [](const sec_hdr &hdr) { return (hdr.sh_type == ELF::SHT_DYNSYM); });
     if (is_dyn) // primary preventing from llvm 3.8 fail in case of .dynsym absence
-        symbol_entries(obj, obj.dynamic_symbol_begin(), obj.dynamic_symbol_end(), s);
+        symbol_entries(obj.dynamic_symbol_begin(), obj.dynamic_symbol_end(), s);
 }
 
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
@@ -95,23 +94,21 @@ void program_headers(const ELFObjectFile<T> &obj, std::ostringstream &s) {
     program_headers(elf->begin_program_headers(), elf->end_program_headers(), s);
 }
 
-//almost copy - will see how getSectionName will work
 template <typename T>
 void section_headers(const ELFObjectFile<T> &obj, std::ostringstream &s) {
     auto elf = obj.getELFFile();
     for (auto it = elf->begin_sections(); it != elf->end_sections(); ++it)
-        if (auto name = elf->getSectionName(it))
-            section_header(*it, name.get().str(), s);
+        if (auto name = elf->getSectionName(&*it))
+            section_header(*it, (*name).str(), s);
 }
 
 template <typename I>
-void next(I &i, I end) {
+void next(I &it, I end) {
     error_code ec;
     it.increment(ec);
     if (ec) it = end;
 }
 
-template <typename T>
 void symbol_entries(symbol_iterator begin, symbol_iterator end, std::ostringstream &s) {
     StringRef name;
     uint64_t addr,size;
@@ -120,9 +117,9 @@ void symbol_entries(symbol_iterator begin, symbol_iterator end, std::ostringstre
         auto er_name = it->getName(name);
         auto er_addr = it->getAddress(addr);
         auto er_size = it->getAddress(size);
-        auto er_type = it->getAddress(type);
+        auto er_type = it->getType(typ);
         if (er_name || er_addr || er_size || er_type) continue;
-        symbol_entry(name.str(), addr, size, typ);
+        symbol_entry(name.str(), addr, size, typ, s);
     }
 }
 
