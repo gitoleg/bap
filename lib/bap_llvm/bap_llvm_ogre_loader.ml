@@ -20,7 +20,7 @@ module Elf_scheme = struct
   let r = "read"  %: bool
   let w = "write"  %: bool
   let x = "execute" %: bool
-  let is_fun = "is-function" %: bool
+  let f = "function" %: bool
 
   let program_header () =
     declare "program-header" (scheme off $ size)
@@ -42,11 +42,11 @@ module Elf_scheme = struct
 
   let symbol_entry () =
     declare "symbol-entry"
-      (scheme name $ v_addr $ size $ is_fun)
+      (scheme name $ v_addr $ size $ f)
       (fun name addr size is_fun -> name,addr,size,is_fun)
 end
 
-module Image_ogre_of_elf = struct
+module Image = struct
   open Bap_image.Scheme
   open Elf_scheme
   open Fact.Syntax
@@ -66,7 +66,7 @@ module Image_ogre_of_elf = struct
             Fact.provide mapped addr size off >>= fun () ->
             Fact.provide named_region addr vsize (name_of_number n) >>= fun () ->
             Fact.return (n + 1)
-          else Fact.return (n + 1)) >>= fun _ -> Fact.return ()
+          else Fact.return n) >>= fun _ -> Fact.return ()
 
   let sections =
     Fact.foreach Ogre.Query.(select (from section_header))
@@ -93,23 +93,14 @@ module Image_ogre_of_elf = struct
 end
 
 let to_image_doc doc =
-  printf "to image!\n";
-  match Fact.exec Image_ogre_of_elf.img doc with
-  | Ok doc ->
-    printf "has doc!\n";
-    (* printf "%s\n" @@ Ogre.Doc.to_string doc; *)
-    Ok (Some doc)
+  match Fact.exec Image.img doc with
+  | Ok doc -> Ok (Some doc)
   | Error er -> Error er
 
 module Loader = struct
-  let _from_data data =
+  let from_data data =
     Bap_llvm_binary.bap_llvm_load data |>
     Ogre.Doc.from_string >>= fun doc -> to_image_doc doc
-
-  let from_data data =
-    let str = Bap_llvm_binary.bap_llvm_load data  in
-    (* printf "%s\n" str; *)
-    Ogre.Doc.from_string str >>= fun doc -> to_image_doc doc
 
   let from_file path = Bap_fileutils.readfile path |> from_data
 end
