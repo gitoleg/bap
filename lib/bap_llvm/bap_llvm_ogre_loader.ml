@@ -11,25 +11,29 @@ module Elf_scheme = struct
 
   let declare name scheme f = Ogre.declare ~name scheme f
 
-  let off = "offset"  %: int
-  let size = "size"  %: int
-  let v_size = "v-size" %: int
-  let v_addr = "v-addr" %: int
-  let name  = "name"   %: str
+  let off  = "offset" %: int
+  let size = "size"   %: int
+  let name = "name"   %: str
+  let addr = "addr"   %: int
+
+  (** flags that describes an entry behavior *)
   let ld = "load" %: bool
   let r = "read"  %: bool
-  let w = "write"  %: bool
-  let x = "execute" %: bool
+  let w = "write"    %: bool
+  let x = "execute"  %: bool
   let f = "function" %: bool
 
+  (** elf program header physical view *)
   let program_header () =
     declare "program-header" (scheme off $ size $ name)
       (fun offset size name -> offset, size, name)
 
+  (** elf program header virtual view *)
   let virtual_pheader () =
-    declare "virtual-pheader" (scheme off $ size $ v_addr $ v_size)
-      (fun offset size addr vsize -> offset, size, addr, vsize)
+    declare "virtual-pheader" (scheme off $ size $ addr $ size)
+      (fun offset size addr vsize -> offset, size, addr, size)
 
+  (** elf program header flags : if it's possible to load, read, write, execute *)
   let pheader_flags () =
     declare "pheader-flags"
       (scheme off $ size $ ld $ r $ w $ x)
@@ -37,12 +41,12 @@ module Elf_scheme = struct
 
   let section_header () =
     declare "section-header"
-      (scheme name $ v_addr $ size)
+      (scheme name $ addr $ size)
       (fun name addr size -> name,addr,size)
 
   let symbol_entry () =
     declare "symbol-entry"
-      (scheme name $ v_addr $ size $ f)
+      (scheme name $ addr $ size $ f)
       (fun name addr size is_fun -> name,addr,size,is_fun)
 end
 

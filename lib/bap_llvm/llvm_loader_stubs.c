@@ -9,11 +9,11 @@
 #include "llvm_loader.h"
 #include "llvm_loader_stubs.h"
 
-void failn(int n) {
+static void failn(int n) {
     caml_raise_with_arg(*caml_named_value("Llvm_loader_fail"), Val_int(n));
 }
 
-void loader_fail(const struct bap_llvm_loader *loader, int n) {
+static void loader_fail(const struct bap_llvm_loader *loader, int n) {
     bap_llvm_loader_destroy(loader);
     failn(n);
 }
