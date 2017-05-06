@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <iomanip>
 
 #include <llvm/Object/ELFObjectFile.h>
 
@@ -21,16 +22,13 @@ struct data_stream {
 
     template <typename T>
     friend data_stream & operator<<(data_stream &s, const T &t) {
-        if (s.s_)
-            *s.s_ << t;
+        if (s.s_) *s.s_ << t;
         return s;
     }
 
     error_or<std::string> str() const {
-        if (s_)
-            return success(s_->str());
-        else
-            return failure(s_.message());
+        if (s_) return success(s_->str());
+        else return failure(s_.message());
     }
 
 private:
@@ -45,7 +43,7 @@ std::string quoted(const std::string &s) {
 static const std::string declarations =
     "(declare arch (name str))"
     "(declare entry-point (addr int))"
-    "(declare program-header (offset int) (size int))"
+    "(declare program-header (offset int) (size int) (name str))"
     "(declare virtual-pheader (offset int) (size int) (v-addr int) (v-size int))"
     "(declare pheader-flags (offset int) (size int) (load bool) (read bool) (write bool) (execute bool))"
     "(declare section-header (name str) (v-addr int) (size int))"
@@ -53,8 +51,7 @@ static const std::string declarations =
 
 
 void arch(const ObjectFile& obj, data_stream &s) {
-    s << "(arch " <<
-        Triple::getArchTypeName(static_cast<Triple::ArchType>(obj.getArch())) << ")";
+    s << "(arch " << Triple::getArchTypeName(static_cast<Triple::ArchType>(obj.getArch())) << ")";
 }
 
 template <typename T>
@@ -63,16 +60,24 @@ void file_header(const ELFObjectFile<T> &obj, data_stream &s) {
     s << "(entry-point " << hdr->e_entry << ")";
 }
 
+std::string name_of_index(std::size_t i) {
+    std::ostringstream s;
+    s << std::setfill('0') << std::setw(2) << i;
+    return s.str();
+}
+
 template <typename I>
 void program_headers(I begin, I end, data_stream &s) {
-    for (auto it = begin; it != end; ++it) {
+    std::size_t i = 0;
+    for (auto it = begin; it != end; ++it, ++i) {
         bool ld = (it->p_type == ELF::PT_LOAD);
         bool r = static_cast<bool>(it->p_flags & ELF::PF_R);
         bool w = static_cast<bool>(it->p_flags & ELF::PF_W);
         bool x = static_cast<bool>(it->p_flags & ELF::PF_X);
         auto off = it->p_offset;
         auto filesz = it->p_filesz;
-        s << "(program-header "  << off << " " << filesz << ")";
+        auto name = name_of_index(i);
+        s << "(program-header "  << off << " " << filesz << " " << name << ")";
         s << "(virtual-pheader " << off << " " << filesz << " " << it->p_vaddr << " " << it->p_memsz << ")";
         s << "(pheader-flags "   << off << " " << filesz << " " << ld << " " << r << " " <<  w << " " << x  << ")";
     }

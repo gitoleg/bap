@@ -36,7 +36,7 @@ error_or<object::Binary> get_binary(const char* data, std::size_t size) {
 #error LLVM version is not supported
 #endif
 
-error_or<std::string> unsupported_filetype() { return success(""); }
+error_or<std::string> unsupported_filetype() { return success(std::string("")); }
 
 template <typename T>
 error_or<std::string> load_base(const object::Binary *binary) {
@@ -74,7 +74,7 @@ void verbose_fails(const error_or<T> &loaded) {
             if (!loaded)
                 std::cerr << "ogre llvm loader error: " << loaded.message() << std::endl;
         for (auto w : loaded.warnings())
-            std::cerr << "ogre llvm loader warning:  " << w << std::endl;
+            std::cerr << "ogre llvm loader warning: " << w << std::endl;
     }
 }
 

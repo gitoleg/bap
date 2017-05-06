@@ -4300,7 +4300,8 @@ module Std : sig
         input file, or it is whatever was passed to [of_[big]string]. *)
     val data : t -> Bigstring.t
 
-
+    (** [spec image] returns an image specification. *)
+    val spec : t -> Ogre.doc
 
     module Scheme : sig
       open Ogre.Type

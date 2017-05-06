@@ -219,10 +219,14 @@ module Doc = struct
   let update_entries name packed doc =
     typecheck_entry name packed doc >>| fun () ->
     let packed = {fields = normalize_entry name packed doc} in
-    {
-      doc with entries =
-                 Map.add_multi doc.entries ~key:name ~data:packed
-    }
+    let equal e e' = compare_entry e e' = 0 in
+    let entries = Map.change doc.entries name
+        ~f:(function
+            | None -> Some [packed]
+            | Some data as it_was ->
+              if List.mem ~equal data packed then it_was
+              else (Some (packed :: data))) in
+    { doc with entries }
 
   let merge doc {scheme; entries} =
     Map.to_sequence scheme |>
