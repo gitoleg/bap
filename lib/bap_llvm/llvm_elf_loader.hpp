@@ -44,10 +44,10 @@ static const std::string declarations =
     "(declare arch (name str))"
     "(declare entry-point (addr int))"
     "(declare program-header (offset int) (size int) (name str))"
-    "(declare virtual-pheader (offset int) (size int) (v-addr int) (v-size int))"
+    "(declare virtual-pheader (offset int) (size int) (addr int) (v-size int))"
     "(declare pheader-flags (offset int) (size int) (load bool) (read bool) (write bool) (execute bool))"
-    "(declare section-header (name str) (v-addr int) (size int))"
-    "(declare symbol-entry (name str) (v-addr int) (size int) (function bool))";
+    "(declare section-header (name str) (addr int) (size int))"
+    "(declare symbol-entry (name str) (addr int) (size int) (function bool))";
 
 
 void arch(const ObjectFile& obj, data_stream &s) {

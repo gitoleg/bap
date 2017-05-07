@@ -11,10 +11,11 @@ module Elf_scheme = struct
 
   let declare name scheme f = Ogre.declare ~name scheme f
 
-  let off  = "offset" %: int
-  let size = "size"   %: int
-  let name = "name"   %: str
-  let addr = "addr"   %: int
+  let off  = "offset"  %: int
+  let size = "size"    %: int
+  let vsize = "v-size" %: int
+  let name = "name"    %: str
+  let addr = "addr"    %: int
 
   (** flags that describes an entry behavior *)
   let ld = "load" %: bool
@@ -30,8 +31,8 @@ module Elf_scheme = struct
 
   (** elf program header virtual view *)
   let virtual_pheader () =
-    declare "virtual-pheader" (scheme off $ size $ addr $ size)
-      (fun offset size addr vsize -> offset, size, addr, size)
+    declare "virtual-pheader" (scheme off $ size $ addr $ vsize)
+      (fun offset size addr vsize -> offset, size, addr, vsize)
 
   (** elf program header flags : if it's possible to load, read, write, execute *)
   let pheader_flags () =
