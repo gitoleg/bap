@@ -49,8 +49,8 @@ static const std::string declarations =
     "(declare section-header (name str) (addr int) (size int))"
     "(declare symbol-entry (name str) (addr int) (size int) (function bool))";
 
-
-void arch(const ObjectFile& obj, data_stream &s) {
+template <typename T>
+void arch(const ELFObjectFile<T> &obj, data_stream &s) {
     s << "(arch " << Triple::getArchTypeName(static_cast<Triple::ArchType>(obj.getArch())) << ")";
 }
 
