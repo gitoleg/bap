@@ -16,7 +16,7 @@ using namespace llvm::object;
 
 struct data_stream {
 
-    explicit data_stream() : s_(std::ostringstream()) {}
+    explicit data_stream() : s_(info()) {}
 
     void fail(const std::string &m) { s_.fail(m); }
 
@@ -32,7 +32,7 @@ struct data_stream {
     }
 
 private:
-    error_or<std::ostringstream> s_;
+    error_or<info> s_;
 };
 
 
@@ -40,14 +40,27 @@ std::string quoted(const std::string &s) {
     return "\"" + s + "\"";
 }
 
+std::string sym_type(uint8_t t) {
+    switch (t) {
+    case ELF::STT_NOTYPE  : return "STT_NOTYPE";
+    case ELF::STT_OBJECT  : return "STT_OBJECT";
+    case ELF::STT_FUNC    : return "STT_FUNC";
+    case ELF::STT_SECTION : return "STT_SECTION";
+    case ELF::STT_FILE    : return "STT_FILE";
+    case ELF::STT_LOPROC  : return "STT_LOPROC";
+    case ELF::STT_HIPROC  : return "STT_HIPROC";
+    default : return "STT_NOTYPE";
+    }
+}
+
 static const std::string declarations =
     "(declare arch (name str))"
     "(declare entry-point (addr int))"
-    "(declare program-header (offset int) (size int) (name str))"
-    "(declare virtual-pheader (offset int) (size int) (addr int) (v-size int))"
-    "(declare pheader-flags (offset int) (size int) (load bool) (read bool) (write bool) (execute bool))"
+    "(declare program-header (name str) (offset int) (size int))"
+    "(declare virtual-program-header (name str) (addr int) (size int))"
+    "(declare program-header-flags (name str) (load bool) (read bool) (write bool) (execute bool))"
     "(declare section-header (name str) (addr int) (size int))"
-    "(declare symbol-entry (name str) (addr int) (size int) (function bool))";
+    "(declare symbol-entry (name str) (addr int) (size int) (symbol-type str))";
 
 template <typename T>
 void arch(const ELFObjectFile<T> &obj, data_stream &s) {
@@ -77,9 +90,9 @@ void program_headers(I begin, I end, data_stream &s) {
         auto off = it->p_offset;
         auto filesz = it->p_filesz;
         auto name = name_of_index(i);
-        s << "(program-header "  << off << " " << filesz << " " << name << ")";
-        s << "(virtual-pheader " << off << " " << filesz << " " << it->p_vaddr << " " << it->p_memsz << ")";
-        s << "(pheader-flags "   << off << " " << filesz << " " << ld << " " << r << " " <<  w << " " << x  << ")";
+        s << "(program-header "  << name << " " << off << " " << filesz << ")";
+        s << "(virtual-program-header " << name << " " << it->p_vaddr << " " << it->p_memsz << ")";
+        s << "(program-header-flags "   << name << " " << ld << " " << r << " " <<  w << " " << x  << ")";
     }
 }
 
@@ -89,9 +102,8 @@ void section_header(const T &hdr, const std::string &name, data_stream &s) {
 }
 
 void symbol_entry(const std::string &name, uint64_t addr, uint64_t size,
-                  const SymbolRef::Type &typ, data_stream &s) {
-    bool is_fun = (typ == SymbolRef::ST_Function);
-    s << "(symbol-entry " << quoted(name) << " " << addr << " " << size << " " << is_fun << ")";
+                  const std::string &typ, data_stream &s) {
+    s << "(symbol-entry " << quoted(name) << " " << addr << " " << size << " " << typ << ")";
 }
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
@@ -120,7 +132,8 @@ void symbol_entries(symbol_iterator begin, symbol_iterator end, data_stream &s) 
         auto name = sym.getName();
         auto addr = sym.getAddress();
         if (!name || !addr) continue;
-        symbol_entry(name.get().str(), addr.get(), sym.getSize(), sym.getType(), s);
+        auto typ = sym_type(sym.getELFType());
+        symbol_entry(name.get().str(), addr.get(), sym.getSize(), typ, s);
     }
 }
 
@@ -151,7 +164,7 @@ void section_headers(const ELFObjectFile<T> &obj, data_stream &s) {
         if (name)
             section_header(*it, (*name).str(), s);
         else
-            s.fail(name.message());
+            s.fail(s.fail(error_code(name).message()));
     }
 }
 
@@ -162,7 +175,7 @@ void next(I &it, I end) {
     if (ec) it = end;
 }
 
-void symbol_entries(symbol_iterator begin, symbol_iterator end, data_stream &s) {
+void symbol_entries(obj, symbol_iterator begin, symbol_iterator end, data_stream &s) {
     StringRef name;
     uint64_t addr, size;
     SymbolRef::Type typ;
@@ -170,8 +183,9 @@ void symbol_entries(symbol_iterator begin, symbol_iterator end, data_stream &s) 
         auto er_name = it->getName(name);
         auto er_addr = it->getAddress(addr);
         auto er_size = it->getAddress(size);
-        auto er_type = it->getType(typ);
-        if (er_name || er_addr || er_size || er_type) continue;
+        if (er_name || er_addr || er_size) continue;
+        auto typ_n = obj.getSymbol(it->getRawDataRefImpl())->getType();
+        auto typ = sym_type(typ_n);
         symbol_entry(name.str(), addr, size, typ, s);
     }
 }
@@ -180,8 +194,8 @@ template <typename T>
 void symbol_entries(const ELFObjectFile<T> &obj, data_stream &s) {
     typedef typename ELFFile<T>::Elf_Shdr sec_hdr;
     auto elf = obj.getELFFile();
-    symbol_entries(obj.begin_symbols(), obj.end_symbols(), s);
-    symbol_entries(obj.begin_dynamic_symbols(), obj.begin_dynamic_symbols(), s);
+    symbol_entries(obj, obj.begin_symbols(), obj.end_symbols(), s);
+    symbol_entries(obj, obj.begin_dynamic_symbols(), obj.begin_dynamic_symbols(), s);
 }
 #else
 #error LLVM version is not supported

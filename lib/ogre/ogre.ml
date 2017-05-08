@@ -220,12 +220,12 @@ module Doc = struct
     typecheck_entry name packed doc >>| fun () ->
     let packed = {fields = normalize_entry name packed doc} in
     let equal e e' = compare_entry e e' = 0 in
-    let entries = Map.change doc.entries name
+    let entries = Map.update doc.entries name
         ~f:(function
-            | None -> Some [packed]
-            | Some data as it_was ->
-              if List.mem ~equal data packed then it_was
-              else (Some (packed :: data))) in
+            | None -> [packed]
+            | Some data ->
+              if List.mem ~equal data packed then data
+              else (packed :: data)) in
     { doc with entries }
 
   let merge doc {scheme; entries} =

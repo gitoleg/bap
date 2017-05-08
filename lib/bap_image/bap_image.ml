@@ -350,13 +350,10 @@ module Derive = struct
 
   let arch =
     Fact.foreach Ogre.Query.(select (from arch)) ~f:ident >>= fun s ->
-    Fact.Seq.fold ~init:None ~f:(fun arch a ->
-        let a = Arch.of_string a in
-        match arch with
-        | None -> Fact.return a
-        | arch as r ->
-          if Option.is_none a || arch = a then Fact.return r
-          else Fact.failf "arch is ambigous" ()) s >>= fun a ->
+    Fact.Seq.reduce ~f:(fun a1 a2 ->
+        if Arch.equal a1 a2 then Fact.return a1
+        else Fact.failf "arch is ambigous" ())
+        (Seq.filter_map ~f:Arch.of_string s) >>= fun a ->
     match a with
     | Some a -> Fact.return a
     | None -> Fact.failf "unknown/unsupported architecture" ()
