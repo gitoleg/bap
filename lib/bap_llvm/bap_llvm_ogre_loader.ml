@@ -45,8 +45,19 @@ module Elf_scheme = struct
     declare "symbol-entry"
       (scheme name $ addr $ size $ symbol_type)
       (fun name addr size typ -> name,addr,size,typ)
-
 end
+
+type sym_type =
+  | STT_NOTYPE
+  | STT_OBJECT
+  | STT_FUNC
+  | STT_SECTION
+  | STT_FILE
+  | STT_LOPROC
+  | STT_HIPROC
+[@@deriving sexp]
+
+let sym_type_of_string s = sym_type_of_sexp @@ Sexp.of_string s
 
 module Image = struct
   open Image.Scheme
@@ -84,7 +95,7 @@ module Image = struct
         else
           Fact.provide named_symbol addr name >>= fun () ->
           Fact.provide symbol_chunk addr size addr >>= fun () ->
-          if sym_type = "STT_FUNC" then
+          if sym_type_of_string sym_type = STT_FUNC then
             Fact.provide code_start addr
           else Fact.return ())
 
