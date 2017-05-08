@@ -164,7 +164,7 @@ void section_headers(const ELFObjectFile<T> &obj, data_stream &s) {
         if (name)
             section_header(*it, (*name).str(), s);
         else
-            s.fail(s.fail(error_code(name).message()));
+            s.fail(error_code(name).message());
     }
 }
 
@@ -175,7 +175,8 @@ void next(I &it, I end) {
     if (ec) it = end;
 }
 
-void symbol_entries(obj, symbol_iterator begin, symbol_iterator end, data_stream &s) {
+template <typename T>
+void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_iterator end, data_stream &s) {
     StringRef name;
     uint64_t addr, size;
     SymbolRef::Type typ;
