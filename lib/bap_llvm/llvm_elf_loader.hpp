@@ -40,19 +40,6 @@ std::string quoted(const std::string &s) {
     return "\"" + s + "\"";
 }
 
-std::string sym_type(uint8_t t) {
-    switch (t) {
-    case ELF::STT_NOTYPE  : return "STT_NOTYPE";
-    case ELF::STT_OBJECT  : return "STT_OBJECT";
-    case ELF::STT_FUNC    : return "STT_FUNC";
-    case ELF::STT_SECTION : return "STT_SECTION";
-    case ELF::STT_FILE    : return "STT_FILE";
-    case ELF::STT_LOPROC  : return "STT_LOPROC";
-    case ELF::STT_HIPROC  : return "STT_HIPROC";
-    default : return "STT_NOTYPE";
-    }
-}
-
 static const std::string declarations =
     "(declare arch (name str))"
     "(declare entry-point (addr int))"
@@ -60,7 +47,8 @@ static const std::string declarations =
     "(declare virtual-program-header (name str) (addr int) (size int))"
     "(declare program-header-flags (name str) (load bool) (read bool) (write bool) (execute bool))"
     "(declare section-header (name str) (addr int) (size int))"
-    "(declare symbol-entry (name str) (addr int) (size int) (symbol-type str))";
+    "(declare symbol-entry (name str) (addr int) (size int))"
+    "(declare code-entry (addr int))";
 
 template <typename T>
 void arch(const ELFObjectFile<T> &obj, data_stream &s) {
@@ -101,9 +89,12 @@ void section_header(const T &hdr, const std::string &name, data_stream &s) {
     s << "(section-header " << quoted(name) << " " << hdr.sh_addr << " " << hdr.sh_size << ")";
 }
 
-void symbol_entry(const std::string &name, uint64_t addr, uint64_t size,
-                  const std::string &typ, data_stream &s) {
-    s << "(symbol-entry " << quoted(name) << " " << addr << " " << size << " " << typ << ")";
+template <typename T>
+void symbol_entry(const Elf_Sym_Impl<T> &sym, const std::string &name, uint64_t addr,
+                  uint64_t size, data_stream &s) {
+    s << "(symbol-entry " << quoted(name) << " " << addr << " " << size << ")";
+    if (sym.getType() == ELF::STT_FUNC)
+        s << "(code-entry " << addr << ")";
 }
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
@@ -126,14 +117,15 @@ void section_headers(const ELFObjectFile<T> &obj, data_stream &s) {
     }
 }
 
-void symbol_entries(symbol_iterator begin, symbol_iterator end, data_stream &s) {
+template <typename T>
+void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_iterator end, data_stream &s) {
     for (auto it = begin; it != end; ++it) {
         ELFSymbolRef sym(*it);
         auto name = sym.getName();
         auto addr = sym.getAddress();
         if (!name || !addr) continue;
-        auto typ = sym_type(sym.getELFType());
-        symbol_entry(name.get().str(), addr.get(), sym.getSize(), typ, s);
+        auto sym_elf = obj.getSymbol(sym.getRawDataRefImpl());
+        symbol_entry(*sym_elf, name.get().str(), addr.get(), sym.getSize(), s);
     }
 }
 
@@ -141,11 +133,11 @@ template <typename T>
 void symbol_entries(const ELFObjectFile<T> &obj, data_stream &s) {
     typedef typename ELFFile<T>::Elf_Shdr sec_hdr;
     auto elf = obj.getELFFile();
-    symbol_entries(obj.symbol_begin(), obj.symbol_end(), s);
+    symbol_entries(obj, obj.symbol_begin(), obj.symbol_end(), s);
     bool is_dyn = std::any_of(elf->section_begin(), elf->section_end(),
                               [](const sec_hdr &hdr) { return (hdr.sh_type == ELF::SHT_DYNSYM); });
     if (is_dyn) // preventing from llvm 3.8 fail in case of .dynsym absence
-        symbol_entries(obj.dynamic_symbol_begin(), obj.dynamic_symbol_end(), s);
+        symbol_entries(obj, obj.dynamic_symbol_begin(), obj.dynamic_symbol_end(), s);
 }
 
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
@@ -185,9 +177,8 @@ void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_i
         auto er_addr = it->getAddress(addr);
         auto er_size = it->getAddress(size);
         if (er_name || er_addr || er_size) continue;
-        auto typ_n = obj.getSymbol(it->getRawDataRefImpl())->getType();
-        auto typ = sym_type(typ_n);
-        symbol_entry(name.str(), addr, size, typ, s);
+        auto sym_elf = obj.getSymbol(it->getRawDataRefImpl());
+        symbol_entry(*sym_elf, name.str(), addr, size, s);
     }
 }
 

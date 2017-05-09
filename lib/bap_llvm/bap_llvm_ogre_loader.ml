@@ -22,8 +22,6 @@ module Elf_scheme = struct
   let w = "write"   %: bool
   let x = "execute" %: bool
 
-  let symbol_type = "symbol-type" %: str
-
   (** elf program header as it is in file *)
   let program_header () = declare "program-header"
       (scheme name $ off $ size) Tuple.T3.create
@@ -42,22 +40,12 @@ module Elf_scheme = struct
 
   (** elf symbol entry *)
   let symbol_entry () =
-    declare "symbol-entry"
-      (scheme name $ addr $ size $ symbol_type)
-      (fun name addr size typ -> name,addr,size,typ)
+    declare "symbol-entry" (scheme name $ addr $ size) Tuple.T3.create
+
+  (** elf symbols that are functions *)
+  let code_entry () = declare "code-entry" (scheme addr) ident
+
 end
-
-type sym_type =
-  | STT_NOTYPE
-  | STT_OBJECT
-  | STT_FUNC
-  | STT_SECTION
-  | STT_FILE
-  | STT_LOPROC
-  | STT_HIPROC
-[@@deriving sexp]
-
-let sym_type_of_string s = sym_type_of_sexp @@ Sexp.of_string s
 
 module Image = struct
   open Image.Scheme
@@ -89,20 +77,24 @@ module Image = struct
 
   let symbols =
     Fact.foreach Ogre.Query.(select (from symbol_entry))
-      ~f:ident >>= fun s ->
-    Fact.Seq.iter s ~f:(fun (name, addr, size, sym_type) ->
-        if size = Int64.zero then Fact.return ()
+      ~f:(fun (name, addr, size) -> name,addr,size) >>= fun s ->
+    Fact.Seq.iter s ~f:(fun (name, addr, size) ->
+        if size = Int64.zero then
+          Fact.return ()
         else
           Fact.provide named_symbol addr name >>= fun () ->
           Fact.provide symbol_chunk addr size addr >>= fun () ->
-          if sym_type_of_string sym_type = STT_FUNC then
+          Fact.request ~that:(fun a -> a = addr) code_entry >>= fun a ->
+          if a <> None then
             Fact.provide code_start addr
-          else Fact.return ())
+          else
+            Fact.return ())
 
   let elf =
     segments >>= fun () ->
     sections >>= fun () ->
     symbols
+
 end
 
 module Loader = struct

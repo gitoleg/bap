@@ -784,10 +784,9 @@ module Make(B : Monad.S) = struct
     let name = sprintf "requested attribute %s" (Attribute.name attr) in
     M.get () >>= fun doc -> match Doc.get doc attr with
     | Error err -> M.lift (B.return (Error err))
-    | Ok [] -> M.lift (B.return (Ok None))
     | Ok xs -> match List.filter ~f:that xs with
-      | [x] ->  M.lift (B.return (Ok (Some x)))
-      | [] -> failf "%s doesn't satisfy the constraint" name ()
+      | [x] -> M.lift (B.return (Ok (Some x)))
+      | [] -> M.lift (B.return (Ok None))
       | _  -> failf "%s values are ambiguous" name ()
 
   let provide (attr : (_, 'a -> unit monad) attribute) : 'a =
