@@ -41,6 +41,7 @@ std::string quoted(const std::string &s) {
 }
 
 static const std::string declarations =
+    "(declare elf-format (flag bool))"
     "(declare arch (name str))"
     "(declare entry-point (addr int))"
     "(declare program-header (name str) (offset int) (size int))"
@@ -197,6 +198,7 @@ template <typename T>
 error_or<std::string> load(const ELFObjectFile<T> &obj) {
     data_stream s;
     s << std::boolalpha << declarations;
+    s << "(elf-format true)";
     arch(obj, s);
     file_header(obj, s);
     program_headers(obj, s);

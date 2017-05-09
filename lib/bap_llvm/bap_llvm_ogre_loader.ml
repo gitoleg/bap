@@ -1,103 +1,29 @@
 open Core_kernel.Std
 open Bap.Std
 open Monads.Std
+open Or_error
+open Bap_llvm_ogre_types
 
-module Fact = Ogre.Make(Monad.Ident)
-module Result = Monad.Result.Error
-open Result.Syntax
-
-module Elf_scheme = struct
-  open Ogre.Type
-
-  let declare name scheme f = Ogre.declare ~name scheme f
-
-  let off  = "offset" %: int
-  let size = "size"   %: int
-  let name = "name"   %: str
-  let addr = "addr"   %: int
-
-  (** flags that describes an entry behavior *)
-  let ld = "load" %: bool
-  let r = "read"  %: bool
-  let w = "write"   %: bool
-  let x = "execute" %: bool
-
-  (** elf program header as it is in file *)
-  let program_header () = declare "program-header"
-      (scheme name $ off $ size) Tuple.T3.create
-
-  (** elf program header as it is in memory *)
-  let virtual_program_header () = declare "virtual-program-header"
-      (scheme name $ addr $ size) Tuple.T3.create
-
-  (** elf program header flags *)
-  let program_header_flags () = declare "program-header-flags"
-      (scheme name $ ld $ r $ w $ x) (fun name ld r w x -> name,ld,r,w,x)
-
-  (** elf section header *)
-  let section_header () = declare "section-header"
-      (scheme name $ addr $ size) Tuple.T3.create
-
-  (** elf symbol entry *)
-  let symbol_entry () =
-    declare "symbol-entry" (scheme name $ addr $ size) Tuple.T3.create
-
-  (** elf symbols that are functions *)
-  let code_entry () = declare "code-entry" (scheme addr) ident
-
+module Make(M : Monad.S) = struct
+  include Ogre.Make(M)
+  type 'a m = 'a M.t
 end
 
-module Image = struct
-  open Image.Scheme
-  open Elf_scheme
+module Dispatch(M : Monad.S) = struct
+  module Fact = Make(Monad.Ident)
+  module Elf = Bap_llvm_ogre_elf.Make(Fact)
   open Fact.Syntax
 
-  let segments =
-    Fact.foreach Ogre.Query.(begin
-        select (from program_header $ virtual_program_header $ program_header_flags)
-          ~join:[[field name]]
-      end)
-      ~f:(fun hdr (_,addr,vsize) (_,ld,r,w,x) ->
-          hdr, (addr, vsize), (ld,r,w,x)) >>= fun s ->
-    Fact.Seq.iter s
-      ~f:(fun ((name,off,size), (addr, vsize), (ld,r,w,x)) ->
-          if ld then
-              Fact.provide segment addr vsize r w x >>= fun () ->
-              Fact.provide mapped addr size off >>= fun () ->
-              Fact.provide named_region addr vsize name
-          else Fact.return ()) >>= Fact.return
-
-  let sections =
-    Fact.foreach Ogre.Query.(select (from section_header))
-      ~f:ident >>= fun s ->
-    Fact.Seq.iter s
-      ~f:(fun (name, addr, size) ->
-          Fact.provide section addr size >>= fun () ->
-          Fact.provide named_region addr size name)
-
-  let symbols =
-    Fact.foreach Ogre.Query.(select (from symbol_entry))
-      ~f:(fun (name, addr, size) -> name,addr,size) >>= fun s ->
-    Fact.Seq.iter s ~f:(fun (name, addr, size) ->
-        if size = Int64.zero then
-          Fact.return ()
-        else
-          Fact.provide named_symbol addr name >>= fun () ->
-          Fact.provide symbol_chunk addr size addr >>= fun () ->
-          Fact.request ~that:(fun a -> a = addr) code_entry >>= fun a ->
-          if a <> None then
-            Fact.provide code_start addr
-          else
-            Fact.return ())
-
-  let elf =
-    segments >>= fun () ->
-    sections >>= fun () ->
-    symbols
-
+  let image =
+    Elf.probe >>= fun x ->
+    if x then Elf.image
+    else Fact.failf "file type is not supported" ()
 end
 
+
 module Loader = struct
+
+  include Dispatch(Monad.Ident)
 
   exception Llvm_loader_fail of int
 
@@ -105,7 +31,7 @@ module Loader = struct
       "Llvm_loader_fail" (Llvm_loader_fail 0)
 
   let to_image_doc doc =
-    match Fact.exec Image.elf doc with
+    match Fact.exec image doc with
     | Ok doc -> Ok (Some doc)
     | Error er -> Error er
 
@@ -118,5 +44,14 @@ module Loader = struct
       | 2 -> Or_error.error_string "file corrupted"
       | n -> Or_error.errorf "fail with unexpeced error code %d" n
 
-  let from_file path = Bap_fileutils.readfile path |> from_data
+  let from_file path =
+    let fd = Unix.(openfile path [O_RDONLY] 0o400) in
+    try
+      let size = Unix.((fstat fd).st_size) in
+      let data = Bigstring.map_file ~shared:false fd size in
+      Unix.close fd;
+      from_data data
+    with exn ->
+      Unix.close fd;
+      Or_error.errorf "unable to process file %s" path
 end

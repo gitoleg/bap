@@ -15,7 +15,9 @@ Library bap_llvm
   InternalModules:
                  Bap_llvm_config,
                  Bap_llvm_binary,
-                 Bap_llvm_ogre_loader
+                 Bap_llvm_ogre_loader,
+                 Bap_llvm_ogre_elf,
+                 Bap_llvm_ogre_types
   CCOpt:         $cc_optimization
   CCLib:         $llvm_lib $cxxlibs $llvm_ldflags
   CSources:      llvm_disasm.h,
