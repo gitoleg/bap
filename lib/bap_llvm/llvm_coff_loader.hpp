@@ -62,7 +62,6 @@ void entry_point(const coff_obj &obj, data_stream &s) {
 
 // SymbolRef, symbol value, section where is defined
 typedef std::tuple<SymbolRef, uint64_t, const coff_section*> coff_sym_info;
-
 typedef std::vector<std::pair<SymbolRef, uint64_t>> symbol_sizes;
 
 symbol_sizes get_symbols_sizes(const std::vector<coff_sym_info> &syms) {
@@ -85,9 +84,9 @@ symbol_sizes get_symbols_sizes(const std::vector<coff_sym_info> &syms) {
     return sizes;
 }
 
-const coff_section get_section(const COFFObjectFile& obj, std::size_t index) {
+const coff_section * get_section(const COFFObjectFile& obj, std::size_t index) {
     const coff_section *sec = nullptr;
-    bool fail = (index == COFF::IMAGE_SYM_UNDEFINED) || obj.getSection(sym.getSectionNumber(), sec);
+    bool fail = (index == COFF::IMAGE_SYM_UNDEFINED) || obj.getSection(index, sec);
     if (fail) return nullptr;
     else return sec;
 }
