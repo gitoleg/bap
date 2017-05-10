@@ -203,7 +203,7 @@ module Doc = struct
                     a value for the field %S" name fname
           | Some value when Type.check ftype value -> Ok (fnum + 1)
           | Some bad ->
-            errorf "value %S is not in a domain of values of\
+            errorf "value %S is not in a domain of values of \
                     field '%s.%s'" bad name fname) >>= fun checked ->
       if checked = Map.length fields then Ok ()
       else errorf "attribute %S has an arity %d, while a value with \

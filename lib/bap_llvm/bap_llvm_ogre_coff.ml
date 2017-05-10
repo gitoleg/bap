@@ -25,8 +25,10 @@ module Scheme = struct
 
   let code_content () = declare "code-content" (scheme name) ident
 
-  let function_ () =
-    declare "function" (scheme name $ addr $ size) Tuple.T3.create
+  let symbol () =
+    declare "symbol" (scheme name $ addr $ size) Tuple.T3.create
+
+  let function_ () = declare "function" (scheme addr $ size) Tuple.T2.create
 
 end
 
@@ -35,7 +37,7 @@ module Make(Fact : Ogre.S) = struct
   open Scheme
   open Fact.Syntax
 
-  let segments =
+  let segments () =
     Fact.foreach Ogre.Query.(
         select (from section_header
                 $ virtual_section_header
@@ -46,11 +48,10 @@ module Make(Fact : Ogre.S) = struct
           name,start,size,addr,vsize,rwx) >>= fun s ->
     Fact.Seq.iter s
       ~f:(fun (name, start, size, addr, vsize, (r,w,x)) ->
-          printf "we are here\n";
           Fact.provide segment addr vsize r w x >>= fun () ->
           Fact.provide mapped addr size start)
 
-  let sections =
+  let sections () =
     Fact.foreach Ogre.Query.(
         select (from section_header $ virtual_section_header)
           ~join:[[field name]])
@@ -60,19 +61,26 @@ module Make(Fact : Ogre.S) = struct
           Fact.provide section addr size >>= fun () ->
           Fact.provide named_region addr size name)
 
-  let symbols =
-    Fact.foreach Ogre.Query.(select (from function_))
+  let symbols () =
+    Fact.foreach Ogre.Query.(select (from symbol))
       ~f:ident >>= fun s ->
     Fact.Seq.iter s
       ~f:(fun (name, addr, size) ->
-          Fact.provide named_symbol addr name >>= fun () ->
-          Fact.provide code_start addr >>= fun () ->
-          Fact.provide symbol_chunk addr size addr)
+          if size = 0L then Fact.return ()
+          else
+            Fact.provide named_symbol addr name >>= fun () ->
+            Fact.provide symbol_chunk addr size addr >>= fun () ->
+            Fact.request function_ ~that:(fun (a,s) ->
+                a = addr && s = size) >>= fun a ->
+            if a <> None then Fact.provide code_start addr
+            else Fact.return ())
 
-  let image =
-    segments >>= fun () ->
-    sections >>= fun () ->
-    symbols
+  let image () =
+    printf "coff!!!\n";
+    segments () >>= fun () ->
+    sections () >>= fun () ->
+    symbols () >>= fun () ->
+    Fact.return ()
 
   let probe = Fact.request coff >>= fun x ->
     Fact.return (x <> None)

@@ -45,6 +45,6 @@ module Scheme : sig
 end
 
 module Make(Fact : Ogre.S) : sig
-  val image : unit Fact.t
+  val image : unit -> unit Fact.t
   val probe : bool Fact.t
 end

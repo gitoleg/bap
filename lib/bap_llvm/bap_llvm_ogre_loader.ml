@@ -11,20 +11,27 @@ end
 
 module Dispatch(M : Monad.S) = struct
   module Fact = Make(Monad.Ident)
-  module Elf = Bap_llvm_ogre_elf.Make(Fact)
-  module Coff = Bap_llvm_ogre_coff.Make(Fact)
   open Fact.Syntax
 
-  let image =
-    Elf.probe >>= fun x ->
-    if x then Elf.image
-    else
-      Coff.probe >>= fun x ->
-      if x then Coff.image
-      else
-      Fact.failf "file type is not supported" ()
-end
+  module type S = sig
+    val image : unit -> unit Fact.t
+    val probe : bool Fact.t
+  end
 
+  module Elf  = Bap_llvm_ogre_elf.Make(Fact)
+  module Coff = Bap_llvm_ogre_coff.Make(Fact)
+
+  let image =
+    let s = [(module Elf : S); (module Coff)] in
+    let rec get = function
+      | x :: xs ->
+        let module A = (val x : S) in
+        A.probe >>= fun r ->
+        if r then A.image ()
+        else get xs
+      | [] -> Fact.failf "file type is not supported" () in
+    get s
+end
 
 module Loader = struct
 
@@ -36,8 +43,11 @@ module Loader = struct
       "Llvm_loader_fail" (Llvm_loader_fail 0)
 
   let to_image_doc doc =
+    (* printf "%s\n" @@ Ogre.Doc.to_string doc; *)
     match Fact.exec image doc with
-    | Ok doc -> Ok (Some doc)
+    | Ok doc ->
+      (* printf "%s\n" @@ Ogre.Doc.to_string doc; *)
+      Ok (Some doc)
     | Error er -> Error er
 
   let from_data data =
