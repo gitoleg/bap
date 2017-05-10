@@ -1,6 +1,8 @@
 #ifndef LLVM_COFF_LOADER_HPP
 #define LLVM_COFF_LOADER_HPP
 
+#include <tuple>
+
 #include <llvm/ADT/Triple.h>
 #include <llvm/Object/COFF.h>
 
@@ -43,6 +45,53 @@ void section(const coff_section &sec, uint64_t image_base,  data_stream &s) {
         s << "(code-content " << sec.Name <<  ")";
 }
 
+error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& obj);
+
+void entry_point(const coff_obj &obj, data_stream &s) {
+    if (obj.getBytesInAddress() == 4) {
+        const pe32_header* hdr = 0;
+        if (auto ec = obj.getPE32Header(hdr)) { s.fail(ec.message()); return; }
+        if (!hdr) { s.fail("PE header not found"); return; }
+        s << "(entry-point " << hdr->AddressOfEntryPoint + hdr->ImageBase << ")";
+    } else {
+        error_or<pe32plus_header> hdr = getPE32PlusHeader(obj);
+        if (!hdr) { s.fail("PE+ header not found"); return; }
+        s << "(entry-point " << hdr->AddressOfEntryPoint + hdr->ImageBase << ")";
+    }
+}
+
+// SymbolRef, symbol value, section where is defined
+typedef std::tuple<SymbolRef, uint64_t, const coff_section*> coff_sym_info;
+
+typedef std::vector<std::pair<SymbolRef, uint64_t>> symbol_sizes;
+
+symbol_sizes get_symbols_sizes(const std::vector<coff_sym_info> &syms) {
+    symbol_sizes sizes;
+    for (auto s : syms) {
+        auto ref = std::get<0>(s);
+        auto val = std::get<1>(s);
+        auto sec = std::get<2>(s);
+        uint64_t size = sec->VirtualAddress + sec->SizeOfRawData - val;
+        for (auto next : syms) {
+            auto next_val = std::get<1>(next);
+            auto next_sec = std::get<2>(next);
+            if (sec->PointerToRawData == next_sec->PointerToRawData) {
+                auto new_size = next_val > val ? next_val - val : size;
+                size = new_size < size ? new_size : size;
+            }
+        }
+        sizes.push_back(std::make_pair(ref, size));
+    }
+    return sizes;
+}
+
+const coff_section get_section(const COFFObjectFile& obj, std::size_t index) {
+    const coff_section *sec = nullptr;
+    bool fail = (index == COFF::IMAGE_SYM_UNDEFINED) || obj.getSection(sym.getSectionNumber(), sec);
+    if (fail) return nullptr;
+    else return sec;
+}
+
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
 
 error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& obj) {
@@ -50,22 +99,8 @@ error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& 
     auto ec = obj.getPE32PlusHeader(hdr);
     if (ec) return failure(ec.message());
     else if (!hdr) { return failure("PE header not found"); }
-    else success(*hdr);
+    else return success(*hdr);
 }
-
-// void entry_point(const coff_obj &obj, data_stream &s) {
-//     if (obj.getBytesInAddress() == 4) {
-//         const pe32_header* hdr = 0;
-//         if (std::error_code ec = obj.getPE32Header(hdr)) { s.fail(ec.message()); return; }
-//         if (!hdr) { s.fail("PE header not found"); return; }
-//         s << "(entry-point " << hdr->AddressOfEntryPoint + hdr->ImageBase << ")";
-//     } else {
-//         const pe32plus_header *hdr = 0;
-//         if (std::error_code ec = obj.getPE32PlusHeader(hdr)) { s.fail(ec.message()); return; }
-//         if (!hdr) { s.fail("PE+ header not found"); return; }
-//         s << "(entry-point " << hdr->AddressOfEntryPoint + hdr->ImageBase << ")";
-//     }
-// }
 
 void sections(const coff_obj &obj, data_stream &s) {
     auto base = obj.getImageBase();
@@ -73,38 +108,21 @@ void sections(const coff_obj &obj, data_stream &s) {
         section(*obj.getCOFFSection(sref), base, s);
 }
 
-
 typedef std::vector<std::pair<SymbolRef, uint64_t>> symbol_sizes;
 
 // We shall not use! computeSymbolSizes function for coff
-// files, because it doesn't take it account some unhappy
-// outcomes, so it's possible to get accidently a symbol
+// files, because it doesn't take in account some unhappy
+// outcomes, so it's possible to get accidently a symbol's
 // size eqauls to 18446744073709550526.
 symbol_sizes getSymbolSizes(const COFFObjectFile& obj) {
-    symbol_sizes sizes;
+    std::vector<coff_sym_info> info;
     for (symbol_iterator it : obj.symbols()) {
         auto sym = obj.getCOFFSymbol(*it);
-        const coff_section *sec = nullptr;
-
-        if ((sym.getSectionNumber() == COFF::IMAGE_SYM_UNDEFINED) ||
-            (obj.getSection(sym.getSectionNumber(), sec)) ||
-            (!sec))
-            continue;
-
-        uint64_t size = (sec->VirtualAddress + sec->SizeOfRawData) - sym.getValue();
-
-        for (symbol_iterator it : obj.symbols()) {
-            auto next = obj.getCOFFSymbol(*it);
-            if (next.getSectionNumber() == sym.getSectionNumber()) {
-                auto new_size = next.getValue() > sym.getValue() ?
-                    next.getValue() - sym.getValue() : size;
-                size = new_size < size ? new_size : size;
-            }
-        }
-
-        sizes.push_back(std::make_pair(*it, size));
+        const coff_section *sec = get_section(obj, sym.getSectionNumber());
+        if (!sec) continue;
+        info.push_back(std::make_tuple(*it, sym.getValue(), sec));
     }
-    return sizes;
+    return get_symbols_sizes(info);
 }
 
 void symbols(const coff_obj &obj, data_stream &s) {
@@ -114,10 +132,9 @@ void symbols(const coff_obj &obj, data_stream &s) {
         auto name = sref.getName();
         auto addr = sref.getAddress();
         if (!name || !addr) continue;
-        s << "(symbol " << (*name).str() << " " << *addr << " " << sized_sym.second <<   ")";
-        if (sref.getType() == SymbolRef::ST_Function) {
+        s << "(symbol " << (*name).str() << " " << *addr << " " << sized_sym.second << ")";
+        if (sref.getType() == SymbolRef::ST_Function)
             s << "(function " << *addr << " " << sized_sym.second << ")";
-        }
     }
 }
 
@@ -143,11 +160,17 @@ error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& 
     return failure("Failed to extract PE32+ header");
 }
 
+template <typename I>
+void next(I &it, I end) {
+    error_code ec;
+    it.increment(ec);
+    if (ec) it = end;
+}
 error_or<uint64_t> getImageBase(const COFFObjectFile &obj) {
     if (obj.getBytesInAddress() == 4) {
         const pe32_header *hdr;
         if (error_code ec = obj.getPE32Header(hdr))
-            return failure_of_error(ec);
+            return failure(ec.message());
         return error_or<uint64_t>(hdr->ImageBase);
     } else {
         error_or<pe32plus_header> hdr = getPE32PlusHeader(obj);
@@ -156,38 +179,33 @@ error_or<uint64_t> getImageBase(const COFFObjectFile &obj) {
     }
 }
 
-// error_or<uint64_t> entry_point(const COFFObjectFile& obj) {
-//     if (obj.getBytesInAddress() == 4) {
-//         const pe32_header* hdr = 0;
-//         if (error_code ec = obj.getPE32Header(hdr))
-//             return failure_of_error(ec);
-//         if (!hdr)
-//             return failure("PE header not found");
-//         return error_or<uint64_t>(hdr->AddressOfEntryPoint + hdr->ImageBase);
-//     } else {
-//         error_or<pe32plus_header> hdr = getPE32PlusHeader(obj);
-//         if (!hdr) return hdr;
-//         return error_or<uint64_t>(hdr->AddressOfEntryPoint + hdr->ImageBase);
-//     }
-// }
+void sections(const coff_obj &obj, data_stream &s) {
+    auto base = getImageBase(obj);
+    if (!base) { s.fail(base.message()); return; }
+    auto end = obj.end_sections();
+    for (auto it = obj.begin_sections(); it != end; next(it, end))
+        section(*obj.getCOFFSection(*it), *base, s);
+}
+
+symbol_sizes getSymbolSizes(const COFFObjectFile& obj) {
+    std::vector<coff_sym_info> info;
+    for (symbol_iterator it : obj.symbols()) {
+        auto sym = obj.getCOFFSymbol(*it);
+        const coff_section *sec = get_section(obj, sym->SectionNumber());
+        if (!sec) continue;
+        info.push_back(std::make_tuple(*it, sym->Value(), sec));
+    }
+    return get_symbols_sizes(info);
+}
+
+
+void symbols(const coff_obj &obj, data_stream &s) {
+// TODO
+}
 
 #else
 #error LLVM version is not supported
 #endif
-
-void entry_point(const coff_obj &obj, data_stream &s) {
-    if (obj.getBytesInAddress() == 4) {
-        const pe32_header* hdr = 0;
-        if (auto ec = obj.getPE32Header(hdr)) { s.fail(ec.message()); return; }
-        if (!hdr) { s.fail("PE header not found"); return; }
-        s << "(entry-point " << hdr->AddressOfEntryPoint + hdr->ImageBase << ")";
-    } else {
-        error_or<pe32plus_header> hdr = getPE32PlusHeader(obj);
-        if (!hdr) { s.fail("PE+ header not found"); return; }
-        s << "(entry-point " << hdr->AddressOfEntryPoint + hdr->ImageBase << ")";
-    }
-}
-
 
 error_or<std::string> load(const coff_obj &obj) {
     data_stream s;
