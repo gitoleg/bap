@@ -67,7 +67,7 @@ typedef std::vector<std::pair<SymbolRef, uint64_t>> symbol_sizes;
 symbol_sizes get_symbols_sizes(const std::vector<coff_sym_info> &syms) {
     symbol_sizes sizes;
     for (auto s : syms) {
-        auto ref = std::get<0>(s);
+        auto sym = std::get<0>(s);
         auto val = std::get<1>(s);
         auto sec = std::get<2>(s);
         uint64_t size = sec->VirtualAddress + sec->SizeOfRawData - val;
@@ -115,12 +115,10 @@ typedef std::vector<std::pair<SymbolRef, uint64_t>> symbol_sizes;
 // size eqauls to 18446744073709550526.
 symbol_sizes getSymbolSizes(const COFFObjectFile& obj) {
     std::vector<coff_sym_info> info;
-    for (symbol_iterator it : obj.symbols()) {
+    for (symbol_iterator it : obj.symbols())
         auto sym = obj.getCOFFSymbol(*it);
-        const coff_section *sec = get_section(obj, sym.getSectionNumber());
-        if (!sec) continue;
-        info.push_back(std::make_tuple(*it, sym.getValue(), sec));
-    }
+        if (auto sec = get_section(obj, sym.getSectionNumber()))
+            info.push_back(std::make_tuple(*it, sym.getValue(), sec));
     return get_symbols_sizes(info);
 }
 
@@ -160,7 +158,7 @@ error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& 
 }
 
 template <typename I>
-void next(I &it, I end) {
+void my_next(I &it, I end) {
     error_code ec;
     it.increment(ec);
     if (ec) it = end;
@@ -182,24 +180,31 @@ void sections(const coff_obj &obj, data_stream &s) {
     auto base = getImageBase(obj);
     if (!base) { s.fail(base.message()); return; }
     auto end = obj.end_sections();
-    for (auto it = obj.begin_sections(); it != end; next(it, end))
-        section(*obj.getCOFFSection(*it), *base, s);
+    for (auto it = obj.begin_sections(); it != end; my_next(it, end))
+        section(*obj.getCOFFSection(it), *base, s);
 }
 
 symbol_sizes getSymbolSizes(const COFFObjectFile& obj) {
     std::vector<coff_sym_info> info;
-    for (symbol_iterator it : obj.symbols()) {
-        auto sym = obj.getCOFFSymbol(*it);
-        const coff_section *sec = get_section(obj, sym->SectionNumber());
-        if (!sec) continue;
-        info.push_back(std::make_tuple(*it, sym->Value(), sec));
-    }
+    auto end = obj.end_symbols();
+    for (symbol_iterator it = obj.begin_symbols(); it != end; my_next(it, end))
+        if (auto sym = obj.getCOFFSymbol(*it))
+            if (auto sec = get_section(obj, sym->SectionNumber()))
+                info.push_back(std::make_tuple(*it, sym->Value(), sec));
     return get_symbols_sizes(info);
 }
 
-
 void symbols(const coff_obj &obj, data_stream &s) {
-// TODO
+    auto syms = getSymbolSizes(obj);
+    for (auto sized_sym : syms) {
+        auto sref = sized_sym.first;
+        auto name = sref.getName();
+        auto addr = sref.getAddress();
+        if (!name || !addr) continue;
+        s << "(symbol " << (*name).str() << " " << *addr << " " << sized_sym.second << ")";
+        if (sref.getType() == SymbolRef::ST_Function)
+            s << "(function " << *addr << " " << sized_sym.second << ")";
+    }
 }
 
 #else
