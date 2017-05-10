@@ -1,6 +1,6 @@
 open Core_kernel.Std
 
-module Common_scheme = struct
+module Common_fields = struct
   open Ogre.Type
 
   let off  = "offset" %: int
@@ -8,5 +8,9 @@ module Common_scheme = struct
   let name = "name"   %: str
   let addr = "addr"   %: int
 
-  let obj_format () = Ogre.declare ~name:"obj-format" (scheme name) ident
+  let r = "read"    %: bool
+  let w = "write"   %: bool
+  let x = "execute" %: bool
+  let flag = "flag" %: bool
+
 end

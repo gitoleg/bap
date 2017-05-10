@@ -8,39 +8,14 @@
 #include <llvm/Object/ELFObjectFile.h>
 
 #include "llvm_error_or.hpp"
+#include "llvm_loader_utils.hpp"
 
 namespace loader {
 
 using namespace llvm;
 using namespace llvm::object;
 
-struct data_stream {
-
-    explicit data_stream() : s_(info()) {}
-
-    void fail(const std::string &m) { s_.fail(m); }
-
-    template <typename T>
-    friend data_stream & operator<<(data_stream &s, const T &t) {
-        if (s.s_) *s.s_ << t;
-        return s;
-    }
-
-    error_or<std::string> str() const {
-        if (s_) return success(s_->str());
-        else return failure(s_.message());
-    }
-
-private:
-    error_or<info> s_;
-};
-
-
-std::string quoted(const std::string &s) {
-    return "\"" + s + "\"";
-}
-
-static const std::string declarations =
+static const std::string elf_declarations =
     "(declare elf-format (flag bool))"
     "(declare arch (name str))"
     "(declare entry-point (addr int))"
@@ -197,8 +172,7 @@ void symbol_entries(const ELFObjectFile<T> &obj, data_stream &s) {
 template <typename T>
 error_or<std::string> load(const ELFObjectFile<T> &obj) {
     data_stream s;
-    s << std::boolalpha << declarations;
-    s << "(elf-format true)";
+    s << std::boolalpha << elf_declarations << "(elf-format true)";
     arch(obj, s);
     file_header(obj, s);
     program_headers(obj, s);

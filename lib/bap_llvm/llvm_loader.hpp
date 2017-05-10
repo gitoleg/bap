@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+#include "llvm_coff_loader.hpp"
 #include "llvm_elf_loader.hpp"
 
 namespace loader {
@@ -60,7 +61,7 @@ error_or<std::string> load_elf(const object::Binary *binary) {
 }
 
 error_or<std::string> load_coff(const object::Binary *binary) {
-    return unsupported_filetype();
+    return load_base<COFFObjectFile>(binary);
 }
 
 error_or<std::string> load_macho(const object::Binary *binary) {

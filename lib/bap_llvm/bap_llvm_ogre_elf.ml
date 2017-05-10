@@ -6,14 +6,10 @@ open Bap_llvm_ogre_types
 
 module Scheme = struct
   open Ogre.Type
-  include Common_scheme
+  include Common_fields
 
   (** flags that describes an entry behavior *)
   let ld = "load" %: bool
-  let r = "read"  %: bool
-  let w = "write"   %: bool
-  let x = "execute" %: bool
-  let flag = "flag" %: bool
 
   let declare name scheme f = Ogre.declare ~name scheme f
 

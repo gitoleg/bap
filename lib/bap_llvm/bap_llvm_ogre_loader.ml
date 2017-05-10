@@ -12,12 +12,17 @@ end
 module Dispatch(M : Monad.S) = struct
   module Fact = Make(Monad.Ident)
   module Elf = Bap_llvm_ogre_elf.Make(Fact)
+  module Coff = Bap_llvm_ogre_coff.Make(Fact)
   open Fact.Syntax
 
   let image =
     Elf.probe >>= fun x ->
     if x then Elf.image
-    else Fact.failf "file type is not supported" ()
+    else
+      Coff.probe >>= fun x ->
+      if x then Coff.image
+      else
+      Fact.failf "file type is not supported" ()
 end
 
 
