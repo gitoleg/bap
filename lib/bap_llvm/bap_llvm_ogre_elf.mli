@@ -4,6 +4,9 @@ module Scheme : sig
 
   val ld : bool Ogre.field (** loadable *)
 
+  (** check that a document describes the elf format *)
+  val elf : (bool, (bool -> 'a) -> 'a) Ogre.attribute
+
   (** elf program header as it is in file *)
   val program_header :
     ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)

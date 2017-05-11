@@ -41,8 +41,10 @@ void section(const coff_section &sec, uint64_t image_base,  data_stream &s) {
     s << "(virtual-section-header " << sec.Name << " "
       << sec.VirtualAddress + image_base << " " << sec.VirtualSize << ")";
     s << "(section-flags " << sec.Name << " " << r << " " << w << " " << x << ")";
-    //TODO: ask here
-    if (sec.Characteristics & COFF::IMAGE_SCN_CNT_CODE)
+    auto c = sec.Characteristics;
+    if ((c & COFF::IMAGE_SCN_CNT_CODE) ||
+        (c & COFF::IMAGE_SCN_CNT_INITIALIZED_DATA) ||
+        (c & COFF::IMAGE_SCN_CNT_UNINITIALIZED_DATA))
         s << "(code-content " << sec.Name <<  ")";
 }
 

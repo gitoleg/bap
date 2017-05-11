@@ -7,14 +7,15 @@ module Scheme = struct
   open Ogre.Type
   include Common_fields
 
+  (** check that a document describes the coff format *)
   let coff () = Ogre.declare ~name:"coff-format" (scheme flag) ident
 
-  (** coff section *)
+  (** coff section in file *)
   let section_header () =
     Ogre.declare ~name:"section-header" (scheme name $ off $ size)
       Tuple.T3.create
 
-  (** coff section *)
+  (** coff section in memory *)
   let virtual_section_header () =
     Ogre.declare ~name:"virtual-section-header"
       (scheme name $ addr $ size) Tuple.T3.create

@@ -22,7 +22,6 @@ module Dispatch(M : Monad.S) = struct
   module Coff = Bap_llvm_ogre_coff.Make(Fact)
 
   let image =
-    let s = [(module Elf : S); (module Coff)] in
     let rec get = function
       | x :: xs ->
         let module A = (val x : S) in
@@ -30,7 +29,7 @@ module Dispatch(M : Monad.S) = struct
         if r then A.image
         else get xs
       | [] -> Fact.failf "file type is not supported" () in
-    get s
+    get [(module Elf : S); (module Coff)]
 end
 
 module Loader = struct
@@ -43,11 +42,8 @@ module Loader = struct
       "Llvm_loader_fail" (Llvm_loader_fail 0)
 
   let to_image_doc doc =
-    (* printf "%s\n" @@ Ogre.Doc.to_string doc; *)
     match Fact.exec image doc with
-    | Ok doc ->
-      (* printf "%s\n" @@ Ogre.Doc.to_string doc; *)
-      Ok (Some doc)
+    | Ok doc -> Ok (Some doc)
     | Error er -> Error er
 
   let from_data data =
