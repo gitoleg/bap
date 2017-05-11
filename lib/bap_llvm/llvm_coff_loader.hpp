@@ -221,12 +221,13 @@ void symbols(const coff_obj &obj, data_stream &s) {
 } // namespace coff_loader
 
 error_or<std::string> load(const llvm::object::COFFObjectFile &obj) {
+    using namespace coff_loader;
     data_stream s;
-    s << std::boolalpha << coff_loader::coff_declarations << "(coff-format true)";
-    coff_loader::arch(obj,s);
-    coff_loader::entry_point(obj, s);
-    coff_loader::sections(obj, s);
-    coff_loader::symbols(obj, s);
+    s << std::boolalpha << coff_declarations << "(coff-format true)";
+    arch(obj,s);
+    entry_point(obj, s);
+    sections(obj, s);
+    symbols(obj, s);
     return s.str();
 }
 
