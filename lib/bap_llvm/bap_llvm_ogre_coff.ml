@@ -5,31 +5,34 @@ open Bap_llvm_ogre_types
 
 module Scheme = struct
   open Ogre.Type
-
   include Common_fields
 
-  let declare name scheme f = Ogre.declare ~name scheme f
+  let coff () = Ogre.declare ~name:"coff-format" (scheme flag) ident
 
-  let coff () = declare "coff-format" (scheme flag) ident
-
+  (** coff section *)
   let section_header () =
-    declare "section-header" (scheme name $ off $ size)
+    Ogre.declare ~name:"section-header" (scheme name $ off $ size)
       Tuple.T3.create
 
+  (** coff section *)
   let virtual_section_header () =
-    declare "virtual-section-header" (scheme name $ addr $ size) Tuple.T3.create
+    Ogre.declare ~name:"virtual-section-header"
+      (scheme name $ addr $ size) Tuple.T3.create
 
-  let section_access () =
-    declare "section-access" (scheme name $ r $ w $ x)
+  (** coff section access flags *)
+  let section_flags () =
+    Ogre.declare ~name:"section-flags" (scheme name $ r $ w $ x)
       (fun name r w x -> name, (r,w,x))
 
-  let code_content () = declare "code-content" (scheme name) ident
+  (** coff section that contains code *)
+  let code_content () = Ogre.declare ~name:"code-content" (scheme name) ident
 
+  (** coff symbol  *)
   let symbol () =
-    declare "symbol" (scheme name $ addr $ size) Tuple.T3.create
+    Ogre.declare ~name:"symbol" (scheme name $ addr $ size) Tuple.T3.create
 
-  let function_ () = declare "function" (scheme addr $ size) Tuple.T2.create
-
+  (** coff symbol that is a function *)
+  let function_ () = Ogre.declare ~name:"function" (scheme addr) ident
 end
 
 module Make(Fact : Ogre.S) = struct
@@ -37,11 +40,11 @@ module Make(Fact : Ogre.S) = struct
   open Scheme
   open Fact.Syntax
 
-  let segments () =
+  let segments =
     Fact.foreach Ogre.Query.(
         select (from section_header
                 $ virtual_section_header
-                $ section_access
+                $ section_flags
                 $ code_content)
           ~join:[[field name]])
       ~f:(fun (name, start, size) (_,addr,vsize) (_,rwx) _  ->
@@ -51,7 +54,7 @@ module Make(Fact : Ogre.S) = struct
           Fact.provide segment addr vsize r w x >>= fun () ->
           Fact.provide mapped addr size start)
 
-  let sections () =
+  let sections =
     Fact.foreach Ogre.Query.(
         select (from section_header $ virtual_section_header)
           ~join:[[field name]])
@@ -61,7 +64,7 @@ module Make(Fact : Ogre.S) = struct
           Fact.provide section addr size >>= fun () ->
           Fact.provide named_region addr size name)
 
-  let symbols () =
+  let symbols =
     Fact.foreach Ogre.Query.(select (from symbol))
       ~f:ident >>= fun s ->
     Fact.Seq.iter s
@@ -70,17 +73,14 @@ module Make(Fact : Ogre.S) = struct
           else
             Fact.provide named_symbol addr name >>= fun () ->
             Fact.provide symbol_chunk addr size addr >>= fun () ->
-            Fact.request function_ ~that:(fun (a,s) ->
-                a = addr && s = size) >>= fun a ->
+            Fact.request function_ ~that:(fun a -> a = addr) >>= fun a ->
             if a <> None then Fact.provide code_start addr
             else Fact.return ())
 
-  let image () =
-    printf "coff!!!\n";
-    segments () >>= fun () ->
-    sections () >>= fun () ->
-    symbols () >>= fun () ->
-    Fact.return ()
+  let image =
+    segments >>= fun () ->
+    sections >>= fun () ->
+    symbols
 
   let probe = Fact.request coff >>= fun x ->
     Fact.return (x <> None)

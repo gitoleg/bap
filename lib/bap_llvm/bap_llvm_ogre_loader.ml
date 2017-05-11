@@ -14,7 +14,7 @@ module Dispatch(M : Monad.S) = struct
   open Fact.Syntax
 
   module type S = sig
-    val image : unit -> unit Fact.t
+    val image : unit Fact.t
     val probe : bool Fact.t
   end
 
@@ -27,7 +27,7 @@ module Dispatch(M : Monad.S) = struct
       | x :: xs ->
         let module A = (val x : S) in
         A.probe >>= fun r ->
-        if r then A.image ()
+        if r then A.image
         else get xs
       | [] -> Fact.failf "file type is not supported" () in
     get s

@@ -11,6 +11,7 @@
 #include "llvm_loader_utils.hpp"
 
 namespace loader {
+namespace elf_loader {
 
 using namespace llvm;
 using namespace llvm::object;
@@ -169,15 +170,17 @@ void symbol_entries(const ELFObjectFile<T> &obj, data_stream &s) {
 #error LLVM version is not supported
 #endif
 
+} // namespace elf_loader
+
 template <typename T>
-error_or<std::string> load(const ELFObjectFile<T> &obj) {
+error_or<std::string> load(const llvm::object::ELFObjectFile<T> &obj) {
     data_stream s;
-    s << std::boolalpha << elf_declarations << "(elf-format true)";
-    arch(obj, s);
-    file_header(obj, s);
-    program_headers(obj, s);
-    section_headers(obj, s);
-    symbol_entries(obj, s);
+    s << std::boolalpha << elf_loader::elf_declarations << "(elf-format true)";
+    elf_loader::arch(obj, s);
+    elf_loader::file_header(obj, s);
+    elf_loader::program_headers(obj, s);
+    elf_loader::section_headers(obj, s);
+    elf_loader::symbol_entries(obj, s);
     return s.str();
 }
 

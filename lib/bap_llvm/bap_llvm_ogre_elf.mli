@@ -2,16 +2,7 @@ open Monads.Std
 
 module Scheme : sig
 
-  val off  : int64 Ogre.field
-  val size : int64 Ogre.field
-  val addr : int64 Ogre.field
-  val name : string Ogre.field
-
-  (** flags that describes an entry behavior *)
   val ld : bool Ogre.field (** loadable *)
-  val r :  bool Ogre.field (** readable *)
-  val w :  bool Ogre.field (** writable *)
-  val x :  bool Ogre.field (** executable *)
 
   (** elf program header as it is in file *)
   val program_header :
@@ -45,6 +36,6 @@ module Scheme : sig
 end
 
 module Make(Fact : Ogre.S) : sig
-  val image : unit -> unit Fact.t
+  val image : unit Fact.t
   val probe : bool Fact.t
 end

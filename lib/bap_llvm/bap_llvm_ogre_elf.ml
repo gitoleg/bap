@@ -45,7 +45,7 @@ module Make(Fact : Ogre.S) = struct
   open Scheme
   open Fact.Syntax
 
-  let segments () =
+  let segments =
     Fact.foreach Ogre.Query.(begin
         select (from program_header $ virtual_program_header $ program_header_flags)
           ~join:[[field name]]
@@ -60,7 +60,7 @@ module Make(Fact : Ogre.S) = struct
               Fact.provide named_region addr vsize name
           else Fact.return ()) >>= Fact.return
 
-  let sections () =
+  let sections =
     Fact.foreach Ogre.Query.(select (from section_header))
       ~f:ident >>= fun s ->
     Fact.Seq.iter s
@@ -68,7 +68,7 @@ module Make(Fact : Ogre.S) = struct
           Fact.provide section addr size >>= fun () ->
           Fact.provide named_region addr size name)
 
-  let symbols () =
+  let symbols =
     Fact.foreach Ogre.Query.(select (from symbol_entry))
       ~f:(fun (name, addr, size) -> name,addr,size) >>= fun s ->
     Fact.Seq.iter s ~f:(fun (name, addr, size) ->
@@ -81,11 +81,10 @@ module Make(Fact : Ogre.S) = struct
             Fact.provide code_start addr
           else Fact.return ())
 
-  let image () =
-    printf "elf!!!\n";
-    segments () >>= fun () ->
-    sections () >>= fun () ->
-    symbols ()
+  let image =
+    segments >>= fun () ->
+    sections >>= fun () ->
+    symbols
 
   let probe = Fact.request elf >>= fun x ->
     Fact.return (x <> None)

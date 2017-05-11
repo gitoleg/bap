@@ -11,6 +11,7 @@
 #include <llvm/Object/SymbolSize.h>
 
 namespace loader {
+namespace coff_loader {
 
 using namespace llvm;
 using namespace llvm::object;
@@ -24,9 +25,9 @@ static const std::string coff_declarations =
     "(declare section-header (name str) (offset int) (size int))"
     "(declare virtual-section-header (name str) (addr int) (size int))"
     "(declare code-content (name str))"
-    "(declare section-access (name str) (read bool) (write bool) (execute bool))"
+    "(declare section-flags (name str) (read bool) (write bool) (execute bool))"
     "(declare symbol (name str) (addr int) (size int))"
-    "(declare function (addr int) (size int))";
+    "(declare function (addr int))";
 
 void arch(const coff_obj &obj, data_stream &s) {
     s << "(arch " << Triple::getArchTypeName(static_cast<Triple::ArchType>(obj.getArch())) << ")";
@@ -37,12 +38,18 @@ void section(const coff_section &sec, uint64_t image_base,  data_stream &s) {
     bool w = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_WRITE);
     bool x = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_EXECUTE);
     s << "(section-header " << sec.Name << " " << sec.PointerToRawData << " " << sec.SizeOfRawData << ")";
-    s << "(virtual-section-header " << sec.Name << " " << sec.VirtualAddress + image_base << " "
-      << sec.VirtualSize << ")";
-    s << "(section-access " << sec.Name << " " << r << " " << w << " " << x << ")";
+    s << "(virtual-section-header " << sec.Name << " "
+      << sec.VirtualAddress + image_base << " " << sec.VirtualSize << ")";
+    s << "(section-flags " << sec.Name << " " << r << " " << w << " " << x << ")";
     //TODO: ask here
     if (sec.Characteristics & COFF::IMAGE_SCN_CNT_CODE)
         s << "(code-content " << sec.Name <<  ")";
+}
+
+void symbol(const std::string &name, uint64_t addr, uint64_t size, SymbolRef::Type typ, data_stream &s) {
+    s << "(symbol " << name << " " << addr << " " << size << ")";
+    if (typ == SymbolRef::ST_Function)
+        s << "(function " << addr << ")";
 }
 
 error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& obj);
@@ -67,14 +74,14 @@ typedef std::vector<std::pair<SymbolRef, uint64_t>> symbol_sizes;
 symbol_sizes get_symbols_sizes(const std::vector<coff_sym_info> &syms) {
     symbol_sizes sizes;
     for (auto s : syms) {
-        auto sym = std::get<0>(s);
+        auto ref = std::get<0>(s);
         auto val = std::get<1>(s);
         auto sec = std::get<2>(s);
         uint64_t size = sec->VirtualAddress + sec->SizeOfRawData - val;
         for (auto next : syms) {
             auto next_val = std::get<1>(next);
             auto next_sec = std::get<2>(next);
-            if (sec->PointerToRawData == next_sec->PointerToRawData) {
+            if (sec == next_sec) {
                 auto new_size = next_val > val ? next_val - val : size;
                 size = new_size < size ? new_size : size;
             }
@@ -107,31 +114,28 @@ void sections(const coff_obj &obj, data_stream &s) {
         section(*obj.getCOFFSection(sref), base, s);
 }
 
-typedef std::vector<std::pair<SymbolRef, uint64_t>> symbol_sizes;
-
 // We shall not use! computeSymbolSizes function for coff
 // files, because it doesn't take in account some unhappy
-// outcomes, so it's possible to get accidently a symbol's
+// outcomes, so it's possible to get accidently a symbol
 // size eqauls to 18446744073709550526.
-symbol_sizes getSymbolSizes(const COFFObjectFile& obj) {
+symbol_sizes get_symbols_sizes(const COFFObjectFile& obj) {
     std::vector<coff_sym_info> info;
-    for (symbol_iterator it : obj.symbols())
+    for (symbol_iterator it : obj.symbols()) {
         auto sym = obj.getCOFFSymbol(*it);
         if (auto sec = get_section(obj, sym.getSectionNumber()))
             info.push_back(std::make_tuple(*it, sym.getValue(), sec));
+    }
     return get_symbols_sizes(info);
 }
 
 void symbols(const coff_obj &obj, data_stream &s) {
-    auto syms = getSymbolSizes(obj);
+    auto syms = get_symbols_sizes(obj);
     for (auto sized_sym : syms) {
         auto sref = sized_sym.first;
         auto name = sref.getName();
         auto addr = sref.getAddress();
         if (!name || !addr) continue;
-        s << "(symbol " << (*name).str() << " " << *addr << " " << sized_sym.second << ")";
-        if (sref.getType() == SymbolRef::ST_Function)
-            s << "(function " << *addr << " " << sized_sym.second << ")";
+        symbol((*name).str(), *addr, sized_sym.second, sref.getType(), s);
     }
 }
 
@@ -158,11 +162,12 @@ error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& 
 }
 
 template <typename I>
-void my_next(I &it, I end) {
+void next(I &it, I end) {
     error_code ec;
     it.increment(ec);
     if (ec) it = end;
 }
+
 error_or<uint64_t> getImageBase(const COFFObjectFile &obj) {
     if (obj.getBytesInAddress() == 4) {
         const pe32_header *hdr;
@@ -180,30 +185,32 @@ void sections(const coff_obj &obj, data_stream &s) {
     auto base = getImageBase(obj);
     if (!base) { s.fail(base.message()); return; }
     auto end = obj.end_sections();
-    for (auto it = obj.begin_sections(); it != end; my_next(it, end))
+    for (auto it = obj.begin_sections(); it != end; next(it, end))
         section(*obj.getCOFFSection(it), *base, s);
 }
 
-symbol_sizes getSymbolSizes(const COFFObjectFile& obj) {
+symbol_sizes get_symbols_sizes(const COFFObjectFile& obj) {
     std::vector<coff_sym_info> info;
     auto end = obj.end_symbols();
-    for (symbol_iterator it = obj.begin_symbols(); it != end; my_next(it, end))
-        if (auto sym = obj.getCOFFSymbol(*it))
-            if (auto sec = get_section(obj, sym->SectionNumber()))
-                info.push_back(std::make_tuple(*it, sym->Value(), sec));
+    for (symbol_iterator it = obj.begin_symbols(); it != end; next(it, end))
+        if (auto sym = obj.getCOFFSymbol(it))
+            if (auto sec = get_section(obj, sym->SectionNumber))
+                info.push_back(std::make_tuple(*it, sym->Value, sec));
     return get_symbols_sizes(info);
 }
 
 void symbols(const coff_obj &obj, data_stream &s) {
-    auto syms = getSymbolSizes(obj);
+    auto syms = get_symbols_sizes(obj);
     for (auto sized_sym : syms) {
+        StringRef name;
+        uint64_t addr;
+        SymbolRef::Type typ;
         auto sref = sized_sym.first;
-        auto name = sref.getName();
-        auto addr = sref.getAddress();
-        if (!name || !addr) continue;
-        s << "(symbol " << (*name).str() << " " << *addr << " " << sized_sym.second << ")";
-        if (sref.getType() == SymbolRef::ST_Function)
-            s << "(function " << *addr << " " << sized_sym.second << ")";
+        auto ecn = sref.getName(name);
+        auto eca = sref.getAddress(addr);
+        auto ect = sref.getType(typ);
+        if (!ecn || !eca || !ect) continue;
+        symbol(name.str(), addr, sized_sym.second, typ, s);
     }
 }
 
@@ -211,13 +218,15 @@ void symbols(const coff_obj &obj, data_stream &s) {
 #error LLVM version is not supported
 #endif
 
-error_or<std::string> load(const coff_obj &obj) {
+} // namespace coff_loader
+
+error_or<std::string> load(const llvm::object::COFFObjectFile &obj) {
     data_stream s;
-    s << std::boolalpha << coff_declarations << "(coff-format true)";
-    arch(obj,s);
-    entry_point(obj, s);
-    sections(obj, s);
-    symbols(obj, s);
+    s << std::boolalpha << coff_loader::coff_declarations << "(coff-format true)";
+    coff_loader::arch(obj,s);
+    coff_loader::entry_point(obj, s);
+    coff_loader::sections(obj, s);
+    coff_loader::symbols(obj, s);
     return s.str();
 }
 
