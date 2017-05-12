@@ -3,7 +3,6 @@
 
 #include <tuple>
 
-#include <llvm/ADT/Triple.h>
 #include <llvm/Object/COFF.h>
 
 #include "llvm_error_or.hpp"
@@ -28,10 +27,6 @@ static const std::string coff_declarations =
     "(declare section-flags (name str) (read bool) (write bool) (execute bool))"
     "(declare symbol (name str) (addr int) (size int))"
     "(declare function (addr int))";
-
-void arch(const coff_obj &obj, data_stream &s) {
-    s << "(arch " << Triple::getArchTypeName(static_cast<Triple::ArchType>(obj.getArch())) << ")";
-}
 
 void section(const coff_section &sec, uint64_t image_base,  data_stream &s) {
     bool r = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_READ);
@@ -163,13 +158,6 @@ error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& 
     return failure("Failed to extract PE32+ header");
 }
 
-template <typename I>
-void next(I &it, I end) {
-    error_code ec;
-    it.increment(ec);
-    if (ec) it = end;
-}
-
 error_or<uint64_t> getImageBase(const COFFObjectFile &obj) {
     if (obj.getBytesInAddress() == 4) {
         const pe32_header *hdr;
@@ -226,7 +214,7 @@ error_or<std::string> load(const llvm::object::COFFObjectFile &obj) {
     using namespace coff_loader;
     data_stream s;
     s << std::boolalpha << coff_declarations << "(coff-format true)";
-    arch(obj,s);
+    s << "(arch " << arch_of_object(obj) << ")";
     entry_point(obj, s);
     sections(obj, s);
     symbols(obj, s);

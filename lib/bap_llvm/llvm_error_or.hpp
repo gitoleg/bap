@@ -6,6 +6,7 @@
 #include <system_error>
 #include <memory>
 #include <type_traits>
+#include <assert.h>
 
 // [error_or] contains either data or error message, but not both of them.
 // Also, it's possible to store warnings.

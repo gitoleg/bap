@@ -18,6 +18,7 @@ Library bap_llvm
                  Bap_llvm_ogre_loader,
                  Bap_llvm_ogre_coff,
                  Bap_llvm_ogre_elf,
+                 Bap_llvm_ogre_macho,
                  Bap_llvm_ogre_types
   CCOpt:         $cc_optimization
   CCLib:         $llvm_lib $cxxlibs $llvm_ldflags
@@ -40,6 +41,8 @@ Library bap_llvm
                  llvm_coff_loader.h,
                  llvm_elf_loader.c,
                  llvm_elf_loader.h,
+                 llvm_macho_loader.c,
+                 llvm_macho_loader.h,
                  llvm_loader_stubs.c,
                  llvm_loader_stubs.h,
                  llvm_loader_utils.c,

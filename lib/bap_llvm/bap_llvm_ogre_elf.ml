@@ -6,7 +6,7 @@ open Bap_llvm_ogre_types
 
 module Scheme = struct
   open Ogre.Type
-  include Common_fields
+  open Common_fields
 
   (** flags that describes an entry behavior *)
   let ld = "load" %: bool

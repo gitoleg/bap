@@ -2,7 +2,6 @@
 #define LLVM_ELF_LOADER_HPP
 
 #include <iostream>
-#include <sstream>
 #include <iomanip>
 
 #include <llvm/Object/ELFObjectFile.h>
@@ -26,11 +25,6 @@ static const std::string elf_declarations =
     "(declare section-header (name str) (addr int) (size int))"
     "(declare symbol-entry (name str) (addr int) (size int))"
     "(declare code-entry (addr int))";
-
-template <typename T>
-void arch(const ELFObjectFile<T> &obj, data_stream &s) {
-    s << "(arch " << Triple::getArchTypeName(static_cast<Triple::ArchType>(obj.getArch())) << ")";
-}
 
 template <typename T>
 void file_header(const ELFObjectFile<T> &obj, data_stream &s) {
@@ -137,13 +131,6 @@ void section_headers(const ELFObjectFile<T> &obj, data_stream &s) {
     }
 }
 
-template <typename I>
-void next(I &it, I end) {
-    error_code ec;
-    it.increment(ec);
-    if (ec) it = end;
-}
-
 template <typename T>
 void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_iterator end, data_stream &s) {
     StringRef name;
@@ -177,7 +164,7 @@ error_or<std::string> load(const llvm::object::ELFObjectFile<T> &obj) {
     using namespace elf_loader;
     data_stream s;
     s << std::boolalpha << elf_declarations << "(elf-format true)";
-    arch(obj, s);
+    s << "(arch " << arch_of_object(obj) << ")";
     file_header(obj, s);
     program_headers(obj, s);
     section_headers(obj, s);

@@ -18,8 +18,9 @@ module Dispatch(M : Monad.S) = struct
     val probe : bool Fact.t
   end
 
-  module Elf  = Bap_llvm_ogre_elf.Make(Fact)
+  module Elf = Bap_llvm_ogre_elf.Make(Fact)
   module Coff = Bap_llvm_ogre_coff.Make(Fact)
+  module Macho = Bap_llvm_ogre_macho.Make(Fact)
 
   let image =
     let rec get = function
@@ -29,7 +30,7 @@ module Dispatch(M : Monad.S) = struct
         if r then A.image
         else get xs
       | [] -> Fact.failf "file type is not supported" () in
-    get [(module Elf : S); (module Coff)]
+    get [(module Elf : S); (module Coff); (module Macho)]
 end
 
 module Loader = struct

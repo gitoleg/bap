@@ -3,6 +3,8 @@
 
 #include <sstream>
 
+#include <llvm/ADT/Triple.h>
+
 #include "llvm_error_or.hpp"
 
 namespace loader {
@@ -34,6 +36,25 @@ private:
 std::string quoted(const std::string &s) {
     return "\"" + s + "\"";
 }
+
+std::string arch_of_object(const llvm::object::ObjectFile &obj) {
+    return Triple::getArchTypeName(static_cast<Triple::ArchType>(obj.getArch()));
+}
+
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
+
+#include <llvm/Object/ObjectFile.h>
+
+using namespace llvm::object;
+
+template <typename T>
+void next(content_iterator<T> &it, content_iterator<T> end) {
+    error_code ec;
+    it.increment(ec);
+    if (ec) it = end;
+}
+
+#endif
 
 } // namespace loader
 

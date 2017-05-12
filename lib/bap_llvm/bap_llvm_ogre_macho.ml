@@ -7,32 +7,33 @@ module Scheme = struct
   open Ogre.Type
   open Common_fields
 
-  (** check that a document describes the coff format *)
-  let coff () = Ogre.declare ~name:"coff-format" (scheme flag) ident
+  (** check that a document describes the macho format *)
+  let macho () = Ogre.declare ~name:"macho-format" (scheme flag) ident
 
-  (** coff section in file *)
-  let section_header () =
-    Ogre.declare ~name:"section-header" (scheme name $ off $ size)
+  let segment_cmd () =
+    Ogre.declare ~name:"segment-command" (scheme name $ off $ size)
       Tuple.T3.create
 
-  (** coff section in memory *)
-  let virtual_section_header () =
-    Ogre.declare ~name:"virtual-section-header"
-      (scheme name $ addr $ size) Tuple.T3.create
-
-  (** coff section access flags *)
-  let section_flags () =
-    Ogre.declare ~name:"section-flags" (scheme name $ r $ w $ x)
+  let segment_cmd_flags () =
+    Ogre.declare ~name:"segment-command-flags"
+      (scheme name $ r $ w $ x)
       (fun name r w x -> name, (r,w,x))
 
-  (** coff section that contains code *)
-  let code_content () = Ogre.declare ~name:"code-content" (scheme name) ident
+  let segment_cmd_mapping () =
+    Ogre.declare ~name:"segment-command-mapping"
+      (scheme name $ addr $ size) Tuple.T3.create
 
-  (** coff symbol  *)
-  let symbol () =
-    Ogre.declare ~name:"symbol" (scheme name $ addr $ size) Tuple.T3.create
+  (** macho section in file *)
+  let macho_section () =
+    Ogre.declare ~name:"macho-section" (scheme name $ off $ size)
+      Tuple.T3.create
 
-  (** coff symbol that is a function *)
+  (** macho symbol  *)
+  let macho_symbol () =
+    Ogre.declare ~name:"macho-symbol" (scheme name $ addr $ size)
+      Tuple.T3.create
+
+  (** macho symbol that is a function *)
   let function_ () = Ogre.declare ~name:"function" (scheme addr) ident
 end
 
@@ -43,30 +44,28 @@ module Make(Fact : Ogre.S) = struct
 
   let segments =
     Fact.foreach Ogre.Query.(
-        select (from section_header
-                $ virtual_section_header
-                $ section_flags
-                $ code_content)
+        select (from segment_cmd
+                $ segment_cmd_flags
+                $ segment_cmd_mapping)
           ~join:[[field name]])
-      ~f:(fun (name, start, size) (_,addr,vsize) (_,rwx) _  ->
+      ~f:(fun (name, start, size) (_,rwx) (_,addr,vsize)  ->
           name,start,size,addr,vsize,rwx) >>= fun s ->
     Fact.Seq.iter s
       ~f:(fun (name, start, size, addr, vsize, (r,w,x)) ->
           Fact.provide segment addr vsize r w x >>= fun () ->
+          Fact.provide named_region addr vsize name >>= fun () ->
           Fact.provide mapped addr size start)
 
   let sections =
-    Fact.foreach Ogre.Query.(
-        select (from section_header $ virtual_section_header)
-          ~join:[[field name]])
-      ~f:(fun (name,_,_) (_,addr,size) -> name,addr,size) >>= fun s ->
+    Fact.foreach Ogre.Query.(select (from macho_section))
+      ~f:ident >>= fun s ->
     Fact.Seq.iter s
       ~f:(fun (name, addr, size) ->
           Fact.provide section addr size >>= fun () ->
           Fact.provide named_region addr size name)
 
   let symbols =
-    Fact.foreach Ogre.Query.(select (from symbol))
+    Fact.foreach Ogre.Query.(select (from macho_symbol))
       ~f:ident >>= fun s ->
     Fact.Seq.iter s
       ~f:(fun (name, addr, size) ->
@@ -83,7 +82,7 @@ module Make(Fact : Ogre.S) = struct
     sections >>= fun () ->
     symbols
 
-  let probe = Fact.request coff >>= fun x ->
+  let probe = Fact.request macho >>= fun x ->
     Fact.return (x <> None)
 
 end
