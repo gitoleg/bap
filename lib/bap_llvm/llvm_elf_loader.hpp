@@ -139,7 +139,7 @@ void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_i
     for (auto it = begin; it != end; next(it, end)) {
         auto er_name = it->getName(name);
         auto er_addr = it->getAddress(addr);
-        auto er_size = it->getAddress(size);
+        auto er_size = it->getSize(size);
         if (er_name || er_addr || er_size) continue;
         auto sym_elf = obj.getSymbol(it->getRawDataRefImpl());
         symbol_entry(*sym_elf, name.str(), addr, size, s);

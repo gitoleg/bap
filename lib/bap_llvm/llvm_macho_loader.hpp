@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iomanip>
 
+#include <llvm/Support/MachO.h>
 #include <llvm/Object/MachO.h>
 
 #include "llvm_error_or.hpp"
@@ -18,20 +19,17 @@ using namespace llvm::object;
 typedef llvm::object::MachOObjectFile macho;
 typedef macho::LoadCommandInfo command_info;
 
-// check that symbol belongs to some sections, i.e. it's type is
-// N_SECT
+// check that symbol belongs to some sections,
+// i.e. it's type is N_SECT.
 bool is_in_section(const macho &obj, SymbolRef sym) {
     auto raw = sym.getRawDataRefImpl();
     const char *p = reinterpret_cast<const char *>(raw.p);
     if (p < obj.getData().begin() ||
-        p + sizeof(MachO::nlist_base) > obj.getData().end())
+        p + sizeof(MachO::nlist) > obj.getData().end())
         return false;
-    MachO::nlist_base entry;
-    memcpy(&entry, p, sizeof(MachO::nlist_base));
-    if (obj.isLittleEndian() != sys::IsLittleEndianHost)
-        MachO::swapStruct(entry);
-    uint8_t n_type = entry.n_type;
-    return ((n_type & MachO::N_TYPE) == MachO::N_SECT);
+    const MachO::nlist *entry =
+        reinterpret_cast<const MachO::nlist *>(raw.p);
+    return ((entry->n_type & MachO::N_TYPE) == MachO::N_SECT);
 }
 
 static std::string macho_declarations =
@@ -123,7 +121,7 @@ void macho_commands(const macho &obj, data_stream &s) {
 void sections(const macho &obj, data_stream &s) {
     auto end = obj.end_sections();
     for (auto it = obj.begin_sections(); it != end; next(it, end))
-        section(obj->getSection(s.getRawDataRefImpl()), s);
+        section(obj.getSection(it->getRawDataRefImpl()), s);
 }
 
 void symbols(const macho &obj, data_stream &s) {
@@ -134,10 +132,11 @@ void symbols(const macho &obj, data_stream &s) {
     for (auto it = obj.begin_symbols(); it != end; next(it, end)) {
         auto er_name = it->getName(name);
         auto er_addr = it->getAddress(addr);
-        auto er_size = it->getAddress(size);
-        if (er_name || er_addr || er_size) continue;
-        if (is_in_section(obj, s))
-            symbol_entry(name.str(), addr, size, s);
+        auto er_size = it->getSize(size);
+        auto er_type = it->getType(typ);
+        if (er_name || er_addr || er_size || er_type) continue;
+        if (is_in_section(obj, *it))
+            symbol(name.str(), addr, size, *typ, s);
     }
 }
 
