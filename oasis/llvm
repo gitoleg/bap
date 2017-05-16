@@ -55,3 +55,11 @@ Library llvm_plugin
   BuildDepends:  bap, bap-llvm
   FindlibName:   bap-plugin-llvm
   InternalModules: Llvm_main
+
+Library legacy_llvm_plugin
+  XMETADescription: provide legacy loader using LLVM library
+  Path:          plugins/legacy_llvm
+  Build$:        flag(everything) || flag(llvm)
+  BuildDepends:  bap, bap-llvm
+  FindlibName:   bap-plugin-legacy_llvm
+  InternalModules: Main
