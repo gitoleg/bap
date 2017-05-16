@@ -38,7 +38,7 @@ static std::string macho_declarations =
     "(declare entry-point (addr int))"
     "(declare segment-command (name str) (offset int) (size int))"
     "(declare segment-command-flags (name str) (read bool) (write bool) (execute bool))"
-    "(declare segment-command-mapping (name str) (addr int) (size int))"
+    "(declare virtual-segment-command (name str) (addr int) (size int))"
     "(declare section (name str) (offset int) (size int))"
     "(declare symbol (name str) (addr int) (size int))"
     "(declare function (addr int))";
@@ -50,7 +50,7 @@ void segment_command(const T &cmd, data_stream &s) {
     bool x = static_cast<bool>(cmd.initprot & MachO::VM_PROT_EXECUTE);
     s << "(segment-command " << cmd.segname << " " << cmd.fileoff << " " << cmd.filesize << ")";
     s << "(segment-command-flags " << cmd.segname << " " << r << " " << w << " " << x << ")";
-    s << "(segment-command-mapping " << cmd.segname << " " << cmd.vmaddr << " " << cmd.vmsize << ")";
+    s << "(virtual-segment-command " << cmd.segname << " " << cmd.vmaddr << " " << cmd.vmsize << ")";
 }
 
 void entry(command_info &info, data_stream &s) {

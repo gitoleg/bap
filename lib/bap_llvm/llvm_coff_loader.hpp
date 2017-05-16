@@ -18,7 +18,7 @@ using namespace llvm::object;
 typedef COFFObjectFile coff_obj;
 
 static const std::string coff_declarations =
-    "(declare file-type (name bool))"
+    "(declare file-type (name str))"
     "(declare arch (name str))"
     "(declare entry-point (addr int))"
     "(declare section-header (name str) (offset int) (size int))"

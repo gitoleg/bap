@@ -16,8 +16,8 @@ module Scheme = struct
       (scheme name $ r $ w $ x)
       (fun name r w x -> name, (r,w,x))
 
-  let segment_cmd_mapping () =
-    Ogre.declare ~name:"segment-command-mapping"
+  let virtual_segment_cmd () =
+    Ogre.declare ~name:"virtual-segment-command"
       (scheme name $ addr $ size) Tuple.T3.create
 
   (** macho section in file *)
@@ -43,7 +43,7 @@ module Make(Fact : Ogre.S) = struct
     Fact.foreach Ogre.Query.(
         select (from segment_cmd
                 $ segment_cmd_flags
-                $ segment_cmd_mapping)
+                $ virtual_segment_cmd)
           ~join:[[field name]])
       ~f:(fun (name, start, size) (_,rwx) (_,addr,vsize)  ->
           name,start,size,addr,vsize,rwx) >>= fun s ->

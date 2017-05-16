@@ -11,7 +11,7 @@ module Scheme : sig
      (string -> bool -> bool -> bool -> 'a) -> 'a)
       Ogre.attribute
 
-  val segment_cmd_mapping :
+  val virtual_segment_cmd :
     ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
       Ogre.attribute
 
