@@ -184,7 +184,7 @@ void symbols(const macho &obj, data_stream &s) {
         if (er_name || er_size || er_type || !entry) continue;
 
         if (is_in_section(entry))
-            section_symbol(name, entry->n_value, sized_sym.second, typ, s);
+            section_symbol(name, entry->n_value, size, typ, s);
          else
             macho_symbol(name, entry->n_value, s);
     }
