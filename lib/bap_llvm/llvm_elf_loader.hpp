@@ -62,8 +62,8 @@ void section_header(const T &hdr, const std::string &name, data_stream &s) {
 
 template <typename T>
 void symbol_entry(const Elf_Sym_Impl<T> &sym, const std::string &name, uint64_t addr,
-                  uint64_t size, data_stream &s) {
-    s << "(symbol-entry " << quoted(name) << " " << addr << " " << size << ")";
+                  data_stream &s) {
+    s << "(symbol-entry " << quoted(name) << " " << addr << " " << sym.st_size << ")";
     if (sym.getType() == ELF::STT_FUNC)
         s << "(code-entry " << addr << ")";
 }
@@ -96,7 +96,7 @@ void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_i
         auto addr = sym.getAddress();
         if (!name || !addr) continue;
         auto sym_elf = obj.getSymbol(sym.getRawDataRefImpl());
-        symbol_entry(*sym_elf, name.get().str(), addr.get(), sym.getSize(), s);
+        symbol_entry(*sym_elf, name.get().str(), addr.get(), s);
     }
 }
 
@@ -139,10 +139,9 @@ void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_i
     for (auto it = begin; it != end; next(it, end)) {
         auto er_name = it->getName(name);
         auto er_addr = it->getAddress(addr);
-        auto er_size = it->getSize(size);
-        if (er_name || er_addr || er_size) continue;
+        if (er_name || er_addr) continue;
         auto sym_elf = obj.getSymbol(it->getRawDataRefImpl());
-        symbol_entry(*sym_elf, name.str(), addr, size, s);
+        symbol_entry(*sym_elf, name.str(), addr, s);
     }
 }
 
@@ -163,7 +162,7 @@ template <typename T>
 error_or<std::string> load(const llvm::object::ELFObjectFile<T> &obj) {
     using namespace elf_loader;
     data_stream s;
-    s << std::boolalpha << elf_declarations;
+    s << elf_declarations;
     s << "(file-type elf)";
     s << "(arch " << arch_of_object(obj) << ")";
     file_header(obj, s);

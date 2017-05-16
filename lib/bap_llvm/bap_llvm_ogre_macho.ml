@@ -6,6 +6,8 @@ open Bap_llvm_ogre_types
 module Scheme = struct
   open Ogre.Type
 
+  let value = "value" %: int
+
   (** macho segment command *)
   let segment_cmd () =
     Ogre.declare ~name:"segment-command" (scheme name $ off $ size)
@@ -20,18 +22,24 @@ module Scheme = struct
     Ogre.declare ~name:"virtual-segment-command"
       (scheme name $ addr $ size) Tuple.T3.create
 
-  (** macho section in file *)
+  (** macho section *)
   let macho_section () =
-    Ogre.declare ~name:"macho-section" (scheme name $ off $ size)
-      Tuple.T3.create
+    Ogre.declare ~name:"macho-section" (scheme name $ addr $ off $ size)
+      (fun name addr off size -> name,addr,off,size)
 
-  (** macho symbol  *)
+  (** macho symbol that doesn't belong to any section *)
   let macho_symbol () =
-    Ogre.declare ~name:"macho-symbol" (scheme name $ addr $ size)
+    Ogre.declare ~name:"macho-symbol" (scheme name $ value)
+      Tuple.T2.create
+
+  (** macho symbol defined in some section *)
+  let macho_section_symbol () =
+    Ogre.declare ~name:"macho-section-symbol" (scheme name $ addr $ size)
       Tuple.T3.create
 
   (** macho symbol that is a function *)
-  let function_ () = Ogre.declare ~name:"function" (scheme addr) ident
+  let function_ () = Ogre.declare ~name:"function"
+      (scheme name $ addr) Tuple.T2.create
 end
 
 module Make(Fact : Ogre.S) = struct
@@ -45,34 +53,37 @@ module Make(Fact : Ogre.S) = struct
                 $ segment_cmd_flags
                 $ virtual_segment_cmd)
           ~join:[[field name]])
-      ~f:(fun (name, start, size) (_,rwx) (_,addr,vsize)  ->
-          name,start,size,addr,vsize,rwx) >>= fun s ->
+      ~f:(fun (name, offset, size) (_,rwx) (_,addr,vsize)  ->
+          name,offset,size,addr,vsize,rwx) >>= fun s ->
     Fact.Seq.iter s
-      ~f:(fun (name, start, size, addr, vsize, (r,w,x)) ->
+      ~f:(fun (name, off, size, addr, vsize, (r,w,x)) ->
           Fact.provide segment addr vsize r w x >>= fun () ->
           Fact.provide named_region addr vsize name >>= fun () ->
-          Fact.provide mapped addr size start)
+          Fact.provide mapped addr size off)
 
   let sections =
     Fact.foreach Ogre.Query.(select (from macho_section))
       ~f:ident >>= fun s ->
     Fact.Seq.iter s
-      ~f:(fun (name, addr, size) ->
+      ~f:(fun (name, addr, off, size) ->
           Fact.provide section addr size >>= fun () ->
           Fact.provide named_region addr size name)
 
   let symbols =
-    Fact.foreach Ogre.Query.(select (from macho_symbol))
-      ~f:ident >>= fun s ->
+    Fact.foreach Ogre.Query.(
+        select (from macho_section_symbol $ function_)
+          ~join:[[field addr];
+                 [field name ~from:macho_section_symbol;
+                  field name ~from:function_;]])
+      ~f:(fun x _ -> x) >>= fun s ->
     Fact.Seq.iter s
       ~f:(fun (name, addr, size) ->
           if size = 0L then Fact.return ()
           else
             Fact.provide named_symbol addr name >>= fun () ->
             Fact.provide symbol_chunk addr size addr >>= fun () ->
-            Fact.request function_ ~that:(fun a -> a = addr) >>= fun a ->
-            if a <> None then Fact.provide code_start addr
-            else Fact.return ())
+            Fact.provide code_start addr)
+
 
   let image =
     segments >>= fun () ->

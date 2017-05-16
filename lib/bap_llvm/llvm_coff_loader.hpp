@@ -213,7 +213,7 @@ void symbols(const coff_obj &obj, data_stream &s) {
 error_or<std::string> load(const llvm::object::COFFObjectFile &obj) {
     using namespace coff_loader;
     data_stream s;
-    s << std::boolalpha << coff_declarations;
+    s << coff_declarations;
     s << "(file-type coff)";
     s << "(arch " << arch_of_object(obj) << ")";
     entry_point(obj, s);

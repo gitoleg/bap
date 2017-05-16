@@ -18,18 +18,55 @@ using namespace llvm::object;
 
 typedef llvm::object::MachOObjectFile macho;
 typedef macho::LoadCommandInfo command_info;
+typedef SymbolRef::Type sym_type;
 
-// check that symbol belongs to some sections,
-// i.e. it's type is N_SECT.
-bool is_in_section(const macho &obj, SymbolRef sym) {
+const MachO::nlist * sym_entry(const macho &obj, SymbolRef sym) {
     auto raw = sym.getRawDataRefImpl();
     const char *p = reinterpret_cast<const char *>(raw.p);
     if (p < obj.getData().begin() ||
         p + sizeof(MachO::nlist) > obj.getData().end())
-        return false;
-    const MachO::nlist *entry =
-        reinterpret_cast<const MachO::nlist *>(raw.p);
-    return ((entry->n_type & MachO::N_TYPE) == MachO::N_SECT);
+        return nullptr;
+    return reinterpret_cast<const MachO::nlist *>(raw.p);
+}
+
+// check that symbol belongs to some sections,
+// i.e. it's type is N_SECT.
+bool is_in_section(const MachO::nlist *entry) {
+    if (!entry) return false;
+    else return ((entry->n_type & MachO::N_TYPE) == MachO::N_SECT);
+}
+
+std::string typ(const MachO::nlist *entry) {
+    uint8_t n_type = entry->n_type;
+
+    if (n_type & MachO::N_STAB)
+        return "n_stub";
+    else {
+        switch (n_type & MachO::N_TYPE) {
+        case MachO::N_UNDF : return "undf";
+        case MachO::N_ABS  : return "abs";
+        case MachO::N_SECT : return "sect";
+        case MachO::N_PBUD : return "pbud";
+        case MachO::N_INDR : return "n_indr";
+        default: return "totaly unknown";
+        }
+    }
+}
+
+std::string styp(SymbolRef::Type typ) {
+    switch (typ) {
+    case SymbolRef::ST_Unknown : return "unknown";
+    case SymbolRef::ST_Data : return "data";
+    case SymbolRef::ST_Debug : return "debug";
+    case SymbolRef::ST_File : return "file";
+    case SymbolRef::ST_Function : return "function";
+    case SymbolRef::ST_Other : return "other";
+    default: return "totaly unknown";
+    }
+}
+
+bool is_function(const MachO::nlist *entry, SymbolRef::Type typ) {
+    return (is_in_section(entry) && typ == SymbolRef::ST_Function);
 }
 
 static std::string macho_declarations =
@@ -39,21 +76,23 @@ static std::string macho_declarations =
     "(declare segment-command (name str) (offset int) (size int))"
     "(declare segment-command-flags (name str) (read bool) (write bool) (execute bool))"
     "(declare virtual-segment-command (name str) (addr int) (size int))"
-    "(declare section (name str) (offset int) (size int))"
-    "(declare symbol (name str) (addr int) (size int))"
-    "(declare function (addr int))";
+    "(declare macho-section (name str) (addr int) (offset int) (size int))"
+    "(declare macho-section-symbol (name str) (addr int) (size int))"
+    "(declare macho-symbol (name str) (value int))"
+    "(declare function (name str) (addr int))";
 
 template <typename T>
 void segment_command(const T &cmd, data_stream &s) {
     bool r = static_cast<bool>(cmd.initprot & MachO::VM_PROT_READ);
     bool w = static_cast<bool>(cmd.initprot & MachO::VM_PROT_WRITE);
+
     bool x = static_cast<bool>(cmd.initprot & MachO::VM_PROT_EXECUTE);
     s << "(segment-command " << cmd.segname << " " << cmd.fileoff << " " << cmd.filesize << ")";
     s << "(segment-command-flags " << cmd.segname << " " << r << " " << w << " " << x << ")";
     s << "(virtual-segment-command " << cmd.segname << " " << cmd.vmaddr << " " << cmd.vmsize << ")";
 }
 
-void entry(command_info &info, data_stream &s) {
+void entry_point(command_info &info, data_stream &s) {
     const MachO::entry_point_command *entry_cmd =
         reinterpret_cast<const MachO::entry_point_command*>(info.Ptr);
     s << "(entry-point " << entry_cmd->entryoff << ")";
@@ -65,18 +104,25 @@ void macho_command(const macho &obj, command_info &info, data_stream &s) {
     if (info.C.cmd == MachO::LoadCommandType::LC_SEGMENT)
         segment_command(obj.getSegmentLoadCommand(info), s);
     if (info.C.cmd == MachO::LoadCommandType::LC_MAIN)
-        entry(info, s);
+        entry_point(info, s);
 }
 
 template <typename S>
 void section(const S & sec, data_stream &s) {
-    s << "(section " << sec.sectname << " " << sec.offset << " " << sec.size << ")";
+    s << "(macho-section " << sec.sectname << " " << sec.addr << " " << sec.offset << " " << sec.size << ")";
 }
 
-void symbol(const std::string &name, uint64_t addr, uint64_t size, SymbolRef::Type typ, data_stream &s) {
-    s << "(symbol " << quoted(name) << " " << addr << " " << size << ")";
+// we distinguish symbols that are defined in some section and symbols that are not. For former it's ok
+// to provide size and interpret symbol's value as an address. For later we provide only name and value
+// as it is.
+void section_symbol(const std::string &name, uint64_t value, uint64_t size, sym_type typ, data_stream &s) {
+    s << "(macho-section-symbol " << quoted(name) << " " << value << " " << size << ")";
     if (typ == SymbolRef::ST_Function)
-        s << "(function " << addr << ")";
+        s << "(function " << quoted(name) << " " << value << ")";
+}
+
+void macho_symbol(const std::string &name, uint64_t value, data_stream &s) {
+    s << "(macho-symbol " << quoted(name) << " " << value << ")";
 }
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
@@ -95,13 +141,14 @@ void symbols(const macho &obj, data_stream &s) {
     auto sizes = computeSymbolSizes(obj);
     for (auto sized_sym : sizes) {
         auto sym = sized_sym.first;
-        if (!is_in_section(obj, sym)) continue;
-        auto size = sized_sym.second;
-        auto addr = sym.getAddress();
-        auto name = sym.getName();
-        if (!addr || !name) continue;
-        auto typ = sym.getType();
-        symbol((*name).str(), *addr, size, typ, s);
+        auto er_name = sym.getName();
+        auto entry = sym_entry(obj, sym);
+        if (!entry || !er_name) continue;
+        auto name = (*er_name).str();
+        if (is_in_section(entry))
+            section_symbol(name, entry->n_value, sized_sym.second, sym.getType(), s);
+        else
+            macho_symbol(name, entry->n_value, s);
     }
 }
 
@@ -126,17 +173,20 @@ void sections(const macho &obj, data_stream &s) {
 
 void symbols(const macho &obj, data_stream &s) {
     StringRef name;
-    uint64_t addr, size;
+    uint64_t size;
     SymbolRef::Type typ;
     auto end = obj.end_symbols();
     for (auto it = obj.begin_symbols(); it != end; next(it, end)) {
         auto er_name = it->getName(name);
-        auto er_addr = it->getAddress(addr);
         auto er_size = it->getSize(size);
         auto er_type = it->getType(typ);
-        if (er_name || er_addr || er_size || er_type) continue;
-        if (is_in_section(obj, *it))
-            symbol(name.str(), addr, size, *typ, s);
+        auto entry   = sym_entry(obj, *it);
+        if (er_name || er_size || er_type || !entry) continue;
+
+        if (is_in_section(entry))
+            section_symbol(name, entry->n_value, sized_sym.second, typ, s);
+         else
+            macho_symbol(name, entry->n_value, s);
     }
 }
 
@@ -149,7 +199,7 @@ void symbols(const macho &obj, data_stream &s) {
 error_or<std::string> load(const llvm::object::MachOObjectFile &obj) {
     using namespace macho_loader;
     data_stream s;
-    s << std::boolalpha << macho_declarations;
+    s << macho_declarations;
     s << "(file-type macho)";
     s << "(arch " << arch_of_object(obj) << ")";
     macho_commands(obj, s);

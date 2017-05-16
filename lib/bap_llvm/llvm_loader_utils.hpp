@@ -2,6 +2,7 @@
 #define LLVM_LOADER_UTILS_HPP
 
 #include <sstream>
+#include <iomanip>
 
 #include <llvm/ADT/Triple.h>
 
@@ -13,7 +14,7 @@ using namespace llvm;
 
 struct data_stream {
 
-    explicit data_stream() : s_(info()) {}
+    explicit data_stream() : s_(info()) { *s_ << std::boolalpha; }
 
     void fail(const std::string &m) { s_.fail(m); }
 
