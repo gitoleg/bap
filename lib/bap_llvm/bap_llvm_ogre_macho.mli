@@ -1,30 +1,31 @@
 
 module Scheme : sig
-  (** coff section in file *)
-  val section_header :
+
+  (** macho segment command *)
+  val segment_cmd :
     ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
       Ogre.attribute
 
-  (** coff section in memory *)
-  val virtual_section_header :
-    ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
-      Ogre.attribute
-
-  (** coff section access flags *)
-  val section_flags :
+  val segment_cmd_flags :
     (string * (bool * bool * bool),
      (string -> bool -> bool -> bool -> 'a) -> 'a)
       Ogre.attribute
 
-  (** coff section that contains code *)
-  val code_content : (string, (string -> 'a) -> 'a) Ogre.attribute
-
-  (** coff symbol *)
-  val symbol :
+  val segment_cmd_mapping :
     ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
       Ogre.attribute
 
-  (** coff symbol is function *)
+  (** macho section in file *)
+  val macho_section :
+    ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
+      Ogre.attribute
+
+  (** macho symbol  *)
+  val macho_symbol :
+    ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
+      Ogre.attribute
+
+  (** macho symbol that is a function *)
   val function_ : (int64, (int64 -> 'a) -> 'a) Ogre.attribute
 end
 

@@ -18,7 +18,7 @@ using namespace llvm::object;
 typedef COFFObjectFile coff_obj;
 
 static const std::string coff_declarations =
-    "(declare coff-format (flag bool))"
+    "(declare file-type (name bool))"
     "(declare arch (name str))"
     "(declare entry-point (addr int))"
     "(declare section-header (name str) (offset int) (size int))"
@@ -213,7 +213,8 @@ void symbols(const coff_obj &obj, data_stream &s) {
 error_or<std::string> load(const llvm::object::COFFObjectFile &obj) {
     using namespace coff_loader;
     data_stream s;
-    s << std::boolalpha << coff_declarations << "(coff-format true)";
+    s << std::boolalpha << coff_declarations;
+    s << "(file-type coff)";
     s << "(arch " << arch_of_object(obj) << ")";
     entry_point(obj, s);
     sections(obj, s);

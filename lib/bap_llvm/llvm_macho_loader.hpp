@@ -33,7 +33,7 @@ bool is_in_section(const macho &obj, SymbolRef sym) {
 }
 
 static std::string macho_declarations =
-    "(declare macho-format (flag bool))"
+    "(declare file-type (name str))"
     "(declare arch (name str))"
     "(declare entry-point (addr int))"
     "(declare segment-command (name str) (offset int) (size int))"
@@ -149,7 +149,8 @@ void symbols(const macho &obj, data_stream &s) {
 error_or<std::string> load(const llvm::object::MachOObjectFile &obj) {
     using namespace macho_loader;
     data_stream s;
-    s << std::boolalpha << macho_declarations << "(macho-format true)";
+    s << std::boolalpha << macho_declarations;
+    s << "(file-type macho)";
     s << "(arch " << arch_of_object(obj) << ")";
     macho_commands(obj, s);
     sections(obj, s);

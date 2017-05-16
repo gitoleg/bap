@@ -6,7 +6,6 @@ open Bap_llvm_ogre_types
 
 module Scheme = struct
   open Ogre.Type
-  open Common_fields
 
   (** flags that describes an entry behavior *)
   let ld = "load" %: bool
@@ -35,8 +34,6 @@ module Scheme = struct
 
   (** elf symbols that are functions *)
   let code_entry () = declare "code-entry" (scheme addr) ident
-
-  let elf () = declare "elf-format" (scheme flag) ident
 
 end
 
@@ -85,8 +82,5 @@ module Make(Fact : Ogre.S) = struct
     segments >>= fun () ->
     sections >>= fun () ->
     symbols
-
-  let probe = Fact.request elf >>= fun x ->
-    Fact.return (x <> None)
 
 end

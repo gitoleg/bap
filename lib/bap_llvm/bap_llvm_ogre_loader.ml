@@ -11,26 +11,26 @@ end
 
 module Dispatch(M : Monad.S) = struct
   module Fact = Make(Monad.Ident)
-  open Fact.Syntax
-
-  module type S = sig
-    val image : unit Fact.t
-    val probe : bool Fact.t
-  end
-
   module Elf = Bap_llvm_ogre_elf.Make(Fact)
   module Coff = Bap_llvm_ogre_coff.Make(Fact)
   module Macho = Bap_llvm_ogre_macho.Make(Fact)
+  open Fact.Syntax
+
+  type typ = Elf | Coff | Macho | Unknown [@@deriving sexp]
+
+  let filetype_of_string s =
+    try
+      typ_of_sexp (Sexp.of_string s)
+    with _ -> Unknown
 
   let image =
-    let rec get = function
-      | x :: xs ->
-        let module A = (val x : S) in
-        A.probe >>= fun r ->
-        if r then A.image
-        else get xs
-      | [] -> Fact.failf "file type is not supported" () in
-    get [(module Elf : S); (module Coff); (module Macho)]
+    Ogre.require file_type >>= fun s ->
+    match filetype_of_string s with
+    | Elf -> Elf.image
+    | Coff -> Coff.image
+    | Macho -> Macho.image
+    | Unknown -> Fact.failf "file type is not supported" ()
+
 end
 
 module Loader = struct
@@ -67,3 +67,6 @@ module Loader = struct
       Unix.close fd;
       Or_error.errorf "unable to process file %s" path
 end
+
+let init () =
+  Image.register_loader ~name:"llvm" (module Loader);

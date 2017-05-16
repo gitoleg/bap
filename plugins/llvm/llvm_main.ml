@@ -7,6 +7,8 @@ let () =
   | Ok () -> ()
   | Error er -> eprintf "%s\n" (Error.to_string_hum er)
 
+let () = Bap_llvm_ogre_loader.init ()
+
 let disasm_init x86_syntax =
   match Bap_llvm_disasm.init ~x86_syntax () with
   | Ok () -> ()

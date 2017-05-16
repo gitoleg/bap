@@ -5,10 +5,6 @@ open Bap_llvm_ogre_types
 
 module Scheme = struct
   open Ogre.Type
-  open Common_fields
-
-  (** check that a document describes the coff format *)
-  let coff () = Ogre.declare ~name:"coff-format" (scheme flag) ident
 
   (** coff section in file *)
   let section_header () =
@@ -82,8 +78,5 @@ module Make(Fact : Ogre.S) = struct
     segments >>= fun () ->
     sections >>= fun () ->
     symbols
-
-  let probe = Fact.request coff >>= fun x ->
-    Fact.return (x <> None)
 
 end

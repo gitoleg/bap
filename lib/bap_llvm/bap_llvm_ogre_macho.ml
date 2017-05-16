@@ -5,11 +5,8 @@ open Bap_llvm_ogre_types
 
 module Scheme = struct
   open Ogre.Type
-  open Common_fields
 
-  (** check that a document describes the macho format *)
-  let macho () = Ogre.declare ~name:"macho-format" (scheme flag) ident
-
+  (** macho segment command *)
   let segment_cmd () =
     Ogre.declare ~name:"segment-command" (scheme name $ off $ size)
       Tuple.T3.create
@@ -81,8 +78,5 @@ module Make(Fact : Ogre.S) = struct
     segments >>= fun () ->
     sections >>= fun () ->
     symbols
-
-  let probe = Fact.request macho >>= fun x ->
-    Fact.return (x <> None)
 
 end

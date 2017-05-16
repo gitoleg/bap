@@ -16,7 +16,7 @@ using namespace llvm;
 using namespace llvm::object;
 
 static const std::string elf_declarations =
-    "(declare elf-format (flag bool))"
+    "(declare file-type (name str))"
     "(declare arch (name str))"
     "(declare entry-point (addr int))"
     "(declare program-header (name str) (offset int) (size int))"
@@ -163,7 +163,8 @@ template <typename T>
 error_or<std::string> load(const llvm::object::ELFObjectFile<T> &obj) {
     using namespace elf_loader;
     data_stream s;
-    s << std::boolalpha << elf_declarations << "(elf-format true)";
+    s << std::boolalpha << elf_declarations;
+    s << "(file-type elf)";
     s << "(arch " << arch_of_object(obj) << ")";
     file_header(obj, s);
     program_headers(obj, s);
