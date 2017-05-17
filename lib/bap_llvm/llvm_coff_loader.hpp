@@ -26,7 +26,7 @@ static const std::string coff_declarations =
     "(declare code-content (name str))"
     "(declare section-flags (name str) (read bool) (write bool) (execute bool))"
     "(declare symbol (name str) (addr int) (size int))"
-    "(declare function (addr int))";
+    "(declare function (name str) (addr int))";
 
 void section(const coff_section &sec, uint64_t image_base,  data_stream &s) {
     bool r = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_READ);
@@ -46,7 +46,7 @@ void section(const coff_section &sec, uint64_t image_base,  data_stream &s) {
 void symbol(const std::string &name, uint64_t addr, uint64_t size, SymbolRef::Type typ, data_stream &s) {
     s << "(symbol " << name << " " << addr << " " << size << ")";
     if (typ == SymbolRef::ST_Function)
-        s << "(function " << addr << ")";
+        s << "(function " << name << " " << addr << ")";
 }
 
 error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& obj);

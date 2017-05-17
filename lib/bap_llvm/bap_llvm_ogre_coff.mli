@@ -2,12 +2,12 @@
 module Scheme : sig
   (** coff section in file *)
   val section_header :
-    ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
+    (string * int64 * int64, (string -> int64 -> int64 -> 'a) -> 'a)
       Ogre.attribute
 
   (** coff section in memory *)
   val virtual_section_header :
-    ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
+    (string * int64 * int64, (string -> int64 -> int64 -> 'a) -> 'a)
       Ogre.attribute
 
   (** coff section access flags *)
@@ -21,11 +21,11 @@ module Scheme : sig
 
   (** coff symbol *)
   val symbol :
-    ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
+    (string * int64 * int64, (string -> int64 -> int64 -> 'a) -> 'a)
       Ogre.attribute
 
   (** coff symbol is function *)
-  val function_ : (int64, (int64 -> 'a) -> 'a) Ogre.attribute
+  val function_ : (string * int64, (string -> int64 -> 'a) -> 'a) Ogre.attribute
 end
 
 module Make(Fact : Ogre.S) : sig

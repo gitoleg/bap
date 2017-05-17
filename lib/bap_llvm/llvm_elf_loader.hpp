@@ -24,7 +24,7 @@ static const std::string elf_declarations =
     "(declare program-header-flags (name str) (load bool) (read bool) (write bool) (execute bool))"
     "(declare section-header (name str) (addr int) (size int))"
     "(declare symbol-entry (name str) (addr int) (size int))"
-    "(declare code-entry (addr int))";
+    "(declare code-entry (name str) (addr int))";
 
 template <typename T>
 void file_header(const ELFObjectFile<T> &obj, data_stream &s) {
@@ -65,7 +65,7 @@ void symbol_entry(const Elf_Sym_Impl<T> &sym, const std::string &name, uint64_t 
                   data_stream &s) {
     s << "(symbol-entry " << quoted(name) << " " << addr << " " << sym.st_size << ")";
     if (sym.getType() == ELF::STT_FUNC)
-        s << "(code-entry " << addr << ")";
+        s << "(code-entry " << name << " " << addr << ")";
 }
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8

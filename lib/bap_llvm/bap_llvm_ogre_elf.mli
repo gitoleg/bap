@@ -6,12 +6,12 @@ module Scheme : sig
 
   (** elf program header as it is in file *)
   val program_header :
-    ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
+    (string * int64 * int64, (string -> int64 -> int64 -> 'a) -> 'a)
       Ogre.attribute
 
   (** elf program header as it is in memory *)
   val virtual_program_header :
-    ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
+    (string * int64 * int64, (string -> int64 -> int64 -> 'a) -> 'a)
       Ogre.attribute
 
   (** elf program header flags *)
@@ -22,7 +22,7 @@ module Scheme : sig
 
   (** elf section header *)
   val section_header :
-    ((string * int64 * int64), (string -> int64 -> int64 -> 'a) -> 'a)
+    (string * int64 * int64, (string -> int64 -> int64 -> 'a) -> 'a)
       Ogre.attribute
 
   (** elf symbol entry *)
@@ -31,7 +31,7 @@ module Scheme : sig
       Ogre.attribute
 
   (** elf symbols that are functions *)
-  val code_entry : (int64, (int64 -> 'a) -> 'a) Ogre.attribute
+  val code_entry : (string * int64, (string -> int64 -> 'a) -> 'a) Ogre.attribute
 
 end
 

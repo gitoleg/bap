@@ -33,7 +33,7 @@ module Scheme = struct
     declare "symbol-entry" (scheme name $ addr $ size) Tuple.T3.create
 
   (** elf symbols that are functions *)
-  let code_entry () = declare "code-entry" (scheme addr) ident
+  let code_entry () = declare "code-entry" (scheme name $ addr) Tuple.T2.create
 
 end
 
@@ -67,15 +67,15 @@ module Make(Fact : Ogre.S) = struct
 
   let symbols =
     Fact.foreach Ogre.Query.(select (from symbol_entry))
-      ~f:(fun (name, addr, size) -> name,addr,size) >>= fun s ->
+      ~f:ident >>= fun s ->
     Fact.Seq.iter s ~f:(fun (name, addr, size) ->
-        if size = Int64.zero then Fact.return ()
+        if size = 0L then Fact.return ()
         else
           Fact.provide named_symbol addr name >>= fun () ->
           Fact.provide symbol_chunk addr size addr >>= fun () ->
-          Fact.request ~that:(fun a -> a = addr) code_entry >>= fun a ->
-          if a <> None then
-            Fact.provide code_start addr
+          Fact.request code_entry
+            ~that:(fun (n,a) -> a = addr && n = name) >>= fun f ->
+          if f <> None then Fact.provide code_start addr
           else Fact.return ())
 
   let image =

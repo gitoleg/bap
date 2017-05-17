@@ -29,7 +29,8 @@ module Scheme = struct
     Ogre.declare ~name:"symbol" (scheme name $ addr $ size) Tuple.T3.create
 
   (** coff symbol that is a function *)
-  let function_ () = Ogre.declare ~name:"function" (scheme addr) ident
+  let function_ () =
+    Ogre.declare ~name:"function" (scheme name $ addr) Tuple.T2.create
 end
 
 module Make(Fact : Ogre.S) = struct
@@ -64,15 +65,15 @@ module Make(Fact : Ogre.S) = struct
   let symbols =
     Fact.foreach Ogre.Query.(select (from symbol))
       ~f:ident >>= fun s ->
-    Fact.Seq.iter s
-      ~f:(fun (name, addr, size) ->
-          if size = 0L then Fact.return ()
-          else
-            Fact.provide named_symbol addr name >>= fun () ->
-            Fact.provide symbol_chunk addr size addr >>= fun () ->
-            Fact.request function_ ~that:(fun a -> a = addr) >>= fun a ->
-            if a <> None then Fact.provide code_start addr
-            else Fact.return ())
+    Fact.Seq.iter s ~f:(fun (name, addr, size) ->
+        if size = 0L then Fact.return ()
+        else
+          Fact.provide named_symbol addr name >>= fun () ->
+          Fact.provide symbol_chunk addr size addr >>= fun () ->
+          Fact.request function_
+            ~that:(fun (n,a) -> a = addr && n = name) >>= fun f ->
+          if f <> None then Fact.provide code_start addr
+          else Fact.return ())
 
   let image =
     segments >>= fun () ->

@@ -70,20 +70,17 @@ module Make(Fact : Ogre.S) = struct
           Fact.provide named_region addr size name)
 
   let symbols =
-    Fact.foreach Ogre.Query.(
-        select (from macho_section_symbol $ function_)
-          ~join:[[field addr];
-                 [field name ~from:macho_section_symbol;
-                  field name ~from:function_;]])
-      ~f:(fun x _ -> x) >>= fun s ->
-    Fact.Seq.iter s
-      ~f:(fun (name, addr, size) ->
+    Fact.foreach Ogre.Query.(select (from macho_section_symbol))
+      ~f:ident >>= fun s ->
+    Fact.Seq.iter s ~f:(fun (name, addr, size) ->
           if size = 0L then Fact.return ()
           else
             Fact.provide named_symbol addr name >>= fun () ->
             Fact.provide symbol_chunk addr size addr >>= fun () ->
-            Fact.provide code_start addr)
-
+            Fact.request function_
+              ~that:(fun (n,a) -> a = addr && n = name) >>= fun f ->
+            if f <> None then Fact.provide code_start addr
+            else Fact.return ())
 
   let image =
     segments >>= fun () ->
