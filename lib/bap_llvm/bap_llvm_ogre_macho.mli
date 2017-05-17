@@ -19,7 +19,7 @@ module Scheme : sig
 
   (** macho section *)
   val macho_section :
-    (string * int64 * int64 * int64, (string -> int64 -> int64 -> int64 -> 'a) -> 'a)
+    (string * int64 * int64, (string -> int64 -> int64 -> 'a) -> 'a)
       Ogre.attribute
 
   (** macho symbol, that doesn't belong to any section *)

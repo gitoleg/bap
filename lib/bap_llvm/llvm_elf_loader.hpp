@@ -65,7 +65,7 @@ void symbol_entry(const Elf_Sym_Impl<T> &sym, const std::string &name, uint64_t 
                   data_stream &s) {
     s << "(symbol-entry " << quoted(name) << " " << addr << " " << sym.st_size << ")";
     if (sym.getType() == ELF::STT_FUNC)
-        s << "(code-entry " << name << " " << addr << ")";
+        s << "(code-entry " << quoted(name) << " " << addr << ")";
 }
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8

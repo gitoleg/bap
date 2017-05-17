@@ -24,8 +24,8 @@ module Scheme = struct
 
   (** macho section *)
   let macho_section () =
-    Ogre.declare ~name:"macho-section" (scheme name $ addr $ off $ size)
-      (fun name addr off size -> name,addr,off,size)
+    Ogre.declare ~name:"macho-section" (scheme name $ addr $ size)
+      Tuple.T3.create
 
   (** macho symbol that doesn't belong to any section *)
   let macho_symbol () =
@@ -65,7 +65,7 @@ module Make(Fact : Ogre.S) = struct
     Fact.foreach Ogre.Query.(select (from macho_section))
       ~f:ident >>= fun s ->
     Fact.Seq.iter s
-      ~f:(fun (name, addr, off, size) ->
+      ~f:(fun (name, addr, size) ->
           Fact.provide section addr size >>= fun () ->
           Fact.provide named_region addr size name)
 

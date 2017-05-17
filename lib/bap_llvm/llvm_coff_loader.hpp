@@ -32,21 +32,22 @@ void section(const coff_section &sec, uint64_t image_base,  data_stream &s) {
     bool r = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_READ);
     bool w = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_WRITE);
     bool x = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_EXECUTE);
-    s << "(section-header " << sec.Name << " " << sec.PointerToRawData << " " << sec.SizeOfRawData << ")";
-    s << "(virtual-section-header " << sec.Name << " "
+    auto name = quoted(sec.Name);
+    s << "(section-header " << name << " " << sec.PointerToRawData << " " << sec.SizeOfRawData << ")";
+    s << "(virtual-section-header " << name << " "
       << sec.VirtualAddress + image_base << " " << sec.VirtualSize << ")";
-    s << "(section-flags " << sec.Name << " " << r << " " << w << " " << x << ")";
+    s << "(section-flags " << name << " " << r << " " << w << " " << x << ")";
     auto c = sec.Characteristics;
     if ((c & COFF::IMAGE_SCN_CNT_CODE) ||
         (c & COFF::IMAGE_SCN_CNT_INITIALIZED_DATA) ||
         (c & COFF::IMAGE_SCN_CNT_UNINITIALIZED_DATA))
-        s << "(code-content " << sec.Name <<  ")";
+        s << "(code-content " << name <<  ")";
 }
 
 void symbol(const std::string &name, uint64_t addr, uint64_t size, SymbolRef::Type typ, data_stream &s) {
-    s << "(symbol " << name << " " << addr << " " << size << ")";
+    s << "(symbol " << quoted(name) << " " << addr << " " << size << ")";
     if (typ == SymbolRef::ST_Function)
-        s << "(function " << name << " " << addr << ")";
+        s << "(function " << quoted(name) << " " << addr << ")";
 }
 
 error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& obj);

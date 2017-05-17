@@ -36,39 +36,6 @@ bool is_in_section(const MachO::nlist *entry) {
     else return ((entry->n_type & MachO::N_TYPE) == MachO::N_SECT);
 }
 
-std::string typ(const MachO::nlist *entry) {
-    uint8_t n_type = entry->n_type;
-
-    if (n_type & MachO::N_STAB)
-        return "n_stub";
-    else {
-        switch (n_type & MachO::N_TYPE) {
-        case MachO::N_UNDF : return "undf";
-        case MachO::N_ABS  : return "abs";
-        case MachO::N_SECT : return "sect";
-        case MachO::N_PBUD : return "pbud";
-        case MachO::N_INDR : return "n_indr";
-        default: return "totaly unknown";
-        }
-    }
-}
-
-std::string styp(SymbolRef::Type typ) {
-    switch (typ) {
-    case SymbolRef::ST_Unknown : return "unknown";
-    case SymbolRef::ST_Data : return "data";
-    case SymbolRef::ST_Debug : return "debug";
-    case SymbolRef::ST_File : return "file";
-    case SymbolRef::ST_Function : return "function";
-    case SymbolRef::ST_Other : return "other";
-    default: return "totaly unknown";
-    }
-}
-
-bool is_function(const MachO::nlist *entry, SymbolRef::Type typ) {
-    return (is_in_section(entry) && typ == SymbolRef::ST_Function);
-}
-
 static std::string macho_declarations =
     "(declare file-type (name str))"
     "(declare arch (name str))"
@@ -76,7 +43,7 @@ static std::string macho_declarations =
     "(declare segment-command (name str) (offset int) (size int))"
     "(declare segment-command-flags (name str) (read bool) (write bool) (execute bool))"
     "(declare virtual-segment-command (name str) (addr int) (size int))"
-    "(declare macho-section (name str) (addr int) (offset int) (size int))"
+    "(declare macho-section (name str) (addr int) (size int))"
     "(declare macho-section-symbol (name str) (addr int) (size int))"
     "(declare macho-symbol (name str) (value int))"
     "(declare function (name str) (addr int))";
@@ -85,11 +52,11 @@ template <typename T>
 void segment_command(const T &cmd, data_stream &s) {
     bool r = static_cast<bool>(cmd.initprot & MachO::VM_PROT_READ);
     bool w = static_cast<bool>(cmd.initprot & MachO::VM_PROT_WRITE);
-
     bool x = static_cast<bool>(cmd.initprot & MachO::VM_PROT_EXECUTE);
-    s << "(segment-command " << cmd.segname << " " << cmd.fileoff << " " << cmd.filesize << ")";
-    s << "(segment-command-flags " << cmd.segname << " " << r << " " << w << " " << x << ")";
-    s << "(virtual-segment-command " << cmd.segname << " " << cmd.vmaddr << " " << cmd.vmsize << ")";
+    auto name = quoted(cmd.segname);
+    s << "(segment-command " << name << " " << cmd.fileoff << " " << cmd.filesize << ")";
+    s << "(segment-command-flags " << name << " " << r << " " << w << " " << x << ")";
+    s << "(virtual-segment-command " << name << " " << cmd.vmaddr << " " << cmd.vmsize << ")";
 }
 
 void entry_point(command_info &info, data_stream &s) {
@@ -109,7 +76,7 @@ void macho_command(const macho &obj, command_info &info, data_stream &s) {
 
 template <typename S>
 void section(const S & sec, data_stream &s) {
-    s << "(macho-section " << sec.sectname << " " << sec.addr << " " << sec.offset << " " << sec.size << ")";
+    s << "(macho-section " << quoted(sec.sectname) << " " << sec.addr << " " << sec.size << ")";
 }
 
 // we distinguish symbols that are defined in some section and symbols that are not. For former it's ok
