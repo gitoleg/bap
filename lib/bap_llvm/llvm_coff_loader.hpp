@@ -64,7 +64,7 @@ void entry_point(const coff_obj &obj, data_stream &s) {
     }
 }
 
-// SymbolRef, symbol value, section where is defined
+// SymbolRef, symbol value, section where symbol is defined
 typedef std::tuple<SymbolRef, uint64_t, const coff_section*> coff_sym_info;
 typedef std::vector<std::pair<SymbolRef, uint64_t>> symbol_sizes;
 

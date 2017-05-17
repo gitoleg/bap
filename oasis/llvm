@@ -6,6 +6,10 @@ Flag llvm_static
   Description: Links with llvm in a static mode
   Default: true
 
+Flag llvm_legacy
+ Description: Build with legacy llvm backend
+ Default: false
+
 Library bap_llvm
   Path:          lib/bap_llvm
   Build$:        flag(everything) || flag(llvm)
@@ -50,16 +54,17 @@ Library bap_llvm
 
 Library llvm_plugin
   XMETADescription: provide loader and disassembler using LLVM library
-  Path:          plugins/llvm
-  Build$:        flag(everything) || flag(llvm)
-  BuildDepends:  bap, bap-llvm
-  FindlibName:   bap-plugin-llvm
+  Path:            plugins/llvm
+  Build$:          flag(everything) || flag(llvm)
+  FindlibName:     bap-plugin-llvm
   InternalModules: Llvm_main
+  BuildDepends:    bap, bap-llvm
 
 Library legacy_llvm_plugin
   XMETADescription: provide legacy loader using LLVM library
-  Path:          plugins/legacy_llvm
-  Build$:        flag(everything) || flag(llvm)
-  BuildDepends:  bap, bap-llvm
-  FindlibName:   bap-plugin-legacy_llvm
-  InternalModules: Main
+  Path:            plugins/llvm_legacy
+  Build$:          flag(llvm_legacy)
+  BuildDepends:    bap, bap-llvm
+  FindlibParent:   llvm_plugin
+  FindlibName:     legacy
+  InternalModules: Legacy_main
