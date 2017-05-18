@@ -65,6 +65,5 @@ Library legacy_llvm_plugin
   Path:            plugins/legacy_llvm
   Build$:          flag(llvm_legacy)
   BuildDepends:    bap, bap-llvm
-  FindlibParent:   llvm_plugin
-  FindlibName:     bap-plugin-legacy-llvm
+  FindlibName:     bap-plugin-legacy_llvm
   InternalModules: Main
