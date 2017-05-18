@@ -12,5 +12,8 @@ let w = "write"   %: bool
 let x = "execute" %: bool
 let flag = "flag" %: bool
 
+(** pure symbol's value, without interpretation *)
+let value = "value" %: int
+
 let file_type () =
   Ogre.declare ~name:"file-type" (scheme name) ident

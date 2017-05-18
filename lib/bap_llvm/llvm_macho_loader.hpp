@@ -46,7 +46,7 @@ static std::string macho_declarations =
     "(declare macho-section (name str) (addr int) (size int))"
     "(declare macho-section-symbol (name str) (addr int) (size int))"
     "(declare macho-symbol (name str) (value int))"
-    "(declare function (name str) (addr int))";
+    "(declare function (addr int))";
 
 template <typename T>
 void segment_command(const T &cmd, data_stream &s) {
@@ -82,10 +82,10 @@ void section(const S & sec, data_stream &s) {
 // we distinguish symbols that are defined in some section and symbols that are not. For former it's ok
 // to provide size and interpret symbol's value as an address. For later we provide only name and value
 // as it is.
-void section_symbol(const std::string &name, uint64_t value, uint64_t size, sym_type typ, data_stream &s) {
-    s << "(macho-section-symbol " << quoted(name) << " " << value << " " << size << ")";
+void section_symbol(const std::string &name, uint64_t addr, uint64_t size, sym_type typ, data_stream &s) {
+    s << "(macho-section-symbol " << quoted(name) << " " << addr << " " << size << ")";
     if (typ == SymbolRef::ST_Function)
-        s << "(function " << quoted(name) << " " << value << ")";
+        s << "(function " << addr << ")";
 }
 
 void macho_symbol(const std::string &name, uint64_t value, data_stream &s) {

@@ -1,12 +1,9 @@
 open Core_kernel.Std
 open Bap.Std
-
 open Bap_llvm_ogre_types
 
 module Scheme = struct
   open Ogre.Type
-
-  let value = "value" %: int
 
   (** macho segment command *)
   let segment_cmd () =
@@ -38,8 +35,7 @@ module Scheme = struct
       Tuple.T3.create
 
   (** macho symbol that is a function *)
-  let function_ () = Ogre.declare ~name:"function"
-      (scheme name $ addr) Tuple.T2.create
+  let function_ () = Ogre.declare ~name:"function" (scheme addr) ident
 end
 
 module Make(Fact : Ogre.S) = struct
@@ -73,14 +69,14 @@ module Make(Fact : Ogre.S) = struct
     Fact.foreach Ogre.Query.(select (from macho_section_symbol))
       ~f:ident >>= fun s ->
     Fact.Seq.iter s ~f:(fun (name, addr, size) ->
-          if size = 0L then Fact.return ()
-          else
-            Fact.provide named_symbol addr name >>= fun () ->
-            Fact.provide symbol_chunk addr size addr >>= fun () ->
-            Fact.request function_
-              ~that:(fun (n,a) -> a = addr && n = name) >>= fun f ->
-            if f <> None then Fact.provide code_start addr
-            else Fact.return ())
+        if size = 0L then Fact.return ()
+        else
+          Fact.provide named_symbol addr name >>= fun () ->
+          Fact.provide symbol_chunk addr size addr >>= fun () ->
+          Fact.request function_ ~that:(fun a -> a = addr) >>= fun f ->
+          if f <> None then
+            Fact.provide code_start addr
+          else Fact.return ())
 
   let image =
     segments >>= fun () ->

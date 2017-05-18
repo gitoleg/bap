@@ -1,8 +1,6 @@
 
 module Scheme : sig
 
-  val value : int64 Ogre.field
-
   (** macho segment command *)
   val segment_cmd :
     (string * int64 * int64, (string -> int64 -> int64 -> 'a) -> 'a)
@@ -32,7 +30,7 @@ module Scheme : sig
       Ogre.attribute
 
   (** macho symbol that is a function *)
-  val function_ : (string * int64, (string -> int64 -> 'a) -> 'a) Ogre.attribute
+  val function_ : (int64, (int64 -> 'a) -> 'a) Ogre.attribute
 end
 
 module Make(Fact : Ogre.S) : sig

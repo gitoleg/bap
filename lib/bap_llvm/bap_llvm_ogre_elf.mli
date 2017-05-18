@@ -31,7 +31,7 @@ module Scheme : sig
       Ogre.attribute
 
   (** elf symbols that are functions *)
-  val code_entry : (string * int64, (string -> int64 -> 'a) -> 'a) Ogre.attribute
+  val code_entry : (int64, (int64 -> 'a) -> 'a) Ogre.attribute
 
 end
 

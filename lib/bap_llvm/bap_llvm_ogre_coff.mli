@@ -25,7 +25,7 @@ module Scheme : sig
       Ogre.attribute
 
   (** coff symbol is function *)
-  val function_ : (string * int64, (string -> int64 -> 'a) -> 'a) Ogre.attribute
+  val function_ : (int64, (int64 -> 'a) -> 'a) Ogre.attribute
 end
 
 module Make(Fact : Ogre.S) : sig
