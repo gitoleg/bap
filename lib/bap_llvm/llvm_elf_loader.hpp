@@ -22,14 +22,18 @@ static const std::string elf_declarations =
     "(declare program-header (name str) (offset int) (size int))"
     "(declare virtual-program-header (name str) (addr int) (size int))"
     "(declare program-header-flags (name str) (load bool) (read bool) (write bool) (execute bool))"
-    "(declare section-header (name str) (addr int) (size int))"
+    "(declare section-header (name str) (addr int) (size int) (offset int))"
+    "(declare section-flags (name str) (write bool) (execute bool))"
     "(declare symbol-entry (name str) (addr int) (size int))"
-    "(declare code-entry (addr int))";
+    "(declare code-entry (addr int))"
+    "(declare relocatable (flag bool))";
 
 template <typename T>
-void file_header(const ELFObjectFile<T> &obj, data_stream &s) {
+void file_header(const ELFObjectFile<T> &obj, ogre_doc &s) {
     auto hdr = obj.getELFFile()->getHeader();
-    s << "(entry-point " << hdr->e_entry << ")";
+    s.entry("entry-point") << hdr->e_entry;
+    if (hdr->e_type & ELF::ET_REL) s.raw_entry("(relocatable true)");
+    else s.raw_entry("(relocatable false)");
 }
 
 std::string name_of_index(std::size_t i) {
@@ -39,7 +43,7 @@ std::string name_of_index(std::size_t i) {
 }
 
 template <typename I>
-void program_headers(I begin, I end, data_stream &s) {
+void program_headers(I begin, I end, ogre_doc &s) {
     std::size_t i = 0;
     for (auto it = begin; it != end; ++it, ++i) {
         bool ld = (it->p_type == ELF::PT_LOAD);
@@ -49,35 +53,38 @@ void program_headers(I begin, I end, data_stream &s) {
         auto off = it->p_offset;
         auto filesz = it->p_filesz;
         auto name = name_of_index(i);
-        s << "(program-header "  << name << " " << off << " " << filesz << ")";
-        s << "(virtual-program-header " << name << " " << it->p_vaddr << " " << it->p_memsz << ")";
-        s << "(program-header-flags "   << name << " " << ld << " " << r << " " <<  w << " " << x  << ")";
+        s.entry("program-header")  << name << off << filesz;
+        s.entry("virtual-program-header") << name << it->p_vaddr << it->p_memsz;
+        s.entry("program-header-flags") << name << ld << r << w << x;
     }
 }
 
 template <typename T>
-void section_header(const T &hdr, const std::string &name, data_stream &s) {
-    s << "(section-header " << quoted(name) << " " << hdr.sh_addr << " " << hdr.sh_size << ")";
+void section_header(const T &hdr, const std::string &name, ogre_doc &s) {
+    s.entry("section-header") << name << hdr.sh_addr << hdr.sh_size << hdr.sh_offset;
+    bool w = static_cast<bool>(hdr.sh_flags & ELF::SHF_WRITE);
+    bool x = static_cast<bool>(hdr.sh_flags & ELF::SHF_EXECINSTR);
+    s.entry("section-flags") << name << w << x;
 }
 
 template <typename T>
 void symbol_entry(const Elf_Sym_Impl<T> &sym, const std::string &name, uint64_t addr,
-                  data_stream &s) {
-    s << "(symbol-entry " << quoted(name) << " " << addr << " " << sym.st_size << ")";
+                  ogre_doc &s) {
+    s.entry("symbol-entry") << name << addr << sym.st_size;
     if (sym.getType() == ELF::STT_FUNC)
-        s << "(code-entry " << addr << ")";
+        s.entry("code-entry") << addr;
 }
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
 
 template <typename T>
-void program_headers(const ELFObjectFile<T> &obj, data_stream &s) {
+void program_headers(const ELFObjectFile<T> &obj, ogre_doc &s) {
     auto elf = obj.getELFFile();
     program_headers(elf->program_header_begin(), elf->program_header_end(), s);
 }
 
 template <typename T>
-void section_headers(const ELFObjectFile<T> &obj, data_stream &s) {
+void section_headers(const ELFObjectFile<T> &obj, ogre_doc &s) {
     auto elf = obj.getELFFile();
     for (auto it = elf->section_begin(); it != elf->section_end(); ++it) {
         auto name = elf->getSectionName(it);
@@ -89,7 +96,7 @@ void section_headers(const ELFObjectFile<T> &obj, data_stream &s) {
 }
 
 template <typename T>
-void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_iterator end, data_stream &s) {
+void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_iterator end, ogre_doc &s) {
     for (auto it = begin; it != end; ++it) {
         ELFSymbolRef sym(*it);
         auto name = sym.getName();
@@ -101,7 +108,7 @@ void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_i
 }
 
 template <typename T>
-void symbol_entries(const ELFObjectFile<T> &obj, data_stream &s) {
+void symbol_entries(const ELFObjectFile<T> &obj, ogre_doc &s) {
     typedef typename ELFFile<T>::Elf_Shdr sec_hdr;
     auto elf = obj.getELFFile();
     symbol_entries(obj, obj.symbol_begin(), obj.symbol_end(), s);
@@ -114,13 +121,13 @@ void symbol_entries(const ELFObjectFile<T> &obj, data_stream &s) {
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
 
 template <typename T>
-void program_headers(const ELFObjectFile<T> &obj, data_stream &s) {
+void program_headers(const ELFObjectFile<T> &obj, ogre_doc &s) {
     auto elf = obj.getELFFile();
     program_headers(elf->begin_program_headers(), elf->end_program_headers(), s);
 }
 
 template <typename T>
-void section_headers(const ELFObjectFile<T> &obj, data_stream &s) {
+void section_headers(const ELFObjectFile<T> &obj, ogre_doc &s) {
     auto elf = obj.getELFFile();
     for (auto it = elf->begin_sections(); it != elf->end_sections(); ++it) {
         auto name = elf->getSectionName(&*it);
@@ -132,7 +139,7 @@ void section_headers(const ELFObjectFile<T> &obj, data_stream &s) {
 }
 
 template <typename T>
-void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_iterator end, data_stream &s) {
+void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_iterator end, ogre_doc &s) {
     StringRef name;
     uint64_t addr, size;
     SymbolRef::Type typ;
@@ -146,7 +153,7 @@ void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_i
 }
 
 template <typename T>
-void symbol_entries(const ELFObjectFile<T> &obj, data_stream &s) {
+void symbol_entries(const ELFObjectFile<T> &obj, ogre_doc &s) {
     typedef typename ELFFile<T>::Elf_Shdr sec_hdr;
     auto elf = obj.getELFFile();
     symbol_entries(obj, obj.begin_symbols(), obj.end_symbols(), s);
@@ -161,10 +168,10 @@ void symbol_entries(const ELFObjectFile<T> &obj, data_stream &s) {
 template <typename T>
 error_or<std::string> load(const llvm::object::ELFObjectFile<T> &obj) {
     using namespace elf_loader;
-    data_stream s;
-    s << elf_declarations;
-    s << "(file-type elf)";
-    s << "(arch " << arch_of_object(obj) << ")";
+    ogre_doc s;
+    s.raw_entry(elf_declarations);
+    s.raw_entry("(file-type elf)");
+    s.entry("arch") << arch_of_object(obj);
     file_header(obj, s);
     program_headers(obj, s);
     section_headers(obj, s);

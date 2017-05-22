@@ -49,23 +49,22 @@ static std::string macho_declarations =
     "(declare function (addr int))";
 
 template <typename T>
-void segment_command(const T &cmd, data_stream &s) {
+void segment_command(const T &cmd, ogre_doc &s) {
     bool r = static_cast<bool>(cmd.initprot & MachO::VM_PROT_READ);
     bool w = static_cast<bool>(cmd.initprot & MachO::VM_PROT_WRITE);
     bool x = static_cast<bool>(cmd.initprot & MachO::VM_PROT_EXECUTE);
-    auto name = quoted(cmd.segname);
-    s << "(segment-command " << name << " " << cmd.fileoff << " " << cmd.filesize << ")";
-    s << "(segment-command-flags " << name << " " << r << " " << w << " " << x << ")";
-    s << "(virtual-segment-command " << name << " " << cmd.vmaddr << " " << cmd.vmsize << ")";
+    s.entry("segment-command") << cmd.segname << cmd.fileoff << cmd.filesize;
+    s.entry("segment-command-flags") << cmd.segname << r << w << x;
+    s.entry("virtual-segment-command") << cmd.segname << cmd.vmaddr << cmd.vmsize;
 }
 
-void entry_point(command_info &info, data_stream &s) {
+void entry_point(command_info &info, ogre_doc &s) {
     const MachO::entry_point_command *entry_cmd =
         reinterpret_cast<const MachO::entry_point_command*>(info.Ptr);
-    s << "(entry-point " << entry_cmd->entryoff << ")";
+    s.entry("entry-point") << entry_cmd->entryoff;
 }
 
-void macho_command(const macho &obj, command_info &info, data_stream &s) {
+void macho_command(const macho &obj, command_info &info, ogre_doc &s) {
     if (info.C.cmd == MachO::LoadCommandType::LC_SEGMENT_64)
         segment_command(obj.getSegment64LoadCommand(info), s);
     if (info.C.cmd == MachO::LoadCommandType::LC_SEGMENT)
@@ -75,36 +74,36 @@ void macho_command(const macho &obj, command_info &info, data_stream &s) {
 }
 
 template <typename S>
-void section(const S & sec, data_stream &s) {
-    s << "(macho-section " << quoted(sec.sectname) << " " << sec.addr << " " << sec.size << ")";
+void section(const S & sec, ogre_doc &s) {
+    s.entry("macho-section") << sec.sectname << sec.addr << sec.size;
 }
 
 // we distinguish symbols that are defined in some section and symbols that are not. For former it's ok
 // to provide size and interpret symbol's value as an address. For later we provide only name and value
 // as it is.
-void section_symbol(const std::string &name, uint64_t addr, uint64_t size, sym_type typ, data_stream &s) {
-    s << "(macho-section-symbol " << quoted(name) << " " << addr << " " << size << ")";
+void section_symbol(const std::string &name, uint64_t addr, uint64_t size, sym_type typ, ogre_doc &s) {
+    s.entry("macho-section-symbol") << name << addr << size;
     if (typ == SymbolRef::ST_Function)
-        s << "(function " << addr << ")";
+        s.entry("function") << addr;
 }
 
-void macho_symbol(const std::string &name, uint64_t value, data_stream &s) {
-    s << "(macho-symbol " << quoted(name) << " " << value << ")";
+void macho_symbol(const std::string &name, uint64_t value, ogre_doc &s) {
+    s.entry("macho-symbol") << name << value;
 }
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
 
-void macho_commands(const macho &obj, data_stream &s) {
+void macho_commands(const macho &obj, ogre_doc &s) {
     for (auto it : obj.load_commands())
         macho_command(obj, it, s);
 }
 
-void sections(const macho &obj, data_stream &s) {
+void sections(const macho &obj, ogre_doc &s) {
     for (auto sec : obj.sections())
         section(obj.getSection(sec.getRawDataRefImpl()), s);
 }
 
-void symbols(const macho &obj, data_stream &s) {
+void symbols(const macho &obj, ogre_doc &s) {
     auto sizes = computeSymbolSizes(obj);
     for (auto sized_sym : sizes) {
         auto sym = sized_sym.first;
@@ -121,7 +120,7 @@ void symbols(const macho &obj, data_stream &s) {
 
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
 
-void macho_commands(const macho &obj, data_stream &s) {
+void macho_commands(const macho &obj, ogre_doc &s) {
     std::size_t cmd_count = 0;
     if (obj.is64Bit())
         cmd_count = obj.getHeader64().ncmds;
@@ -132,13 +131,13 @@ void macho_commands(const macho &obj, data_stream &s) {
         macho_command(obj, info, s);
 }
 
-void sections(const macho &obj, data_stream &s) {
+void sections(const macho &obj, ogre_doc &s) {
     auto end = obj.end_sections();
     for (auto it = obj.begin_sections(); it != end; next(it, end))
         section(obj.getSection(it->getRawDataRefImpl()), s);
 }
 
-void symbols(const macho &obj, data_stream &s) {
+void symbols(const macho &obj, ogre_doc &s) {
     StringRef name;
     uint64_t size;
     SymbolRef::Type typ;
@@ -165,10 +164,10 @@ void symbols(const macho &obj, data_stream &s) {
 
 error_or<std::string> load(const llvm::object::MachOObjectFile &obj) {
     using namespace macho_loader;
-    data_stream s;
-    s << macho_declarations;
-    s << "(file-type macho)";
-    s << "(arch " << arch_of_object(obj) << ")";
+    ogre_doc s;
+    s.raw_entry(macho_declarations);
+    s.raw_entry("(file-type macho)");
+    s.entry("arch") << arch_of_object(obj);
     macho_commands(obj, s);
     sections(obj, s);
     symbols(obj, s);

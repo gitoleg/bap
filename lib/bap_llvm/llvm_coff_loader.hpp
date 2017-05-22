@@ -28,40 +28,39 @@ static const std::string coff_declarations =
     "(declare symbol (name str) (addr int) (size int))"
     "(declare function (addr int))";
 
-void section(const coff_section &sec, uint64_t image_base,  data_stream &s) {
+void section(const coff_section &sec, uint64_t image_base,  ogre_doc &s) {
     bool r = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_READ);
     bool w = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_WRITE);
     bool x = static_cast<bool>(sec.Characteristics & COFF::IMAGE_SCN_MEM_EXECUTE);
-    auto name = quoted(sec.Name);
-    s << "(section-header " << name << " " << sec.PointerToRawData << " " << sec.SizeOfRawData << ")";
-    s << "(virtual-section-header " << name << " "
-      << sec.VirtualAddress + image_base << " " << sec.VirtualSize << ")";
-    s << "(section-flags " << name << " " << r << " " << w << " " << x << ")";
+    s.entry("section-header") << sec.Name << sec.PointerToRawData << sec.SizeOfRawData;
+    s.entry("virtual-section-header") << sec.Name
+      << sec.VirtualAddress + image_base << sec.VirtualSize;
+    s.entry("section-flags") << sec.Name << r << w << x;
     auto c = sec.Characteristics;
     if ((c & COFF::IMAGE_SCN_CNT_CODE) ||
         (c & COFF::IMAGE_SCN_CNT_INITIALIZED_DATA) ||
         (c & COFF::IMAGE_SCN_CNT_UNINITIALIZED_DATA))
-        s << "(code-content " << name <<  ")";
+        s.entry("code-content") << sec.Name;
 }
 
-void symbol(const std::string &name, uint64_t addr, uint64_t size, SymbolRef::Type typ, data_stream &s) {
-    s << "(symbol " << quoted(name) << " " << addr << " " << size << ")";
+void symbol(const std::string &name, uint64_t addr, uint64_t size, SymbolRef::Type typ, ogre_doc &s) {
+    s.entry("symbol") << name << addr << size;
     if (typ == SymbolRef::ST_Function)
-        s << "(function " << addr << ")";
+        s.entry("function") << addr;
 }
 
 error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& obj);
 
-void entry_point(const coff_obj &obj, data_stream &s) {
+void entry_point(const coff_obj &obj, ogre_doc &s) {
     if (obj.getBytesInAddress() == 4) {
         const pe32_header* hdr = 0;
         if (auto ec = obj.getPE32Header(hdr)) { s.fail(ec.message()); return; }
         if (!hdr) { s.fail("PE header not found"); return; }
-        s << "(entry-point " << hdr->AddressOfEntryPoint + hdr->ImageBase << ")";
+        s.entry("entry-point") << hdr->AddressOfEntryPoint + hdr->ImageBase;
     } else {
         error_or<pe32plus_header> hdr = getPE32PlusHeader(obj);
         if (!hdr) { s.fail("PE+ header not found"); return; }
-        s << "(entry-point " << hdr->AddressOfEntryPoint + hdr->ImageBase << ")";
+        s.entry("entry-point") << hdr->AddressOfEntryPoint + hdr->ImageBase;
     }
 }
 
@@ -106,7 +105,7 @@ error_or<pe32plus_header> getPE32PlusHeader(const llvm::object::COFFObjectFile& 
     else return success(*hdr);
 }
 
-void sections(const coff_obj &obj, data_stream &s) {
+void sections(const coff_obj &obj, ogre_doc &s) {
     auto base = obj.getImageBase();
     for (auto sref : obj.sections())
         section(*obj.getCOFFSection(sref), base, s);
@@ -126,7 +125,7 @@ symbol_sizes get_symbols_sizes(const COFFObjectFile& obj) {
     return get_symbols_sizes(info);
 }
 
-void symbols(const coff_obj &obj, data_stream &s) {
+void symbols(const coff_obj &obj, ogre_doc &s) {
     auto syms = get_symbols_sizes(obj);
     for (auto sized_sym : syms) {
         auto sref = sized_sym.first;
@@ -172,7 +171,7 @@ error_or<uint64_t> getImageBase(const COFFObjectFile &obj) {
     }
 }
 
-void sections(const coff_obj &obj, data_stream &s) {
+void sections(const coff_obj &obj, ogre_doc &s) {
     auto base = getImageBase(obj);
     if (!base) { s.fail(base.message()); return; }
     auto end = obj.end_sections();
@@ -190,7 +189,7 @@ symbol_sizes get_symbols_sizes(const COFFObjectFile& obj) {
     return get_symbols_sizes(info);
 }
 
-void symbols(const coff_obj &obj, data_stream &s) {
+void symbols(const coff_obj &obj, ogre_doc &s) {
     auto syms = get_symbols_sizes(obj);
     for (auto sized_sym : syms) {
         StringRef name;
@@ -213,10 +212,10 @@ void symbols(const coff_obj &obj, data_stream &s) {
 
 error_or<std::string> load(const llvm::object::COFFObjectFile &obj) {
     using namespace coff_loader;
-    data_stream s;
-    s << coff_declarations;
-    s << "(file-type coff)";
-    s << "(arch " << arch_of_object(obj) << ")";
+    ogre_doc s;
+    s.raw_entry(coff_declarations);
+    s.raw_entry("(file-type coff)");
+    s.entry("arch") << arch_of_object(obj);
     entry_point(obj, s);
     sections(obj, s);
     symbols(obj, s);

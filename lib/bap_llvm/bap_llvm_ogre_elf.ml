@@ -2,68 +2,66 @@ open Core_kernel.Std
 open Bap.Std
 open Monads.Std
 
-open Bap_llvm_ogre_types
-
-module Scheme = struct
-  open Ogre.Type
-
-  (** flags that describes an entry behavior *)
-  let ld = "load" %: bool
-
-  let declare name scheme f = Ogre.declare ~name scheme f
-
-  (** elf program header as it is in file *)
-  let program_header () = declare "program-header"
-      (scheme name $ off $ size) Tuple.T3.create
-
-  (** elf program header as it is in memory *)
-  let virtual_program_header () = declare "virtual-program-header"
-      (scheme name $ addr $ size) Tuple.T3.create
-
-  (** elf program header flags *)
-  let program_header_flags () = declare "program-header-flags"
-      (scheme name $ ld $ r $ w $ x) (fun name ld r w x -> name,ld,r,w,x)
-
-  (** elf section header *)
-  let section_header () = declare "section-header"
-      (scheme name $ addr $ size) Tuple.T3.create
-
-  (** elf symbol entry *)
-  let symbol_entry () =
-    declare "symbol-entry" (scheme name $ addr $ size) Tuple.T3.create
-
-  (** elf symbols that are functions *)
-  let code_entry () = declare "code-entry" (scheme addr) ident
-
-end
+open Image.Scheme
+open Bap_llvm_ogre_types.Scheme
+open Bap_llvm_elf_scheme
 
 module Make(Fact : Ogre.S) = struct
-  open Image.Scheme
-  open Scheme
   open Fact.Syntax
+
+  (** TODO: don't forget to find out why the following doesn't work:
+      ~where:(section_flags.(x) = bool(true))
+      (fails with strange exception *)
+  let sections_as_segments =
+    Fact.foreach Ogre.Query.(begin
+        select (from section_header $ section_flags)
+          ~join:[[field name]]
+      end)
+      ~f:(fun hdr (_, w, x) -> hdr, (w,x)) >>= fun s ->
+    Fact.Fn.ignore @@
+    Fact.Seq.fold s ~init:0L
+      ~f:(fun addr ((name,_addr,size,off), (w,x)) ->
+          let addr = off in
+          if x then
+            let () =
+              printf "segment %s %Lx  %Ld!\n" name addr size in
+            Fact.provide segment addr size true w x >>= fun () ->
+            Fact.provide mapped addr size off  >>= fun () ->
+            Fact.provide named_region addr size name >>= fun () ->
+            Fact.return Int64.(addr + size)
+          else
+            Fact.return Int64.(addr + size))
 
   let segments =
     Fact.foreach Ogre.Query.(begin
-        select (from program_header $ virtual_program_header $ program_header_flags)
+        select (from
+                  program_header
+                $ virtual_program_header
+                $ program_header_flags)
           ~join:[[field name]]
       end)
-      ~f:(fun hdr (_,addr,vsize) (_,ld,r,w,x) ->
-          hdr, (addr, vsize), (ld,r,w,x)) >>= fun s ->
+      ~f:(fun hdr vhdr hdr_flags -> hdr, vhdr, hdr_flags) >>= fun s ->
     Fact.Seq.iter s
-      ~f:(fun ((name,off,size), (addr, vsize), (ld,r,w,x)) ->
+      ~f:(fun ((name,off,size), (_,addr, vsize), (_,ld,r,w,x)) ->
           if ld then
               Fact.provide segment addr vsize r w x >>= fun () ->
               Fact.provide mapped addr size off >>= fun () ->
               Fact.provide named_region addr vsize name
           else Fact.return ()) >>= Fact.return
 
+  (** TODO: think about - if it's good enough  *)
+  let segments =
+    Fact.require is_relocatable >>= fun rel ->
+    if rel then sections_as_segments
+    else segments
+
   let sections =
     Fact.foreach Ogre.Query.(select (from section_header))
       ~f:ident >>= fun s ->
-    Fact.Seq.iter s
-      ~f:(fun (name, addr, size) ->
-          Fact.provide section addr size >>= fun () ->
-          Fact.provide named_region addr size name)
+      Fact.Seq.iter s
+        ~f:(fun (name, addr, size,_) ->
+            Fact.provide section addr size >>= fun () ->
+            Fact.provide named_region addr size name)
 
   let symbols =
     Fact.foreach Ogre.Query.(select (from symbol_entry))
@@ -76,10 +74,4 @@ module Make(Fact : Ogre.S) = struct
           Fact.request code_entry ~that:(fun a -> a = addr) >>= fun f ->
           if f <> None then Fact.provide code_start addr
           else Fact.return ())
-
-  let image =
-    segments >>= fun () ->
-    sections >>= fun () ->
-    symbols
-
 end

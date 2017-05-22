@@ -19,6 +19,9 @@ Library bap_llvm
   InternalModules:
                  Bap_llvm_config,
                  Bap_llvm_binary,
+                 Bap_llvm_coff_scheme,
+                 Bap_llvm_elf_scheme,
+                 Bap_llvm_macho_scheme,
                  Bap_llvm_ogre_loader,
                  Bap_llvm_ogre_coff,
                  Bap_llvm_ogre_elf,

@@ -1,46 +1,10 @@
 open Core_kernel.Std
 open Bap.Std
-open Bap_llvm_ogre_types
-
-module Scheme = struct
-  open Ogre.Type
-
-  (** macho segment command *)
-  let segment_cmd () =
-    Ogre.declare ~name:"segment-command" (scheme name $ off $ size)
-      Tuple.T3.create
-
-  let segment_cmd_flags () =
-    Ogre.declare ~name:"segment-command-flags"
-      (scheme name $ r $ w $ x)
-      (fun name r w x -> name, (r,w,x))
-
-  let virtual_segment_cmd () =
-    Ogre.declare ~name:"virtual-segment-command"
-      (scheme name $ addr $ size) Tuple.T3.create
-
-  (** macho section *)
-  let macho_section () =
-    Ogre.declare ~name:"macho-section" (scheme name $ addr $ size)
-      Tuple.T3.create
-
-  (** macho symbol that doesn't belong to any section *)
-  let macho_symbol () =
-    Ogre.declare ~name:"macho-symbol" (scheme name $ value)
-      Tuple.T2.create
-
-  (** macho symbol defined in some section *)
-  let macho_section_symbol () =
-    Ogre.declare ~name:"macho-section-symbol" (scheme name $ addr $ size)
-      Tuple.T3.create
-
-  (** macho symbol that is a function *)
-  let function_ () = Ogre.declare ~name:"function" (scheme addr) ident
-end
+open Bap_llvm_ogre_types.Scheme
+open Bap_llvm_macho_scheme
+open Image.Scheme
 
 module Make(Fact : Ogre.S) = struct
-  open Image.Scheme
-  open Scheme
   open Fact.Syntax
 
   let segments =
@@ -77,10 +41,4 @@ module Make(Fact : Ogre.S) = struct
           if f <> None then
             Fact.provide code_start addr
           else Fact.return ())
-
-  let image =
-    segments >>= fun () ->
-    sections >>= fun () ->
-    symbols
-
 end

@@ -717,6 +717,7 @@ module type S = sig
   val require : ?that:('a -> bool) -> ('a,_) attribute -> 'a t
   val request : ?that:('a -> bool) -> ('a,_) attribute -> 'a option t
   val foreach : ('a -> 'b) query -> f:'a -> 'b seq t
+  val collect : (('a -> 'a) -> 'b) query -> 'b seq t
   val provide : (_, 'a -> unit t) attribute -> 'a
   val fail : Error.t -> 'a t
   val failf : ('a, formatter, unit, unit -> 'b t) format4 -> 'a
@@ -769,6 +770,8 @@ module Make(B : Monad.S) = struct
     (* | rows -> *)
     (*   foldm rows ~init:[] ~f:(fun xs row -> read row f >>| fun x -> x :: xs) >>| *)
     (*   Sequence.of_list *)
+
+  let collect q = foreach q ~f:ident
 
   let require ?(that=fun _ -> true) attr : 'a t =
     let name = sprintf "required attribute %s" (Attribute.name attr) in

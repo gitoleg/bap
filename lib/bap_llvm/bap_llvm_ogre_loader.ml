@@ -3,18 +3,21 @@ open Bap.Std
 open Monads.Std
 open Or_error
 open Bap_llvm_ogre_types
-
-module Make(M : Monad.S) = struct
-  include Ogre.Make(M)
-  type 'a m = 'a M.t
-end
+open Bap_llvm_ogre_types.Scheme
 
 module Dispatch(M : Monad.S) = struct
-  module Fact = Make(Monad.Ident)
+  module Fact = struct
+    include Ogre.Make(M)
+    type 'a m = 'a M.t
+  end
+
+  open Fact.Syntax
+
   module Elf = Bap_llvm_ogre_elf.Make(Fact)
   module Coff = Bap_llvm_ogre_coff.Make(Fact)
   module Macho = Bap_llvm_ogre_macho.Make(Fact)
-  open Fact.Syntax
+
+  module type A = Bap_llvm_ogre_types.S with type 'a m := 'a Fact.t
 
   type typ = Elf | Coff | Macho | Unknown [@@deriving sexp]
 
@@ -23,12 +26,18 @@ module Dispatch(M : Monad.S) = struct
       typ_of_sexp (Sexp.of_string s)
     with _ -> Unknown
 
+  let provide x =
+    let module A = (val x : A) in
+    A.segments >>= fun () ->
+    A.sections >>= fun () ->
+    A.symbols
+
   let image =
-    Ogre.require file_type >>= fun s ->
+    Fact.require file_type >>= fun s ->
     match filetype_of_string s with
-    | Elf -> Elf.image
-    | Coff -> Coff.image
-    | Macho -> Macho.image
+    | Elf -> provide (module Elf)
+    | Coff -> provide (module Coff)
+    | Macho -> provide (module Macho)
     | Unknown -> Fact.failf "file type is not supported" ()
 
 end
@@ -50,7 +59,8 @@ module Loader = struct
   let from_data data =
     try
       let doc = Bap_llvm_binary.bap_llvm_load data in
-      Ogre.Doc.from_string doc >>= fun doc -> to_image_doc doc
+      Ogre.Doc.from_string doc >>= fun doc ->
+      to_image_doc doc
     with Llvm_loader_fail n -> match n with
       | 1 -> Ok None
       | 2 -> Or_error.error_string "file corrupted"
@@ -69,4 +79,4 @@ module Loader = struct
 end
 
 let init () =
-  Image.register_loader ~name:"llvm" (module Loader);
+  Image.register_loader ~name:"llvm" (module Loader)
