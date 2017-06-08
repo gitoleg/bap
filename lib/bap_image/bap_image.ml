@@ -337,6 +337,9 @@ module Scheme = struct
       (fun addr size r w x -> {addr; size; info=(r,w,x)})
   let mapped () = declare "mapped" (location () $off)
       (fun addr size off -> region addr size off)
+  let external_symbol () =
+    declare "external-symbol" (scheme addr $ name)
+      Tuple.T2.create
 end
 
 

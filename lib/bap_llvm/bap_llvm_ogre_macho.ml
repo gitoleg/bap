@@ -22,16 +22,14 @@ module Make(Fact : Ogre.S) = struct
           Fact.provide mapped addr size off)
 
   let sections =
-    Fact.foreach Ogre.Query.(select (from macho_section))
-      ~f:ident >>= fun s ->
+    Fact.collect Ogre.Query.(select (from macho_section)) >>= fun s ->
     Fact.Seq.iter s
       ~f:(fun (name, addr, size) ->
           Fact.provide section addr size >>= fun () ->
           Fact.provide named_region addr size name)
 
   let symbols =
-    Fact.foreach Ogre.Query.(select (from macho_section_symbol))
-      ~f:ident >>= fun s ->
+    Fact.collect Ogre.Query.(select (from macho_section_symbol)) >>= fun s ->
     Fact.Seq.iter s ~f:(fun (name, addr, size) ->
         if size = 0L then Fact.return ()
         else

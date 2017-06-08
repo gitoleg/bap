@@ -36,7 +36,7 @@ std::string smart_quoted(const std::string &s) {
 // ...
 // This return a doc with (entry-name 42 false) content.
 // All strings that contain slashes, parentheses or spaces
-// will be quoted. Entry name itself doesn't quoted.
+// will be quoted. Entry name itself doesn't quoted
 // Also possible to add a raw entry, i.e data will be
 // added as it is:
 // ...

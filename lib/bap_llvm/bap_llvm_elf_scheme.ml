@@ -28,11 +28,16 @@ let section_header () = declare "section-header"
 let section_flags () = declare "section-flags"
     (scheme name $ w $ x) Tuple.T3.create
 
-(** elf symbol entry *)
+(** elf symbols that are functions *)
+let code_entry () = declare "code-entry" (scheme addr $ name) Tuple.T2.create
+
+(** if is a relocatable file *)
+let is_relocatable () = declare "relocatable" (scheme flag) ident
+
+(** elf symbol entry - name, address, size *)
 let symbol_entry () =
   declare "symbol-entry" (scheme name $ addr $ size) Tuple.T3.create
 
-(** elf symbols that are functions *)
-let code_entry () = declare "code-entry" (scheme addr) ident
-
-let is_relocatable () = declare "relocatable" (scheme flag) ident
+(** symbol reference - offset, address, size *)
+let symbol_reference () =
+  declare "symbol-reference" (scheme off $ addr $ size) Tuple.T3.create

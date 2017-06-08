@@ -14,6 +14,7 @@ module Dispatch(M : Monad.S) = struct
   open Fact.Syntax
 
   module Elf = Bap_llvm_ogre_elf.Make(Fact)
+  module Elf_rel = Bap_llvm_ogre_elf.Relocatable.Make(Fact)
   module Coff = Bap_llvm_ogre_coff.Make(Fact)
   module Macho = Bap_llvm_ogre_macho.Make(Fact)
 
@@ -35,7 +36,10 @@ module Dispatch(M : Monad.S) = struct
   let image =
     Fact.require file_type >>= fun s ->
     match filetype_of_string s with
-    | Elf -> provide (module Elf)
+    | Elf ->
+      Fact.require Bap_llvm_elf_scheme.is_relocatable >>= fun is_rel ->
+      if is_rel then provide (module Elf_rel)
+      else provide (module Elf)
     | Coff -> provide (module Coff)
     | Macho -> provide (module Macho)
     | Unknown -> Fact.failf "file type is not supported" ()
@@ -51,9 +55,12 @@ module Loader = struct
   let _ = Callback.register_exception
       "Llvm_loader_fail" (Llvm_loader_fail 0)
 
+  (**TODO: remove debug code  *)
   let to_image_doc doc =
     match Fact.exec image doc with
-    | Ok doc -> Ok (Some doc)
+    | Ok doc ->
+      Ogre.Doc.to_file doc "my.ogre";
+      Ok (Some doc)
     | Error er -> Error er
 
   let from_data data =
@@ -64,18 +71,22 @@ module Loader = struct
     with Llvm_loader_fail n -> match n with
       | 1 -> Ok None
       | 2 -> Or_error.error_string "file corrupted"
-      | n -> Or_error.errorf "fail with unexpeced error code %d" n
+      | n -> Or_error.errorf "fail with unexpected error code %d" n
 
-  let from_file path =
+  let map_file path =
     let fd = Unix.(openfile path [O_RDONLY] 0o400) in
     try
       let size = Unix.((fstat fd).st_size) in
       let data = Bigstring.map_file ~shared:false fd size in
       Unix.close fd;
-      from_data data
+      Ok data
     with exn ->
       Unix.close fd;
       Or_error.errorf "unable to process file %s" path
+
+  let from_file path =
+    Or_error.(map_file path >>= from_data)
+
 end
 
 let init () =

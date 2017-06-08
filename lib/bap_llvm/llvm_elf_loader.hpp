@@ -42,17 +42,11 @@
 //    with some meaningful size;
 // 2) external-symbol that is a mapping from file offset to some name.
 //
-// TODO: find where abs symbols go (__crc_usbatm_usb_disconnect)
-
 
 #include <iostream>
 #include <iomanip>
 
 #include <llvm/Object/ELFObjectFile.h>
-
-// TODO: remove it, we don't need in it - just for debug
-#include <llvm/Object/RelocVisitor.h>
-
 
 #include "llvm_error_or.hpp"
 #include "llvm_loader_utils.hpp"
@@ -131,22 +125,13 @@ void symbol_entry(const Elf_Sym_Impl<T> &sym, const std::string &name,
 }
 
 template <typename T>
-void symbol_reference(const ELFObjectFile<T> &obj, ELFRelocationRef &rel, uint64_t sec_offset, ogre_doc &s) {
-    auto it = rel.getSymbol();
-    auto sym_elf = obj.getSymbol(it->getRawDataRefImpl());
-    auto off = sec_offset + rel.getOffset(); // full file offset where to apply relocation
-    auto sec = it->getSection();
-    if (sym_elf->getBinding() == ELF::STB_GLOBAL && sym_elf->st_size == 0) {
-        auto sym_name = it->getName();
-        if (sym_name)
-            s.entry("external-symbol") << off << sym_name.get().str();
-        return;
-    }
-    if (sec) {
-        auto sec_elf = obj.getSection((*sec)->getRawDataRefImpl());
-        auto addr = sec_elf->sh_offset + sym_elf->st_value;
-        s.entry("symbol-reference") << off << addr << sym_elf->st_size;
-    }
+bool is_external_symbol(const T &sym) {
+    return (sym.getBinding() == ELF::STB_GLOBAL && sym.st_size == 0);
+}
+
+template <typename T>
+bool is_abs_symbol(const T &sym) {
+    return (sym.st_shndx == ELF::SHN_ABS);
 }
 
 
@@ -182,7 +167,7 @@ void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_i
         auto sym_elf = obj.getSymbol(sym.getRawDataRefImpl());
         uint64_t address = addr.get();
 
-        if (is_rel(obj)) {
+        if (is_rel(obj) && !is_abs_symbol(*sym_elf)) { // abs symbols does not affected by relocations
             auto sec_it = it->getSection();
             // check that sec_it points to a real, but not to a "special" elf section
             if (sec_it && !(*sec_it == obj.section_end())) {
@@ -205,137 +190,35 @@ void symbol_entries(const ELFObjectFile<T> &obj, ogre_doc &s) {
         symbol_entries(obj, obj.dynamic_symbol_begin(), obj.dynamic_symbol_end(), s);
 }
 
-bool contains_code(section_iterator it) {
-    ELFSectionRef s(*it);
-    return static_cast<bool>(s.getFlags() & ELF::SHF_EXECINSTR);
-}
-
-bool refered_to_code(SectionRef s) {
-    return contains_code(s.getRelocatedSection());
+template <typename T>
+void symbol_reference(const ELFObjectFile<T> &obj, const ELFRelocationRef &rel, uint64_t sec_offset, ogre_doc &s) {
+    auto it = rel.getSymbol();
+    auto sym_elf = obj.getSymbol(it->getRawDataRefImpl());
+    auto off = sec_offset + rel.getOffset(); // full file offset where relocation should be applied
+    if (is_external_symbol(*sym_elf)) {
+        auto sym_name = it->getName();
+        if (sym_name)
+            s.entry("external-symbol") << off << sym_name.get().str();
+        return;
+    }
+    if (auto sec = it->getSection()) {
+        auto sec_elf = obj.getSection((*sec)->getRawDataRefImpl());
+        auto addr = sec_elf->sh_offset + sym_elf->st_value; // full file offset where is origin symbol
+        s.entry("symbol-reference") << off << addr << sym_elf->st_size;
+    }
 }
 
 template <typename T>
 void relocations(const ELFObjectFile<T> &obj, ogre_doc &s) {
     for (auto sec : obj.sections()) {
-        // if (refered_to_code(sec)) {
-            auto rel = sec.getRelocatedSection();
-            auto hdr = obj.getSection(rel->getRawDataRefImpl());
-            for (auto rel : sec.relocations()) {
-                ELFRelocationRef erel(rel);
-                symbol_reference(obj, erel, hdr->sh_offset, s);
-            }
-//        }
-    }
-}
-
-
-
-
-//TODO: remove it later
-std::string binding(uint8_t x) {
-    std::string s;
-    switch (x) {
-    case(ELF::STB_LOCAL) : s = "local"; break;
-    case(ELF::STB_GLOBAL) : s = "global"; break;
-    case(ELF::STB_WEAK) : s = "weak"; break;
-    case(ELF::STB_LOOS) : s = "loos"; break;
-    case(ELF::STB_HIOS) : s = "hios"; break;
-    case(ELF::STB_LOPROC) : s = "loproc"; break;
-    case(ELF::STB_HIPROC) : s = "hiproc"; break;
-    default : s = "unknown";
-    }
-    return s;
-}
-
-//TODO: remove it later
-std::string reloc_type(RelocationRef rel) {
-    SmallString<16> name;
-    rel.getTypeName(name);
-    return name.str().str();
-}
-
-//TODO: remove it later
-template <typename T>
-std::string sym_type(const Elf_Sym_Impl<T> &sym) {
-    std::string s;
-    switch (sym.getType()) {
-    case(ELF::STT_NOTYPE)  : s = "notype";  break;
-    case(ELF::STT_OBJECT)  : s = "object";  break;
-    case(ELF::STT_FUNC)    : s = "is_fun";  break;
-    case(ELF::STT_SECTION) : s = "section"; break;
-    case(ELF::STT_FILE)    : s = "file";    break;
-    case(ELF::STT_COMMON)  : s = "common";  break;
-    default                : s = "other";
-    }
-    return s;
-}
-
-//TODO: remove it later
-std::string secname(SectionRef s) {
-    StringRef name;
-    auto er = s.getName(name);
-    if (!er) return name.str();
-    else return "noname section";
-}
-
-
-//TODO: remove it later
-template <typename T>
-void explore_rel(const ELFObjectFile<T> &obj) {
-    auto visitor = RelocVisitor(obj);
-    for (auto sec : obj.sections()) {
-        std::cout << "-- explore section " << secname(sec) << " ----" << std::endl;
-        std::cout << "-- refered to " << secname(*(sec.getRelocatedSection()))
-                  << std::boolalpha << "; refered to code? " << refered_to_code(sec) << std::endl;
+        auto rel_sec = sec.getRelocatedSection();
+        auto hdr = obj.getSection(rel_sec->getRawDataRefImpl());
         for (auto rel : sec.relocations()) {
             ELFRelocationRef erel(rel);
-            auto it = erel.getSymbol();
-            auto sym_elf = obj.getSymbol(it->getRawDataRefImpl());
-            //rel type, rel offset
-            auto add = erel.getAddend();
-            auto off = erel.getOffset();
-            std::cout << reloc_type(rel) << "; off " << std::hex << "0x"
-                      << off << std::dec << "(" << off << ")";
-            // info about symbol: name, size
-            auto sym_name = it->getName();
-            if (sym_name) {
-                std::cout << "(ref to sym " <<  sym_name.get().str() << " of size "
-                          << sym_elf->st_size << " with sym_value " << sym_elf->st_value;
-                //check symbol type
-                std::cout << "; shndx " << sym_elf->st_shndx;
-                std::cout << "; value " << sym_elf->st_value;
-                //symbol binding
-                std::cout << "; binding " << binding(sym_elf->getBinding());
-                std::cout << "; type " << sym_type(*sym_elf) << ")";
-            }
-            //addend
-            if (add)
-                std::cout << "; addend: " << *add;
-            else
-                std::cout << "; no addend";
-            //section info
-            auto sec = it->getSection();
-            if (sec) {
-                StringRef secname;
-                auto er = sec.get()->getName(secname);
-                if (!er)
-                    std::cout <<  "; section " << secname.str();
-                else
-                    std::cout <<  "; noname section";
-                auto sec_elf = obj.getSection((*sec)->getRawDataRefImpl());
-                std::cout << "; section off " << sec_elf->sh_offset;
-            } else { std::cout <<  "; no section "; }
-            //apply relocation
-            auto app = visitor.visit(rel.getType(), rel);
-            std::cout << "; value: " << app.Value << "; width " << int(app.Width);
-            std::cout << std::endl;
+            symbol_reference(obj, erel, hdr->sh_offset, s);
         }
-        std::cout << "--------" << std::endl;
     }
 }
-
-
-
 
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
 
@@ -357,7 +240,6 @@ void section_headers(const ELFObjectFile<T> &obj, ogre_doc &s) {
     }
 }
 
-//TODO: write relocations too
 template <typename T>
 void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_iterator end, ogre_doc &s) {
     StringRef name;
@@ -369,14 +251,17 @@ void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_i
         auto er_addr = it->getAddress(addr);
         if (er_name || er_addr) continue;
         auto sym_elf = obj.getSymbol(it->getRawDataRefImpl());
-        symbol_entry(*sym_elf, name.str(), addr, s);
-        if (is_rel(obj)) {
+
+        if (is_rel(obj) && !is_abs_symbol(*sym_elf)) {
             section_iterator sec_it;
             auto er_sec = it->getSection(sec_it);
-            if (er_sec) return;
-            auto sec_elf = obj.toELFShdrIter(sec_it->getRawDataRefImpl());
-            relocatable_symbol(*sym_elf, name.get().str(), it->getValue(), sec_elf->sh_offset, s);
+            // check that sec_it points to a real, but not to a "special" elf section
+            if (!er_sec && !(sec_it == obj.end_sections())) {
+                auto sec_elf = obj.toELFShdrIter(sec_it->getRawDataRefImpl());
+                addr += sec_elf->sh_offset;
+            }
         }
+        symbol_entry(*sym_elf, name.str(), addr, s);
     }
 }
 
@@ -387,6 +272,44 @@ void symbol_entries(const ELFObjectFile<T> &obj, ogre_doc &s) {
     symbol_entries(obj, obj.begin_symbols(), obj.end_symbols(), s);
     symbol_entries(obj, obj.begin_dynamic_symbols(), obj.begin_dynamic_symbols(), s);
 }
+
+
+// see comments for 3.8 version above
+template <typename T>
+void symbol_reference(const ELFObjectFile<T> &obj, const RelocationRef &rel, uint64_t sec_offset, ogre_doc &s) {
+    auto it = rel.getSymbol();
+    auto sym_elf = obj.getSymbol(it->getRawDataRefImpl());
+    uint64_t rel_off;
+    auto er_off = rel.getOffset(rel_off); // it's always successful operation
+    auto off = sec_offset + rel_off;
+    if (is_external_symbol(*sym_elf)) {
+        StringRef name;
+        auto er_name = it->getName(name);
+        if (!er_name)
+            s.entry("external-symbol") << off << name.str();
+        return;
+    }
+    section_iterator sec;
+    auto er_sec =  it->getSection(sec);
+    if (!er_sec) {
+        auto sec_elf = obj.toELFShdrIter(sec->getRawDataRefImpl());
+        auto addr = sec_elf->sh_offset + sym_elf->st_value;
+        s.entry("symbol-reference") << off << addr << sym_elf->st_size;
+    }
+}
+
+template <typename T>
+void relocations(const ELFObjectFile<T> &obj, ogre_doc &s) {
+    auto end = obj.end_sections();
+    for (auto sec_it = obj.begin_sections; sec_it != end; next(sec_it, end)) {
+        auto rel_sec = sec_it->getRelocatedSection();
+        auto hdr = obj.toELFShdrIter(rel_sec->getRawDataRefImpl());
+        for (auto rel_it : sec.relocations()) {
+            symbol_reference(obj, *rel_it, hdr->sh_offset, s);
+        }
+    }
+}
+
 #else
 #error LLVM version is not supported
 #endif
@@ -405,9 +328,6 @@ error_or<std::string> load(const llvm::object::ELFObjectFile<T> &obj) {
     section_headers(obj, s);
     symbol_entries(obj, s);
     relocations(obj, s);
-
-    explore_rel(obj);
-
     return s.str();
 }
 
