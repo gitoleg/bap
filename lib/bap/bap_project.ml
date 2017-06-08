@@ -211,6 +211,8 @@ let union_memory m1 m2 =
   Memmap.to_sequence m2 |> Seq.fold ~init:m1 ~f:(fun m1 (mem,v) ->
       Memmap.add m1 mem v)
 
+
+
 let create_exn
     ?disassembler:backend
     ?brancher
@@ -279,13 +281,13 @@ let create_exn
       let program = Bap_synthetic_symbolizer.resolve
           spec insns (MVar.read program) in
       finish {
-      disasm;
-      program;
-      symbols = MVar.read symtab;
-      arch; memory=union_memory code data;
-      storage = Dict.set Dict.empty filename file;
-      state; passes=[]
-    } in
+        disasm;
+        program;
+        symbols = MVar.read symtab;
+        arch; memory=union_memory code data;
+        storage = Dict.set Dict.empty filename file;
+        state; passes=[]
+      } in
   loop ()
 
 let create

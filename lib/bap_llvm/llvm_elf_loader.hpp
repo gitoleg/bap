@@ -241,10 +241,20 @@ void section_headers(const ELFObjectFile<T> &obj, ogre_doc &s) {
 }
 
 template <typename T>
+uint64_t section_offset(const ELFObjectFile<T> &obj, const SectionRef & sec) {
+    typedef typename ELFObjectFile<T>::Elf_Shdr_Iter elf_shdr_iterator;
+
+    auto elf = obj.getELFFile();
+    auto raw = sec.getRawDataRefImpl();
+    auto elf_sec_it = elf_shdr_iterator(elf->getHeader()->e_shentsize,
+                                        reinterpret_cast<const char *>(raw.p));
+    return elf_sec_it->sh_offset;
+}
+
+template <typename T>
 void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_iterator end, ogre_doc &s) {
     StringRef name;
     uint64_t addr, size;
-    section_iterator sec_it;
     SymbolRef::Type typ;
     for (auto it = begin; it != end; next(it, end)) {
         auto er_name = it->getName(name);
@@ -253,13 +263,11 @@ void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_i
         auto sym_elf = obj.getSymbol(it->getRawDataRefImpl());
 
         if (is_rel(obj) && !is_abs_symbol(*sym_elf)) {
-            section_iterator sec_it;
+            section_iterator sec_it = obj.begin_sections();
             auto er_sec = it->getSection(sec_it);
             // check that sec_it points to a real, but not to a "special" elf section
-            if (!er_sec && !(sec_it == obj.end_sections())) {
-                auto sec_elf = obj.toELFShdrIter(sec_it->getRawDataRefImpl());
-                addr += sec_elf->sh_offset;
-            }
+            if (!er_sec && !(sec_it == obj.end_sections()))
+                addr += section_offset(obj, *sec_it);
         }
         symbol_entry(*sym_elf, name.str(), addr, s);
     }
@@ -272,7 +280,6 @@ void symbol_entries(const ELFObjectFile<T> &obj, ogre_doc &s) {
     symbol_entries(obj, obj.begin_symbols(), obj.end_symbols(), s);
     symbol_entries(obj, obj.begin_dynamic_symbols(), obj.begin_dynamic_symbols(), s);
 }
-
 
 // see comments for 3.8 version above
 template <typename T>
@@ -289,11 +296,11 @@ void symbol_reference(const ELFObjectFile<T> &obj, const RelocationRef &rel, uin
             s.entry("external-symbol") << off << name.str();
         return;
     }
-    section_iterator sec;
+    section_iterator sec = obj.begin_sections();
     auto er_sec =  it->getSection(sec);
     if (!er_sec) {
-        auto sec_elf = obj.toELFShdrIter(sec->getRawDataRefImpl());
-        auto addr = sec_elf->sh_offset + sym_elf->st_value;
+        auto sec_off = section_offset(obj, *sec);
+        auto addr = sec_off + sym_elf->st_value;
         s.entry("symbol-reference") << off << addr << sym_elf->st_size;
     }
 }
@@ -301,12 +308,12 @@ void symbol_reference(const ELFObjectFile<T> &obj, const RelocationRef &rel, uin
 template <typename T>
 void relocations(const ELFObjectFile<T> &obj, ogre_doc &s) {
     auto end = obj.end_sections();
-    for (auto sec_it = obj.begin_sections; sec_it != end; next(sec_it, end)) {
+    for (auto sec_it = obj.begin_sections(); sec_it != end; next(sec_it, end)) {
         auto rel_sec = sec_it->getRelocatedSection();
-        auto hdr = obj.toELFShdrIter(rel_sec->getRawDataRefImpl());
-        for (auto rel_it : sec.relocations()) {
-            symbol_reference(obj, *rel_it, hdr->sh_offset, s);
-        }
+        auto rel_sec_off = section_offset(obj, *rel_sec);
+        auto rel_end = sec_it->end_relocations();
+        for (auto rel_it = sec_it->begin_relocations(); rel_it != rel_end; next(rel_it, rel_end))
+            symbol_reference(obj, *rel_it, rel_sec_off, s);
     }
 }
 

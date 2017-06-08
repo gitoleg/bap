@@ -35,9 +35,7 @@ end
 
 let relocations doc =
   match Fact.eval Rel.relocations doc with
-  | Ok rel ->
-    printf "relocations in brancher: %d\n" @@ List.length (fst rel);
-    rel
+  | Ok rel -> rel
   | Error er ->
     error "%a" Error.pp er;
     [],[]

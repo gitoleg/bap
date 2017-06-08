@@ -123,6 +123,9 @@ class relinker src_prg names = object
       else jmp
 end
 
+(** [reduce prg] removes duplicated synthetic subroutines,
+    that appeared during program lifting are external calls
+    resolving. *)
 let reduce prg =
   let jumps = List.rev @@ (new jmp_finder)#run prg [] in
   let targets = List.filter_map ~f:target_tid jumps in

@@ -221,21 +221,7 @@ let is_barrier s mem insn =
   Dis.Insn.is insn `May_affect_control_flow ||
   has_jump (ok_nil (s.lift mem insn))
 
-
-(** TODO: remove this  *)
-let print_dests ds =
-  let f (a,e) =
-    let es = Sexp.to_string @@ Bap_disasm_block.sexp_of_edge e in
-    let sa = Option.value_map a ~default:"none"
-        ~f:(fun a -> sprintf "%s" @@ Addr.pps () a) in
-    printf "  (%s, %s)" sa es in
-  printf "destinitions: ";
-  List.iter ~f ds;
-  print_newline ()
-
-
 let update s mem insn dests : stage1 =
-  (* print_dests dests; *)
   if is_barrier s mem insn then
     let dests = List.map dests ~f:(fun d -> match d with
         | Some addr,kind when Memory.contains s.base addr -> d
@@ -267,7 +253,7 @@ let next dis s =
 
 let stop_on = [`Valid]
 
-(** TODO: it's probably fine - but still I need to verify this logic  *)
+(** TODO: it's probably fine - but I still need think here  *)
 let rel_lift brancher lift mem insn =
   let fold_consts = Bil.(fixpoint fold_consts) in
   lift mem insn >>= fun bil ->
@@ -277,8 +263,8 @@ let rel_lift brancher lift mem insn =
   | Some addr  ->
     return @@
     List.map (fold_consts bil) ~f:(function
-    | Bil.Jmp (Bil.Int _ ) -> Bil.Jmp (Bil.Int addr)
-    | s -> s)
+        | Bil.Jmp (Bil.Int _) -> Bil.Jmp (Bil.Int addr)
+        | s -> s)
   | None -> return bil
 
 let stage1 ?(rooter=Rooter.empty) lift brancher disasm base =
