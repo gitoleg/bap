@@ -253,7 +253,6 @@ let next dis s =
 
 let stop_on = [`Valid]
 
-(** TODO: it's probably fine - but I still need think here  *)
 let relocate brancher lift mem insn =
   lift mem insn >>= fun bil ->
   List.find_map (brancher mem insn) ~f:(function

@@ -77,17 +77,11 @@ bool is_rel(const ELFObjectFile<T> &obj) {
     auto hdr = obj.getELFFile()->getHeader();
     return (hdr->e_type & ELF::ET_REL);
 }
-
-// we will not provide entry for relocatable files
-// to make it easier to provide it through cmd line
-// (anyway it equals to zero in relocatables)
 template <typename T>
 void file_header(const ELFObjectFile<T> &obj, ogre_doc &s) {
     auto hdr = obj.getELFFile()->getHeader();
-    auto r = is_rel(obj);
-    s.entry("relocatable") << r;
-    if (!r)
-        s.entry("entry-point") << hdr->e_entry;
+    s.entry("entry-point") << hdr->e_entry;
+    s.entry("relocatable") << is_rel(obj);
 }
 
 std::string name_of_index(std::size_t i) {

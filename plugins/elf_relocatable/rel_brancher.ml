@@ -72,7 +72,7 @@ let create arch spec =
   let b = Brancher.of_bil arch in
   Ok (Brancher.create (relocate_dests b rels))
 
-let init () =
+let () =
   let open Project.Info in
   Stream.Variadic.(apply (args arch $ spec) ~f:create) |>
   Brancher.Factory.register "elf-relocatable"
