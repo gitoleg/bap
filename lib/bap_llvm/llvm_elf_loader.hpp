@@ -261,6 +261,8 @@ void symbol_entries(const ELFObjectFile<T> &obj, symbol_iterator begin, symbol_i
         auto er_addr = it->getAddress(addr);
         if (er_name || er_addr) continue;
         auto sym_elf = obj.getSymbol(it->getRawDataRefImpl());
+        if (addr == UnknownAddressOrSize)
+            addr = 0;
 
         if (is_rel(obj) && !is_abs_symbol(*sym_elf)) {
             section_iterator sec_it = obj.begin_sections();

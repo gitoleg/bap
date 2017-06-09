@@ -114,8 +114,7 @@ class relinker src_prg names = object
     | None -> jmp
     | Some (call, tid) ->
       if is_synthetic_sub src_prg tid then
-        let name = Tid.name tid in
-        match String.Map.find names name with
+        match String.Map.find names (Tid.name tid) with
         | Some unq_tid when not (Tid.equal unq_tid tid) ->
           let call = Call.with_target call (Direct unq_tid) in
           Ir_jmp.with_kind jmp (Call call)

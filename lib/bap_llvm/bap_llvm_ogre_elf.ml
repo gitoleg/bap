@@ -50,6 +50,7 @@ module Relocatable = struct
   module Make(Fact : Ogre.S) = struct
     open Fact.Syntax
 
+    (** TODO: provide an artificial entry *)
     let entry = 0x0L
 
     (** TODO: don't forget to find out why the following doesn't work:
@@ -70,13 +71,7 @@ module Relocatable = struct
               Fact.provide named_region addr size name
             else Fact.return ())
 
-    let relocations =
-      Fact.collect Ogre.Query.(select (from symbol_reference)) >>= fun s ->
-      Fact.Seq.iter s ~f:(fun (off, addr, size) ->
-          Fact.provide mapped addr size off)
-
     let symbols =
-      relocations >>= fun () ->
       Fact.collect Ogre.Query.(select (from symbol_entry)) >>= fun s ->
       Fact.Seq.iter s ~f:(fun (name, addr, size) ->
           if size = 0L then Fact.return ()

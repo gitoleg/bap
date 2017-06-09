@@ -14,12 +14,9 @@ module Rel = struct
   open Fact.Syntax
 
   let relocations =
-    Fact.foreach Ogre.Query.(
-        select (from mapped $ symbol_chunk)
-          ~where:(mapped.(addr) = symbol_chunk.(addr) &&
-                  mapped.(size) = symbol_chunk.(size)))
-      ~f:(fun {addr; info=off} _ -> off,addr) >>= fun s ->
-    Fact.return (Seq.to_list s)
+    Fact.collect Ogre.Query.(select (from symbol_reference)) >>= fun s ->
+    Seq.map s ~f:(fun (off, addr, size) -> off,addr) |> Seq.to_list |>
+    Fact.return
 
   let external_symbols  =
     Fact.collect Ogre.Query.(

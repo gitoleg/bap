@@ -31,7 +31,7 @@ type t = {
   storage : dict;
   program : program term;
   symbols : Symtab.t;
-  state : state;
+  state   : state;
   passes  : string list;
 } [@@deriving fields]
 

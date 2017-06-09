@@ -254,15 +254,14 @@ let next dis s =
 let stop_on = [`Valid]
 
 (** TODO: it's probably fine - but I still need think here  *)
-let rel_lift brancher lift mem insn =
-  let fold_consts = Bil.(fixpoint fold_consts) in
+let relocate brancher lift mem insn =
   lift mem insn >>= fun bil ->
   List.find_map (brancher mem insn) ~f:(function
       | Some addr, `Jump -> Some addr
       | _ -> None) |> function
   | Some addr  ->
     return @@
-    List.map (fold_consts bil) ~f:(function
+    List.map Bil.(fixpoint fold_consts bil) ~f:(function
         | Bil.Jmp (Bil.Int _) -> Bil.Jmp (Bil.Int addr)
         | s -> s)
   | None -> return bil
@@ -273,7 +272,7 @@ let stage1 ?(rooter=Rooter.empty) lift brancher disasm base =
   let addr,roots = match Seq.to_list roots with
     | r :: rs -> r,rs
     | [] -> Memory.min_addr base, [] in
-  let lift = rel_lift brancher lift in
+  let lift = relocate brancher lift in
   let init = {base; addr; visited = Span.empty;
               roots; inits = roots;
               dests = Addr.Table.create (); errors = []; lift} in
