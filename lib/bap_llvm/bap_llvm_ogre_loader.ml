@@ -5,6 +5,8 @@ open Or_error
 open Bap_llvm_ogre_types
 open Bap_llvm_ogre_types.Scheme
 
+let fake_entry = ref 0L
+
 module Dispatch(M : Monad.S) = struct
   module Fact = struct
     include Ogre.Make(M)
@@ -14,7 +16,6 @@ module Dispatch(M : Monad.S) = struct
   open Fact.Syntax
 
   module Elf = Bap_llvm_ogre_elf.Make(Fact)
-  module Elf_rel = Bap_llvm_ogre_elf.Relocatable.Make(Fact)
   module Coff = Bap_llvm_ogre_coff.Make(Fact)
   module Macho = Bap_llvm_ogre_macho.Make(Fact)
 
@@ -38,7 +39,13 @@ module Dispatch(M : Monad.S) = struct
     match filetype_of_string s with
     | Elf ->
       Fact.require Bap_llvm_elf_scheme.is_relocatable >>= fun is_rel ->
-      if is_rel then provide (module Elf_rel)
+      if is_rel then
+        let module A = (struct
+          let entry = !fake_entry
+        end) in
+        let module Elf_rel = Bap_llvm_ogre_elf.Relocatable(A) in
+        let module R = Elf_rel.Make(Fact) in
+        provide (module R)
       else provide (module Elf)
     | Coff -> provide (module Coff)
     | Macho -> provide (module Macho)
@@ -55,12 +62,9 @@ module Loader = struct
   let _ = Callback.register_exception
       "Llvm_loader_fail" (Llvm_loader_fail 0)
 
-  (**TODO: remove debug code  *)
   let to_image_doc doc =
     match Fact.exec image doc with
-    | Ok doc ->
-      Ogre.Doc.to_file doc "my.ogre";
-      Ok (Some doc)
+    | Ok doc -> Ok (Some doc)
     | Error er -> Error er
 
   let from_data data =
@@ -91,3 +95,6 @@ end
 
 let init () =
   Image.register_loader ~name:"llvm" (module Loader)
+
+let init_relocatable ?(entry=0xC0000000L) () =
+  fake_entry := entry

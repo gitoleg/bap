@@ -69,7 +69,7 @@ static const std::string elf_declarations =
     "(declare section-flags (name str) (write bool) (execute bool))"
     "(declare symbol-entry (name str) (addr int) (size int))"
     "(declare code-entry (addr int) (name str))"
-    "(declare symbol-reference (offset int) (addr int) (size int))"
+    "(declare symbol-reference (offset int) (addr int))"
     "(declare external-symbol (addr int) (name str))";
 
 template <typename T>
@@ -78,11 +78,16 @@ bool is_rel(const ELFObjectFile<T> &obj) {
     return (hdr->e_type & ELF::ET_REL);
 }
 
+// we will not provide entry for relocatable files
+// to make it easier to provide it through cmd line
+// (anyway it equals to zero in relocatables)
 template <typename T>
 void file_header(const ELFObjectFile<T> &obj, ogre_doc &s) {
     auto hdr = obj.getELFFile()->getHeader();
-    s.entry("entry-point") << hdr->e_entry;
-    s.entry("relocatable") << is_rel(obj);
+    auto r = is_rel(obj);
+    s.entry("relocatable") << r;
+    if (!r)
+        s.entry("entry-point") << hdr->e_entry;
 }
 
 std::string name_of_index(std::size_t i) {
@@ -204,7 +209,7 @@ void symbol_reference(const ELFObjectFile<T> &obj, const ELFRelocationRef &rel, 
     if (auto sec = it->getSection()) {
         auto sec_elf = obj.getSection((*sec)->getRawDataRefImpl());
         auto addr = sec_elf->sh_offset + sym_elf->st_value; // full file offset where is origin symbol
-        s.entry("symbol-reference") << off << addr << sym_elf->st_size;
+        s.entry("symbol-reference") << off << addr;
     }
 }
 

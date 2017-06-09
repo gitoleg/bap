@@ -15,8 +15,7 @@ module Rel = struct
 
   let relocations =
     Fact.collect Ogre.Query.(select (from symbol_reference)) >>= fun s ->
-    Seq.map s ~f:(fun (off, addr, size) -> off,addr) |> Seq.to_list |>
-    Fact.return
+    Fact.return (Seq.to_list s)
 
   let external_symbols  =
     Fact.collect Ogre.Query.(

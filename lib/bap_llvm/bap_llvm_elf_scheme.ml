@@ -38,6 +38,6 @@ let is_relocatable () = declare "relocatable" (scheme flag) ident
 let symbol_entry () =
   declare "symbol-entry" (scheme name $ addr $ size) Tuple.T3.create
 
-(** symbol reference - offset, address, size *)
+(** symbol reference - offset, address *)
 let symbol_reference () =
-  declare "symbol-reference" (scheme off $ addr $ size) Tuple.T3.create
+  declare "symbol-reference" (scheme off $ addr) Tuple.T2.create

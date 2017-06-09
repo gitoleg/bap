@@ -54,13 +54,12 @@ module Input = struct
     code : value memmap;
     file : string;
     finish : t -> t;
-    spec : Ogre.Doc.t;
   }
 
   type t = unit -> result
 
   let create ?(finish=ident)arch file ~code ~data () = {
-    arch; file; code; data; finish; spec = Ogre.Doc.empty;
+    arch; file; code; data; finish;
   }
 
   let loaders = String.Table.create ()
@@ -79,7 +78,6 @@ module Input = struct
     code = filter_code (Image.memory img);
     file;
     finish;
-    spec = Image.spec img;
   }
 
   let of_image ?loader filename =
@@ -118,7 +116,7 @@ module Input = struct
     let mem = Memory.create (Arch.endian arch) base big |> ok_exn in
     let section = Value.create Image.section "bap.user" in
     let data = Memmap.add Memmap.empty mem section in
-    {arch; data; code = data; file = filename; finish = ident; spec = Ogre.Doc.empty}
+    {arch; data; code = data; file = filename; finish = ident;}
 
   let available_loaders () =
     Hashtbl.keys loaders @ Image.available_backends ()
@@ -211,7 +209,12 @@ let union_memory m1 m2 =
   Memmap.to_sequence m2 |> Seq.fold ~init:m1 ~f:(fun m1 (mem,v) ->
       Memmap.add m1 mem v)
 
-
+let symbolize_synthetic prog insns spec =
+  if MVar.is_updated spec then
+    match MVar.read spec with
+    | None -> prog
+    | Some spec -> Bap_synthetic_symbolizer.resolve spec insns prog
+  else prog
 
 let create_exn
     ?disassembler:backend
@@ -228,7 +231,8 @@ let create_exn
   let cfg     = MVar.create ~compare:Cfg.compare Cfg.empty in
   let symtab  = MVar.create ~compare:Symtab.compare Symtab.empty in
   let program = MVar.create ~compare:Program.compare (Program.create ()) in
-  let {Input.arch; data; code; file; finish; spec} = read () in
+  let spec = MVar.from_source (Stream.map ~f:(fun s -> Ok s) Info.spec) in
+  let {Input.arch; data; code; file; finish;} = read () in
   Signal.send Info.got_file file;
   Signal.send Info.got_arch arch;
   Signal.send Info.got_data data;
@@ -277,9 +281,9 @@ let create_exn
        MVar.is_updated mreconstructor then loop ()
     else
       let disasm = Disasm.create g in
-      let insns = Disasm.insns disasm in
-      let program = Bap_synthetic_symbolizer.resolve
-          spec insns (MVar.read program) in
+      let program = MVar.read program in
+      let program =
+        symbolize_synthetic program (Disasm.insns disasm) spec in
       finish {
         disasm;
         program;

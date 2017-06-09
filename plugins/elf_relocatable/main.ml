@@ -5,8 +5,6 @@ include Self()
 
 let () = Rel_brancher.init ()
 
-let main entry = ()
-
 let () =
   let () = Config.manpage [
       `S "DESCRIPTION";
@@ -14,5 +12,6 @@ let () =
     ] in
   let entry =
     let doc = "Replaces a entry point in relocatable files" in
-    Config.(param int ~default:0x401800 "entry" ~doc) in
-  Config.when_ready (fun {Config.get=(!)} -> main !entry)
+    Config.(param int64 "entry" ~doc) in
+  Config.when_ready (fun {Config.get=(!)} ->
+      Bap_llvm_ogre_loader.init_relocatable ~entry:!entry ())

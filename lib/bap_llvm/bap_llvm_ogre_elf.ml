@@ -46,17 +46,33 @@ module Make(Fact : Ogre.S) = struct
 
 end
 
-module Relocatable = struct
+module type E = sig
+  val entry : int64
+end
+
+module Relocatable(E : E) = struct
   module Make(Fact : Ogre.S) = struct
     open Fact.Syntax
 
-    (** TODO: provide an artificial entry *)
-    let entry = 0x0L
+    let entry = E.entry
+
+    let shift =
+      Fact.collect
+        Ogre.Query.(select (from symbol_reference)) >>= fun refs ->
+      Fact.collect
+        Ogre.Query.(select (from external_symbol)) >>= fun exts ->
+      Fact.Seq.iter ~f:(fun (x,y) ->
+          let x,y = Int64.(x + entry, y + entry) in
+          Fact.provide symbol_reference x y) refs >>= fun () ->
+      Fact.Seq.iter ~f:(fun (o,n) ->
+          Fact.provide external_symbol Int64.(o + entry) n) exts
 
     (** TODO: don't forget to find out why the following doesn't work:
         ~where:(section_flags.(x) = bool(true))
         (fails with strange exception *)
     let segments =
+      shift >>= fun () ->
+      Fact.provide entry_point entry >>= fun () ->
       Fact.foreach Ogre.Query.(begin
           select (from section_header $ section_flags)
             ~join:[[field name]]
@@ -76,11 +92,12 @@ module Relocatable = struct
       Fact.Seq.iter s ~f:(fun (name, addr, size) ->
           if size = 0L then Fact.return ()
           else
-            Fact.provide named_symbol addr name >>= fun () ->
-            Fact.provide symbol_chunk addr size addr >>= fun () ->
+            let full_addr = Int64.(entry + addr) in
+            Fact.provide named_symbol full_addr name >>= fun () ->
+            Fact.provide symbol_chunk full_addr size full_addr >>= fun () ->
             Fact.request code_entry
               ~that:(fun (a,n) -> a = addr && n = name) >>= fun f ->
-            if f <> None then Fact.provide code_start addr
+            if f <> None then Fact.provide code_start full_addr
             else Fact.return ())
 
     let sections =
