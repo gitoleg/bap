@@ -306,7 +306,7 @@ bool symbol_name(const SymbolRef &s, std::string &name) {
 }
 
 bool symbol_address(const SymbolRef &s, uint64_t &addr) {
-    auto er = sym.getAddress(addr);
+    auto er = s.getAddress(addr);
 
     //need to perform this check due to nice llvm code like:
     // ...
