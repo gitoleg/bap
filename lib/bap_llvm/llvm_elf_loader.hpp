@@ -323,9 +323,7 @@ template <typename T>
 bool symbol_file_offset(const ELFObjectFile<T> &obj, const SymbolRef &sym, uint64_t &off) {
     section_iterator sec = obj.begin_sections();
     uint64_t addr;
-    auto er_sec  = sym.getSection(sec);
-    auto er_addr = sym.getAddress(addr);
-    bool check = !er_sec && !er_addr;
+    bool check = symbol_address(sym, addr) && !sym.getSection(sec);
     if (check)
         off = addr + section_offset(obj, sec);
     return check;
