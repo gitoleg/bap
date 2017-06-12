@@ -2,7 +2,7 @@ open Cmdliner
 open Bap_options
 
 val filename : string Term.t
-val loader : unit -> string Term.t
+val loader : unit -> string option Term.t
 val disassembler : unit -> string Term.t
 val list_formats : bool Term.t
 val list_formats_doc : string

@@ -109,7 +109,7 @@ let main o =
       and reconstructor = reconstructor o
       and symbolizer = symbolizer o in
       let input =
-        Project.Input.file ~loader:o.loader ~filename: o.filename in
+        Project.Input.file ?loader:o.loader ~filename: o.filename in
       Project.create input ~disassembler:o.disassembler
         ?brancher ?rooter ?symbolizer ?reconstructor  |> function
       | Error err -> raise (Failed_to_create_project err)
