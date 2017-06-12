@@ -107,4 +107,7 @@ module Scheme : sig
     (addr * string, (addr -> string -> 'a) -> 'a) Ogre.attribute
 
   val mapped : (int64 region, (addr -> addr -> addr -> 'a) -> 'a) Ogre.attribute
+
+  val external_symbol :
+    (addr * string, (addr -> string -> 'a) -> 'a) Ogre.attribute
 end
