@@ -6,6 +6,7 @@
 #include <system_error>
 #include <memory>
 #include <type_traits>
+#include <assert.h>
 
 // [error_or] contains either data or error message, but not both of them.
 // Also, it's possible to store warnings.
@@ -74,7 +75,7 @@
 //
 // Note, that error_or has a pointer semantic.
 //
-namespace {
+namespace llvm {
 
 // due to a bug in gcc library, move constructor (that has a high importance for us)
 // will not available until gcc 5.0. So instead of `typedef std::stringstream info`
@@ -261,6 +262,6 @@ error_or<U> map_value(const error_or<T> &v, Unary_function op) {
     return success(op(*v));
 }
 
-} // namespace
+} // namespace llvm
 
 #endif // LLVM_ERROR_OR_HPP

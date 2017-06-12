@@ -7,7 +7,7 @@ type fmt_spec = Bap_fmt_spec.t [@@deriving sexp]
 type t = {
   filename        : string;
   disassembler    : string;
-  loader          : string;
+  loader          : string option;
   dump            : fmt_spec list;
   source          : source;
   verbose         : bool;

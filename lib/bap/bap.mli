@@ -4300,7 +4300,8 @@ module Std : sig
         input file, or it is whatever was passed to [of_[big]string]. *)
     val data : t -> Bigstring.t
 
-
+    (** [spec image] returns an image specification. *)
+    val spec : t -> Ogre.doc
 
     module Scheme : sig
       open Ogre.Type
@@ -4333,6 +4334,10 @@ module Std : sig
         (addr * string, (addr -> string -> 'a) -> 'a) Ogre.attribute
 
       val mapped : (int64 region, (addr -> addr -> addr -> 'a) -> 'a) Ogre.attribute
+
+      val external_symbol :
+        (addr * string, (addr -> string -> 'a) -> 'a) Ogre.attribute
+
     end
 
 
@@ -7229,6 +7234,9 @@ module Std : sig
       (** occurs every time a program term is changed during the
           project reconstruction process.   *)
       val program : program term stream
+
+      (** occurs once image spec is known *)
+      val spec : Ogre.Doc.t stream
     end
 
 
