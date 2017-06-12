@@ -46,7 +46,7 @@ let parse_func_start section l =
   if re func_start_re l then
     let xs = String.split_on_chars ~on:[' '; '@'] l in
     match xs with
-      addr::name::[]  (* name w/o @plt case *)
+    | addr::name::[]  (* name w/o @plt case *)
     | addr::name::_::[] -> (* name@plt case *)
       let name = objdump_strip name in
       if Some name = section then None
