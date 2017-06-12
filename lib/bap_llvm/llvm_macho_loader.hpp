@@ -106,7 +106,7 @@ void sections(const macho &obj, ogre_doc &s) {
 }
 
 void symbols(const macho &obj, ogre_doc &s) {
-    auto sizes = computeSymbolSizes(obj);
+    auto sizes = llvm::object::computeSymbolSizes(obj);
     for (auto sized_sym : sizes) {
         auto sym = sized_sym.first;
         auto er_name = sym.getName();
