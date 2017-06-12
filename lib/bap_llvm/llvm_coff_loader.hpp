@@ -7,7 +7,6 @@
 
 #include "llvm_error_or.hpp"
 #include "llvm_loader_utils.hpp"
-#include <llvm/Object/SymbolSize.h>
 
 namespace loader {
 namespace coff_loader {
