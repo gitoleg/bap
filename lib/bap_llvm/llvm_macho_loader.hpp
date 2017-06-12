@@ -10,6 +10,10 @@
 #include "llvm_error_or.hpp"
 #include "llvm_loader_utils.hpp"
 
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
+#include <llvm/Object/SymbolSize.h>
+#endif
+
 namespace loader {
 namespace macho_loader {
 
@@ -93,8 +97,6 @@ void macho_symbol(const std::string &name, uint64_t value, ogre_doc &s) {
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
 
-#include <llvm/Object/SymbolSize.h>
-
 void macho_commands(const macho &obj, ogre_doc &s) {
     for (auto it : obj.load_commands())
         macho_command(obj, it, s);
@@ -106,7 +108,7 @@ void sections(const macho &obj, ogre_doc &s) {
 }
 
 void symbols(const macho &obj, ogre_doc &s) {
-    auto sizes = llvm::object::computeSymbolSizes(obj);
+    auto sizes = computeSymbolSizes(obj);
     for (auto sized_sym : sizes) {
         auto sym = sized_sym.first;
         auto er_name = sym.getName();
