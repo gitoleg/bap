@@ -93,6 +93,8 @@ void macho_symbol(const std::string &name, uint64_t value, ogre_doc &s) {
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
 
+#include <llvm/Object/SymbolSize.h>
+
 void macho_commands(const macho &obj, ogre_doc &s) {
     for (auto it : obj.load_commands())
         macho_command(obj, it, s);
