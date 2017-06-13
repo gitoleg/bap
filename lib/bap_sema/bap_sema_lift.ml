@@ -279,25 +279,37 @@ let lift_sub entry cfg =
   let sub = Ir_sub.Builder.result sub in
   Term.set_attr sub address (Block.addr entry)
 
+let synthetic_sub () =
+  let s = Ir_sub.create () in
+  Term.(set_attr s synthetic ())
 
-class null_jump_mapper = object
+class null_jump_mapper = object(self)
   inherit Term.mapper
 
   val mutable subs : sub term list = []
 
   method synthetic = subs
 
+  method private add_synthetic =
+    let sub = Ir_sub.create () in
+    let sub = Term.(set_attr sub synthetic ()) in
+    subs <- sub :: subs;
+    sub
+
   method! map_jmp jmp = match Ir_jmp.kind jmp with
     | Call call ->
       begin
         match Call.target call with
         | Indirect (Bil.Int addr) when Addr.is_zero addr ->
-          let sub = Term.(set_attr (Ir_sub.create ()) synthetic ()) in
-          subs <- sub :: subs;
+          let sub = self#add_synthetic in
           let call = Call.with_target call (Direct (Term.tid sub)) in
           Ir_jmp.with_kind jmp (Call call)
         | _ -> jmp
       end
+    | Goto (Indirect (Bil.Int addr)) when Addr.is_zero addr ->
+      let sub = self#add_synthetic in
+      let call = Call.create ~target:(Direct (Term.tid sub)) () in
+      Ir_jmp.with_kind jmp (Call call)
     | _ -> jmp
 end
 

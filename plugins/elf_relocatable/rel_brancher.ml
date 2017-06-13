@@ -36,41 +36,51 @@ let relocations doc =
     error "%a" Error.pp er;
     [],[]
 
-let relocate rels mem =
-  let min = Memory.min_addr mem in
-  let max = Memory.max_addr mem in
-  let width = Word.bitwidth min in
-  List.find_map rels ~f:(fun (off,value) ->
+let width_of_mem m = Word.bitwidth (Memory.min_addr m)
+
+let get mem data =
+  let width = width_of_mem mem in
+  List.find_map data ~f:(fun (off,value) ->
       let off = Addr.of_int64 ~width off in
-      if (min <= off && off <= max) then
-        Some (Addr.of_int64 ~width value)
-      else None)
+      Option.some_if (Memory.contains mem off) value)
+
+let relocate rels mem =
+  let width = width_of_mem mem in
+  Option.map (get mem rels) ~f:(Addr.of_int64 ~width)
 
 let nullify_call exts mem =
-  let min = Memory.min_addr mem in
-  let max = Memory.max_addr mem in
-  let width = Word.bitwidth min in
-  List.find_map exts ~f:(fun (off, _) ->
-      let off = Addr.of_int64 ~width off in
-      if (min <= off && off <= max) then
-        Some (Addr.zero width)
-      else None)
+  let width = width_of_mem mem in
+  Option.map (get mem exts) ~f:(fun _ -> Addr.zero width)
 
-let relocate (rels, exts) mem jmp_addr =
+let contains_unresolved (rels,exts) mem =
+  Option.is_some (get mem rels) || Option.is_some (get mem exts)
+
+let resolve (rels, exts) mem default =
   match relocate rels mem with
-  | Some addr -> addr
+  | Some a -> a
   | None ->
-    Option.value_map (nullify_call exts mem) ~f:ident ~default:jmp_addr
+    Option.value_map ~default ~f:ident (nullify_call exts mem)
 
-let relocate_dests b rels mem insn =
+let resolve_jumps mem rels dests =
   List.map ~f:(function
-      | Some addr, `Jump -> Some (relocate rels mem addr), `Jump
-      | x -> x) (Brancher.resolve b mem insn)
+      | Some addr, `Jump -> Some (resolve rels mem addr), `Jump
+      | x -> x) dests
+
+let resolve_dests b rels mem insn =
+  let dests = Brancher.resolve b mem insn in
+  if not (contains_unresolved rels mem) then dests
+  else
+    let has_fall = List.exists ~f:(fun (_,x) -> x = `Fall) dests in
+    let dests = resolve_jumps mem rels dests in
+    if has_fall then dests
+    else
+      let fall = Some (Addr.succ @@ Memory.max_addr mem), `Fall in
+      fall :: resolve_jumps mem rels dests
 
 let create arch spec =
   let rels = relocations spec in
   let b = Brancher.of_bil arch in
-  Ok (Brancher.create (relocate_dests b rels))
+  Ok (Brancher.create (resolve_dests b rels))
 
 let () =
   let open Project.Info in

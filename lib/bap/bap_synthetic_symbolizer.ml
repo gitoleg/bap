@@ -71,18 +71,14 @@ let target_tid jmp = match direct_call_of_jmp jmp with
     |  |
     |  relocation offset, that assoicated with some name
     |
-    min address of call instruction.
-*)
+    min address of call instruction. *)
 let external_calls insns exts =
   Seq.filter_map ~f:(fun (mem, insn) ->
-      if Insn.(is call insn) then
-        let min,max = Memory.(min_addr mem, max_addr mem) in
-        List.find_map exts ~f:(fun (off, name) ->
-            let off =
-              Addr.of_int64 ~width:(Addr.bitwidth min) off in
-            if min <= off && off <= max then Some (min, name)
-            else None)
-      else None) insns |>
+      let min = Memory.min_addr mem in
+      let width = Addr.bitwidth min in
+      List.find_map exts ~f:(fun (off, name) ->
+          let off = Addr.of_int64 ~width off in
+          Option.some_if (Memory.contains mem off) (min, name))) insns |>
   Seq.to_list
 
 let find_destinations calls jmp =

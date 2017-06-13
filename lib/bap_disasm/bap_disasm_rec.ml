@@ -260,7 +260,7 @@ let relocate brancher lift mem insn =
       | _ -> None) |> function
   | Some addr  ->
     return @@
-    List.map Bil.(fixpoint fold_consts bil) ~f:(function
+    List.map bil ~f:(function
         | Bil.Jmp (Bil.Int _) -> Bil.Jmp (Bil.Int addr)
         | s -> s)
   | None -> return bil
