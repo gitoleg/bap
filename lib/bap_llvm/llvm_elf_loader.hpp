@@ -127,30 +127,27 @@ bool is_abs_symbol(const T &sym) {
     return (sym.st_shndx == ELF::SHN_ABS);
 }
 
+
 template <typename T>
 uint64_t section_offset(const ELFObjectFile<T> &obj, section_iterator it);
 uint64_t relocation_offset(const RelocationRef &rel, uint64_t sec_offset);
-
-// few primitives, returns true if everything is ok
-
-bool symbol_name(const SymbolRef &s, std::string &name);
-
-bool symbol_address(const SymbolRef &s, uint64_t &address);
+error_or<std::string> symbol_name(const SymbolRef &s);
+error_or<uint64_t> symbol_address(const SymbolRef &s);
 
 template <typename T>
-bool symbol_file_offset(const ELFObjectFile<T> &obj, const SymbolRef &sym, uint64_t &off);
+error_or<uint64_t> symbol_file_offset(const ELFObjectFile<T> &obj, const SymbolRef &sym);
 
 // We will treat a file offset of a symbol as an address in relocatable
 // files. It consists from two parts in this case: symbol's value, which
 // is a symbol offset within some section and offset of this section.
 // (symbol's value is a section offset only for relocatable files)
 template <typename T>
-bool symbol_address(const ELFObjectFile<T> &obj, const SymbolRef &sym, uint64_t &addr) {
+error_or<uint64_t> symbol_address(const ELFObjectFile<T> &obj, const SymbolRef &sym) {
     auto sym_elf = obj.getSymbol(sym.getRawDataRefImpl());
     if (is_rel(obj) && !is_abs_symbol(*sym_elf))  // abs symbols does not affected by relocations
-        return symbol_file_offset(obj, sym, addr);
+        return symbol_file_offset(obj, sym);
     else
-        return symbol_address(sym, addr);
+        return symbol_address(sym);
 }
 
 template <typename T>
@@ -160,34 +157,32 @@ void symbol_reference(const ELFObjectFile<T> &obj, const RelocationRef &rel, sec
     auto sec_offset = section_offset(obj, sec);
     auto off = relocation_offset(rel, sec_offset);
     if (is_external_symbol(*sym_elf)) {
-        std::string sym_name;
-        if (symbol_name(*it, sym_name))
-            s.entry("external-reference") << off << sym_name;
+        if (auto name = symbol_name(*it))
+            s.entry("external-reference") << off << *name;
     } else {
-        uint64_t file_offset;
-        if (symbol_file_offset(obj, *it, file_offset))
-            s.entry("local-reference") << off << file_offset;
+        if (auto file_offset = symbol_file_offset(obj, *it))
+            s.entry("local-reference") << off << *file_offset;
     }
 }
 
 template <typename T>
 void symbol_entry(const ELFObjectFile<T> &obj, const SymbolRef &sym, ogre_doc &s) {
-    uint64_t addr;
-    std::string name;
     auto sym_elf = obj.getSymbol(sym.getRawDataRefImpl());
-    if (symbol_name(sym, name) && symbol_address(obj, sym, addr)) {
-        s.entry("symbol-entry") << name << addr << sym_elf->st_size;
+    auto name = symbol_name(sym);
+    auto addr = symbol_address(obj, sym);
+    if (name && addr) {
+        s.entry("symbol-entry") << *name << *addr << sym_elf->st_size;
         if (sym_elf->getType() == ELF::STT_FUNC)
-            s.entry("code-entry") << addr << name;
+            s.entry("code-entry") << *addr << *name;
     }
 }
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 8
 
-bool symbol_address(const SymbolRef &sym, uint64_t &address) {
+error_or<uint64_t> symbol_address(const SymbolRef &sym) {
     auto addr = sym.getAddress();
-    if (addr) address = *addr;
-    return (bool)addr;
+    if (addr) return success(*addr);
+    else return failure(addr.getError().message());
 }
 
 template <typename T>
@@ -227,21 +222,20 @@ uint64_t relocation_offset(const RelocationRef &rel, uint64_t sec_offset) {
     return rel.getOffset() + sec_offset;
 }
 
-bool symbol_name(const SymbolRef &s, std::string &name) {
-    auto sym_name = s.getName();
-    if (sym_name)
-        name = sym_name.get().str();
-    return (bool)sym_name;
+error_or<std::string> symbol_name(const SymbolRef &s) {
+    auto name = s.getName();
+    if (name) return success(name.get().str());
+    else return failure(name.getError().message());
 }
 
 template <typename T>
-bool symbol_file_offset(const ELFObjectFile<T> &obj, const SymbolRef &sym, uint64_t &off) {
+error_or<uint64_t> symbol_file_offset(const ELFObjectFile<T> &obj, const SymbolRef &sym) {
     auto sec = sym.getSection();
     auto addr = sym.getAddress();
-    bool check = sec && addr;
-    if (check)
-        off = *addr + section_offset(obj, *sec);
-    return check;
+    if (!sec) return failure(sec.getError().message());
+    if (!addr) return failure(addr.getError().message());
+    uint64_t off = *addr + section_offset(obj, *sec);
+    return success(off);
 }
 
 
@@ -300,16 +294,17 @@ uint64_t relocation_offset(const RelocationRef &rel, uint64_t sec_offset) {
     return sec_offset + off;
 }
 
-bool symbol_name(const SymbolRef &s, std::string &name) {
-    StringRef name_ref;
-    auto er_name = s.getName(name_ref);
-    if (!er_name)
-        name = name_ref.str();
-    return !er_name;
+error_or<std::string> symbol_name(const SymbolRef &s) {
+    StringRef name;
+    auto er_name = s.getName(name);
+    if (!er_name) return success(name.str());
+    else return failure(er_name.message());
 }
 
-bool symbol_address(const SymbolRef &s, uint64_t &addr) {
+error_or<uint64_t> symbol_address(const SymbolRef &s) {
+    uint64_t addr;
     auto er = s.getAddress(addr);
+    if (er) return failure(er.message());
 
     //need to perform this check due to nice llvm code like:
     // ...
@@ -319,17 +314,18 @@ bool symbol_address(const SymbolRef &s, uint64_t &addr) {
     // where UnknownAddressOrSize = 18446744073709551615
     if (addr == UnknownAddressOrSize)
         addr = 0;
-    return !er;
+    return success(addr);
 }
 
 template <typename T>
-bool symbol_file_offset(const ELFObjectFile<T> &obj, const SymbolRef &sym, uint64_t &off) {
+error_or<uint64_t> symbol_file_offset(const ELFObjectFile<T> &obj, const SymbolRef &sym) {
     section_iterator sec = obj.begin_sections();
-    uint64_t addr;
-    bool check = symbol_address(sym, addr) && !sym.getSection(sec);
-    if (check)
-        off = addr + section_offset(obj, sec);
-    return check;
+    auto addr = symbol_address(sym);
+    auto er_sec = sym.getSection(sec);
+    if (!addr) return failure(addr.getError().message());
+    if (er_sec) return failure(er_sec.message());
+    uint64_t off = *addr + section_offset(obj, sec);
+    return success(off);
 }
 
 
