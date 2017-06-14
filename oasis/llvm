@@ -77,5 +77,5 @@ Library elf_relocatable_plugin
   Path:            plugins/elf_relocatable
   Build$:          flag(everything) || flag(llvm)
   FindlibName:     bap-plugin-elf_relocatable
-  InternalModules: Rel_brancher
+  InternalModules: Main, Rel_brancher
   BuildDepends:    bap, bap-llvm, ogre

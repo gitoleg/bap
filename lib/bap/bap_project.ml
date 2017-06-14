@@ -213,7 +213,11 @@ let symbolize_synthetic prog insns spec =
   if MVar.is_updated spec then
     match MVar.read spec with
     | None -> prog
-    | Some spec -> Bap_synthetic_symbolizer.resolve spec insns prog
+    | Some spec ->
+      let p =
+        Bap_synthetic_symbolizer.resolve spec insns prog in
+      Signal.send Info.got_program p;
+      p
   else prog
 
 let create_exn

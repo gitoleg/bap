@@ -38,9 +38,8 @@
 // where relocation should be applied.
 //
 // We define two attributes for relocations, and every relocation is represented only by one of them:
-// 1) symbol-reference that is a mapping from file offset to a symbol at some file offset and
-//    with some meaningful size;
-// 2) external-symbol that is a mapping from file offset to some name.
+// 1) local-reference that is a mapping from file offset to a symbol at some file offset within current file;
+// 2) external-reference that is a mapping from file offset to some name.
 //
 
 #include <iostream>
@@ -69,19 +68,23 @@ static const std::string elf_declarations =
     "(declare section-flags (name str) (write bool) (execute bool))"
     "(declare symbol-entry (name str) (addr int) (size int))"
     "(declare code-entry (addr int) (name str))"
-    "(declare symbol-reference (offset int) (addr int))"
-    "(declare external-symbol (addr int) (name str))";
+    "(declare local-reference (offset int) (addr int))"
+    "(declare external-reference (offset int) (name str))";
 
 template <typename T>
 bool is_rel(const ELFObjectFile<T> &obj) {
     auto hdr = obj.getELFFile()->getHeader();
     return (hdr->e_type & ELF::ET_REL);
 }
+
+// will not provide entry point in case of relocatable file to make
+// it a command line parameter in frontend
 template <typename T>
 void file_header(const ELFObjectFile<T> &obj, ogre_doc &s) {
     auto hdr = obj.getELFFile()->getHeader();
-    s.entry("entry-point") << hdr->e_entry;
     s.entry("relocatable") << is_rel(obj);
+    if (!is_rel(obj))
+        s.entry("entry-point") << hdr->e_entry;
 }
 
 std::string name_of_index(std::size_t i) {
@@ -159,11 +162,11 @@ void symbol_reference(const ELFObjectFile<T> &obj, const RelocationRef &rel, sec
     if (is_external_symbol(*sym_elf)) {
         std::string sym_name;
         if (symbol_name(*it, sym_name))
-            s.entry("external-symbol") << off << sym_name;
+            s.entry("external-reference") << off << sym_name;
     } else {
         uint64_t file_offset;
         if (symbol_file_offset(obj, *it, file_offset))
-            s.entry("symbol-reference") << off << file_offset;
+            s.entry("local-reference") << off << file_offset;
     }
 }
 
