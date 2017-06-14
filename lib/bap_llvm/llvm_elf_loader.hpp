@@ -306,7 +306,7 @@ error_or<uint64_t> symbol_address(const SymbolRef &s) {
     auto er = s.getAddress(addr);
     if (er) return failure(er.message());
 
-    //need to perform this check due to nice llvm code like:
+    //need to check this due to nice llvm code like:
     // ...
     // Result = UnknownAddressOrSize;
     // return object_error::success;
@@ -322,7 +322,7 @@ error_or<uint64_t> symbol_file_offset(const ELFObjectFile<T> &obj, const SymbolR
     section_iterator sec = obj.begin_sections();
     auto addr = symbol_address(sym);
     auto er_sec = sym.getSection(sec);
-    if (!addr) return failure(addr.getError().message());
+    if (!addr) return addr;
     if (er_sec) return failure(er_sec.message());
     uint64_t off = *addr + section_offset(obj, sec);
     return success(off);
