@@ -43,7 +43,6 @@ void section(const coff_section &sec, uint64_t image_base,  ogre_doc &s) {
 }
 
 void symbol(const std::string &name, uint64_t addr, uint64_t size, SymbolRef::Type typ, ogre_doc &s) {
-    std::cout << "symbol " << name << " 0x" << std::hex << addr << std::dec << " " << size;
     s.entry("symbol") << name << addr << size;
     if (typ == SymbolRef::ST_Function)
         s.entry("function") << addr << name;
@@ -189,23 +188,31 @@ symbol_sizes get_symbols_sizes(const COFFObjectFile& obj) {
     return get_symbols_sizes(info);
 }
 
+error_or<uint64_t> symbol_address(const coff_obj &obj, const SymbolRef &sym) {
+    auto image_base = getImageBase(obj);
+    if (!image_base) return image_base;
+    auto it = symbol_iterator(sym);
+    auto coff_sym = obj.getCOFFSymbol(it);
+    const coff_section *sec = nullptr;
+    if (coff_sym->SectionNumber == COFF::IMAGE_SYM_UNDEFINED)
+        return failure("coff image symbol is undefined");
+    if (error_code ec = obj.getSection(coff_sym->SectionNumber, sec))
+        return failure(ec.message());
+    return success(sec->VirtualAddress + *image_base + coff_sym->Value);
+}
 
 void symbols(const coff_obj &obj, ogre_doc &s) {
     auto syms = get_symbols_sizes(obj);
     for (auto sized_sym : syms) {
         StringRef name;
-        uint64_t addr;
         SymbolRef::Type typ;
         auto sref = sized_sym.first;
         auto ecn = sref.getName(name);
-        auto eca = sref.getAddress(addr);
         auto ect = sref.getType(typ);
-
-        if (!ecn) { std::cout << "symbol er0 " << ecn.message() << std::endl; }
-        if (!eca) { std::cout << "symbol er1 " << eca.message() << std::endl; }
-        if (!ect) { std::cout << "symbol er2 " << ect.message() << std::endl; }
-
-        symbol(name.str(), addr, sized_sym.second, typ, s);
+        if (ecn || ect) continue;
+        auto addr = symbol_address(obj, sref);
+        if (!addr) continue;
+        symbol(name.str(), *addr, sized_sym.second, typ, s);
     }
 }
 
