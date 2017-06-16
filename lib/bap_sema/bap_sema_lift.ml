@@ -279,6 +279,44 @@ let lift_sub entry cfg =
   let sub = Ir_sub.Builder.result sub in
   Term.set_attr sub address (Block.addr entry)
 
+let synthetic_sub () =
+  let s = Ir_sub.create () in
+  Term.(set_attr s synthetic ())
+
+class null_jump_mapper = object(self)
+  inherit Term.mapper
+
+  val mutable subs : sub term list = []
+
+  method synthetic = subs
+
+  method private add_synthetic =
+    let sub = Ir_sub.create () in
+    let sub = Term.(set_attr sub synthetic ()) in
+    subs <- sub :: subs;
+    sub
+
+  method! map_jmp jmp = match Ir_jmp.kind jmp with
+    | Call call ->
+      begin
+        match Call.target call with
+        | Indirect (Bil.Int addr) when Addr.is_zero addr ->
+          let sub = self#add_synthetic in
+          let call = Call.with_target call (Direct (Term.tid sub)) in
+          Ir_jmp.with_kind jmp (Call call)
+        | _ -> jmp
+      end
+    | Goto (Indirect (Bil.Int addr)) when Addr.is_zero addr ->
+      let sub = self#add_synthetic in
+      let call = Call.create ~target:(Direct (Term.tid sub)) () in
+      Ir_jmp.with_kind jmp (Call call)
+    | _ -> jmp
+end
+
+let resolve_null_jumps s =
+  let mapper = new null_jump_mapper in
+  let s = mapper#map_term sub_t s in
+  s, mapper#synthetic
 
 let program symtab =
   let b = Ir_program.Builder.create () in
@@ -286,7 +324,9 @@ let program symtab =
   Seq.iter (Symtab.to_sequence symtab) ~f:(fun (name,entry,cfg) ->
       let addr = Block.addr entry in
       let sub = lift_sub entry cfg in
+      let sub,subs = resolve_null_jumps sub in
       Ir_program.Builder.add_sub b (Ir_sub.with_name sub name);
+      List.iter ~f:(Ir_program.Builder.add_sub b) subs;
       Tid.set_name (Term.tid sub) name;
       Hashtbl.add_exn addrs ~key:addr ~data:(Term.tid sub));
   let program = Ir_program.Builder.result b in

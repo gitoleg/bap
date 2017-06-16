@@ -254,27 +254,27 @@ let create_segment_of_symbol_table syms secs =
 let from_spec query base doc =
   Fact.eval query doc >>= function
     {Spec.arch; entry; segments; symbols; sections} as spec ->
-  let memory = Memmap.empty in
-  let memory,segs,seg_warns = make_segtab base memory segments in
-  let memory,syms,sym_warns = make_symtab segs memory symbols in
-  let words = create_words segs in
-  Table.(rev_map ~one_to:one Segment.hashable (segs : segment table)) >>=
-  fun (memory_of_segment : segment -> mem) ->
-  let memory_of_symbol () : symbol -> mem * mem seq =
-    ok_exn (Table.(rev_map ~one_to:at_least_one Symbol.hashable syms)) in
-  let symbols_of_segment () : segment -> symbol seq =
-    Table.(link ~one_to:many Segment.hashable segs syms) in
-  let segment_of_symbol () : symbol -> segment =
-    create_segment_of_symbol_table syms segs in
-  Result.return ({
-      doc; spec;
-      name = None; data=base; symbols=syms; segments=segs; words;
-      memory_of_segment;
-      memory;
-      memory_of_symbol   = Lazy.from_fun memory_of_symbol;
-      symbols_of_segment = Lazy.from_fun symbols_of_segment;
-      segment_of_symbol  = Lazy.from_fun segment_of_symbol;
-    }, (seg_warns @ sym_warns))
+    let memory = Memmap.empty in
+    let memory,segs,seg_warns = make_segtab base memory segments in
+    let memory,syms,sym_warns = make_symtab segs memory symbols in
+    let words = create_words segs in
+    Table.(rev_map ~one_to:one Segment.hashable (segs : segment table)) >>=
+    fun (memory_of_segment : segment -> mem) ->
+    let memory_of_symbol () : symbol -> mem * mem seq =
+      ok_exn (Table.(rev_map ~one_to:at_least_one Symbol.hashable syms)) in
+    let symbols_of_segment () : segment -> symbol seq =
+      Table.(link ~one_to:many Segment.hashable segs syms) in
+    let segment_of_symbol () : symbol -> segment =
+      create_segment_of_symbol_table syms segs in
+    Result.return ({
+        doc; spec;
+        name = None; data=base; symbols=syms; segments=segs; words;
+        memory_of_segment;
+        memory;
+        memory_of_symbol   = Lazy.from_fun memory_of_symbol;
+        symbols_of_segment = Lazy.from_fun symbols_of_segment;
+        segment_of_symbol  = Lazy.from_fun segment_of_symbol;
+      }, (seg_warns @ sym_warns))
 
 let data t = t.data
 let memory t = t.memory
@@ -313,8 +313,8 @@ module Scheme = struct
   let region addr size info = {addr; size; info}
   let void_region addr size = {addr; size; info = ()}
 
-  let off  = "off"  %: int
-  let size  = "size"  %: int
+  let off  = "off"   %: int
+  let size = "size"  %: int
   let addr = "addr"  %: int
   let name = "name"  %: str
   let root = "root"  %: int
@@ -337,6 +337,9 @@ module Scheme = struct
       (fun addr size r w x -> {addr; size; info=(r,w,x)})
   let mapped () = declare "mapped" (location () $off)
       (fun addr size off -> region addr size off)
+  let external_symbol () =
+    declare "external-symbol" (scheme addr $ name)
+      Tuple.T2.create
 end
 
 
@@ -349,10 +352,14 @@ module Derive = struct
     | Some x -> Fact.return x
 
   let arch =
-    Fact.require arch >>= fun s -> match Arch.of_string s with
-    | Some s -> Fact.return s
-    | None -> Fact.failf "unknown/unsupported architecture %s" s ()
-
+    Fact.foreach Ogre.Query.(select (from arch)) ~f:ident >>= fun s ->
+    Fact.Seq.reduce ~f:(fun a1 a2 ->
+        if Arch.equal a1 a2 then Fact.return a1
+        else Fact.failf "arch is ambigous" ())
+        (Seq.filter_map ~f:Arch.of_string s) >>= fun a ->
+    match a with
+    | Some a -> Fact.return a
+    | None -> Fact.failf "unknown/unsupported architecture" ()
 
   let addr_width = arch >>| Arch.addr_size >>| Size.in_bits
 
@@ -455,7 +462,6 @@ module Legacy = struct
   let location_repr {Location.addr=x; len} =
     addr x, Int64.of_int len
 
-
   let vsize secs {Segment.name; location={Location.addr;len}} =
     List.find_map secs
       ~f:(fun {Section.name=n; location={Location.addr=a;len}} ->
@@ -515,7 +521,7 @@ let register_backend ~name load =
           Result.failf
             "A legacy %s loader failed to provide data - %a"
             name Error.pp err ()
-        | Ok spec -> Ok (Some spec)
+        | Ok spec ->  Ok (Some spec)
 
     let from_file filename =
       from_data (Bap_fileutils.readfile filename)
@@ -525,6 +531,7 @@ let register_backend ~name load =
 
 
 module Metaloader () = struct
+
   let merge_docs d1 d2 = match Ogre.Doc.merge d1 d2 with
     | Ok d3 -> Ok d3
     | Error err ->
@@ -546,7 +553,7 @@ module Metaloader () = struct
         | Error _ , Ok (Some doc) -> Ok (Some doc)
         | Error e1, Error e2 -> Error (Error.of_list [e1;e2])
         | Ok Some d1, Ok Some d2 ->
-          Ogre.Doc.merge d1 d2 |> Or_error.map ~f:Option.some)
+          merge_docs d1 d2 |> Or_error.map ~f:Option.some)
 
 
   let from_file name =

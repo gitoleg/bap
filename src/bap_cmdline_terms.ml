@@ -58,16 +58,16 @@ let reconstructor () : string option Term.t =
     let doc = "Use a specified reconstructor" in
     Arg.(value & opt (some (enum names)) None & info ["reconstructor"] ~doc)
 
-let loader () : string Term.t =
+let loader () : string option Term.t =
   Project.Input.available_loaders () |>
   List.map ~f:(fun x -> x,x) |> function
-  | []   -> Term.const "<no-loaders-available>"
-  | [x,_] -> Term.const x
+  | []   -> Term.const (Some "<no-loaders-available>")
+  | [x,_] -> Term.const (Some x)
   | backends ->
     let doc = sprintf
         "Backend name for an image loader, should be %s" @@
       Arg.doc_alts_enum backends in
-    Arg.(value & opt (enum backends) "llvm" & info ["loader"] ~doc)
+    Arg.(value & opt (some (enum backends)) None & info ["loader"] ~doc)
 
 let disassembler () : string Term.t =
   Disasm_expert.Basic.available_backends () |>

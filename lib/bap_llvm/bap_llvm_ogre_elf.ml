@@ -1,0 +1,107 @@
+open Core_kernel.Std
+open Bap.Std
+open Monads.Std
+
+open Image.Scheme
+open Bap_llvm_ogre_types.Scheme
+open Bap_llvm_elf_scheme
+
+module Make(Fact : Ogre.S) = struct
+  open Fact.Syntax
+
+  let segments =
+    Fact.foreach Ogre.Query.(begin
+        select (from
+                  program_header
+                $ virtual_program_header
+                $ program_header_flags)
+          ~join:[[field name]]
+      end)
+      ~f:(fun hdr vhdr hdr_flags -> hdr, vhdr, hdr_flags) >>= fun s ->
+    Fact.Seq.iter s
+      ~f:(fun ((name,off,size), (_,addr, vsize), (_,ld,r,w,x)) ->
+          if ld then
+            Fact.provide segment addr vsize r w x >>= fun () ->
+            Fact.provide mapped addr size off >>= fun () ->
+            Fact.provide named_region addr vsize name
+          else Fact.return ()) >>= Fact.return
+
+  let sections =
+    Fact.collect Ogre.Query.(select (from section_header)) >>= fun s ->
+    Fact.Seq.iter s
+      ~f:(fun (name, addr, size, _) ->
+          Fact.provide section addr size >>= fun () ->
+          Fact.provide named_region addr size name)
+
+  let symbols =
+    Fact.collect Ogre.Query.(select (from symbol_entry)) >>= fun s ->
+    Fact.Seq.iter s ~f:(fun (name, addr, size) ->
+        if size = 0L then Fact.return ()
+        else
+          Fact.provide named_symbol addr name >>= fun () ->
+          Fact.provide symbol_chunk addr size addr >>= fun () ->
+          Fact.request code_entry ~that:(fun (a,n) -> a = addr && n = name) >>= fun f ->
+          if f <> None then Fact.provide code_start addr
+          else Fact.return ())
+
+end
+
+module type E = sig
+  val entry : int64
+end
+
+module Relocatable(E : E) = struct
+  module Make(Fact : Ogre.S) = struct
+    open Fact.Syntax
+    open E
+
+    let segments =
+      Fact.require entry_point >>= fun e ->
+      Fact.foreach Ogre.Query.(begin
+          select (from section_header $ section_flags)
+            ~join:[[field name]]
+        end)
+        ~f:(fun hdr (_, w, x) -> hdr, (w,x)) >>= fun s ->
+      Fact.Seq.iter s
+        ~f:(fun ((name,_,size,off), (w,x)) ->
+            let addr = Int64.(entry + off) in
+            if x then
+              Fact.provide segment addr size true w x >>= fun () ->
+              Fact.provide mapped addr size off  >>= fun () ->
+              Fact.provide named_region addr size name
+            else Fact.return ())
+
+    let relocations =
+      Fact.collect Ogre.Query.(select (from local_reference)) >>=
+      fun locs ->
+      Fact.collect Ogre.Query.(select (from external_reference)) >>= fun exts ->
+      Fact.Seq.iter locs ~f:(fun (off, addr) ->
+          let off,addr = Int64.(off + entry, addr + entry) in
+          Fact.provide symbol_reference off addr) >>= fun () ->
+      Fact.Seq.iter exts ~f:(fun (off, name) ->
+          let off = Int64.(off + entry) in
+          Fact.provide external_symbol off name)
+
+    let symbols =
+      relocations >>= fun () ->
+      Fact.collect Ogre.Query.(select (from symbol_entry)) >>= fun s ->
+      Fact.Seq.iter s ~f:(fun (name, addr, size) ->
+          if size = 0L then Fact.return ()
+          else
+            let full_addr = Int64.(entry + addr) in
+            Fact.provide named_symbol full_addr name >>= fun () ->
+            Fact.provide symbol_chunk full_addr size full_addr >>= fun () ->
+            Fact.request code_entry
+              ~that:(fun (a,n) -> a = addr && n = name) >>= fun f ->
+            if f <> None then Fact.provide code_start full_addr
+            else Fact.return ())
+
+    let sections =
+      Fact.collect Ogre.Query.(select (from section_header)) >>= fun s ->
+      Fact.Seq.iter s
+        ~f:(fun (name, _, size, off) ->
+            let addr = Int64.(entry + off) in
+            Fact.provide section addr size >>= fun () ->
+            Fact.provide named_region addr size name)
+  end
+end
