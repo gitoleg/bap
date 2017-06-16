@@ -32,4 +32,4 @@ let macho_section_symbol () =
     Tuple.T3.create
 
 (** macho symbol that is a function *)
-let function_ () = Ogre.declare ~name:"function" (scheme addr) ident
+let function_ () = Ogre.declare ~name:"function" (scheme addr $ name) Tuple.T2.create

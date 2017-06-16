@@ -50,7 +50,7 @@ static std::string macho_declarations =
     "(declare macho-section (name str) (addr int) (size int))"
     "(declare macho-section-symbol (name str) (addr int) (size int))"
     "(declare macho-symbol (name str) (value int))"
-    "(declare function (addr int))";
+    "(declare function (addr int) (name str))";
 
 template <typename T>
 void segment_command(const T &cmd, ogre_doc &s) {
@@ -88,7 +88,7 @@ void section(const S & sec, ogre_doc &s) {
 void section_symbol(const std::string &name, uint64_t addr, uint64_t size, sym_type typ, ogre_doc &s) {
     s.entry("macho-section-symbol") << name << addr << size;
     if (typ == SymbolRef::ST_Function)
-        s.entry("function") << addr;
+        s.entry("function") << addr << name;
 }
 
 void macho_symbol(const std::string &name, uint64_t value, ogre_doc &s) {

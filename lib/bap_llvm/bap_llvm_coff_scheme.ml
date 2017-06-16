@@ -26,4 +26,4 @@ let symbol () =
 
 (** coff symbol that is a function *)
 let function_ () =
-  Ogre.declare ~name:"function" (scheme addr) ident
+  Ogre.declare ~name:"function" (scheme addr $ name) Tuple.T2.create

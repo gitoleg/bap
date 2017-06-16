@@ -39,7 +39,8 @@ module Make(Fact : Ogre.S) = struct
         else
           Fact.provide named_symbol addr name >>= fun () ->
           Fact.provide symbol_chunk addr size addr >>= fun () ->
-          Fact.request function_ ~that:(fun a -> a = addr) >>= fun f ->
+          Fact.request function_
+            ~that:(fun (a,n) -> a = addr && n = name) >>= fun f ->
           if f <> None then Fact.provide code_start addr
           else Fact.return ())
 end
