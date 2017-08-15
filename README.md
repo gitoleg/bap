@@ -7,6 +7,8 @@
 [![Build Status](https://travis-ci.org/BinaryAnalysisPlatform/bap.svg?branch=master)](https://travis-ci.org/BinaryAnalysisPlatform/bap)
 [![pip](https://img.shields.io/badge/pip-1.1.0-green.svg)](https://pypi.python.org/pypi/bap/)
 
+
+
 Binary Analysis Platform is a framework for writing program analysis
 tools, that target binary files. The framework consists of a plethora
 of libraries, plugins, and frontends. The libraries provide code
