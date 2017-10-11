@@ -22,8 +22,8 @@ RUN sed -i.bkp -e \
       /etc/sudoers
 USER bap
 WORKDIR /home/bap
-RUN opam init --auto-setup --comp=4.02.3 --yes
-RUN opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing
+RUN opam init --auto-setup --comp=4.03.0 --yes
+RUN opam repo add bap git://github.com/gitoleg/opam-repository#testing
 RUN opam update
 RUN OPAMJOBS=1 opam depext --install bap --yes
 RUN sudo pip install bap
