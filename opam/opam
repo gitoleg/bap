@@ -102,6 +102,7 @@ install: [
   ["bap-byteweight" "update" "--url=https://github.com/BinaryAnalysisPlatform/bap/releases/download/v0.9.9/sigs.zip"]
   [make "test"]
   [make "check"]
+  [make "veri"]
 ]
 
 remove: [
