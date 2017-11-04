@@ -54,6 +54,5 @@ endif
 veri:
 ifeq ("$(BAP_RUN_VERI)","true")
 	if [ -d .git ]; then git submodule init; git submodule update; 	fi
-	cd testsuite/veri; install.sh
 	make -C testsuite veri
 endif
