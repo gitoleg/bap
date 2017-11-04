@@ -38,6 +38,8 @@ distclean:
 
 .PHONY: check
 
+.PHONY: veri
+
 test: build
 ifeq ("$(BAP_RUN_TEST)","true")
 	$(SETUP) -test $(BAPTESTFLAGS)
@@ -46,5 +48,12 @@ endif
 check:
 ifeq ("$(BAP_RUN_CHECK)","true")
 	if [ -d .git ]; then git submodule init; git submodule update; 	fi
-	make -C testsuite
+	make -C testsuite check
+endif
+
+veri:
+ifeq ("$(BAP_RUN_VERI)","true")
+	if [ -d .git ]; then git submodule init; git submodule update; 	fi
+	cd testsuite/veri; sh install.sh
+	make -C testsuite veri
 endif
