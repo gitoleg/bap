@@ -6,10 +6,7 @@ cd bap-veri
 oasis setup
 ./configure --prefix=`opam config var prefix`
 make
-make install
-ls
-cd ../
-ls
-cd bap
+make reinstall
 
+cd ../
 make veri
