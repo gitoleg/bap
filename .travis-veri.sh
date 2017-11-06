@@ -1,12 +1,8 @@
 #!/bin/sh
 
-git clone https://github.com/BinaryAnalysisPlatform/bap-veri.git
-opam install core.v0.9.1 pcre textutils
-cd bap-veri
-oasis setup
-./configure --prefix=`opam config var prefix`
-make
-make reinstall
+# TODO add a BAP/bap-veri repository BinaryAnalysisPlatform
+git clone https://github.com/gitoleg/bap-veri.git
+opam pin add bap-veri bap-veri/ -n
+opam install -v bap-veri
 
-cd ../
 make veri
