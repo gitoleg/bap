@@ -1,7 +1,7 @@
 #!/bin/sh
 
 git clone https://github.com/BinaryAnalysisPlatform/bap-veri.git
-opam install bap-veri --deps-only -y
+opam install pcre textutils
 cd bap-veri
 oasis setup
 ./configure --prefix=`opam config var prefix`
