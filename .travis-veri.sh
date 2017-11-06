@@ -7,3 +7,7 @@ oasis setup
 ./configure --prefix=`opam config var prefix`
 make
 make install
+cd ../
+cd bap
+ls
+make veri
