@@ -9,6 +9,43 @@ open Bap.Std
 
 module Model = Mips_model
 
+module Zero_reg_elimination = struct
+
+  class map_reads reg0 = object
+    inherit Stmt.mapper as super
+
+    method! map_var v =
+      if Var.equal reg0 v then
+        match Var.typ v with
+        | Type.Imm w -> Bil.Int (Word.zero w)
+        | _ -> failwith "unexpected variable type"
+      else super#map_var v
+  end
+
+  let remove_writes reg0 bil =
+    let rec map = function
+      | Bil.Move (v, e) as mv ->
+        if Var.equal reg0 v then None
+        else Some mv
+      | Bil.If (e, then_, else_) ->
+        let then_ = List.filter_map ~f:map then_ in
+        let else_ = List.filter_map ~f:map else_ in
+        Some (Bil.If (e, then_, else_))
+      | While (e, body) ->
+        Some (While (e, List.filter_map ~f:map body))
+      | s ->  Some s in
+    List.filter_map bil ~f:map
+
+  let remove_reads is_reg0 bil =
+    (new map_reads is_reg0)#run bil
+
+  let run reg0 bil =
+    remove_writes reg0 bil |>
+    remove_reads reg0
+
+end
+
+
 module Std = struct
   open Mips_rtl
   include Mips_utils
@@ -39,7 +76,7 @@ module Std = struct
 
   let (>>) = register
 
-  let lift addr_size endian mem insn =
+  let lift addr_size endian reg0 mem insn =
     let insn = Insn.of_basic insn in
     let insn_name = Insn.name insn in
     let cpu = make_cpu addr_size endian mem in
@@ -47,6 +84,7 @@ module Std = struct
       try
         lifter cpu (Insn.ops insn) |>
         bil_of_rtl |>
+        Zero_reg_elimination.run reg0 |>
         Result.return
       with
       | Failure str -> Error (Error.of_string str) in
@@ -54,24 +92,37 @@ module Std = struct
     | None -> Or_error.errorf "unknown instruction %s" insn_name
     | Some lifter -> lift lifter
 
+  let get_reg0 m =
+    let module M = (val m : Model.MIPS) in
+    Map.find_exn M.gpri 0
+
+  let make_lift m =
+    let module M = (val m : Model.MIPS) in
+    let reg0 = Map.find_exn M.gpri 0 in
+    fun addr_size endian -> lift addr_size endian reg0
+
   module M32BE = struct
     module CPU = Model.MIPS_32_cpu
-    let lift = lift `r32 BigEndian
+
+    let lift = make_lift (module Model.MIPS_32) `r32 BigEndian
   end
 
   module M32LE = struct
     module CPU = Model.MIPS_32_cpu
-    let lift = lift `r32 LittleEndian
+
+    let lift = make_lift (module Model.MIPS_32) `r32 LittleEndian
   end
 
   module M64BE = struct
     module CPU = Model.MIPS_64_cpu
-    let lift = lift `r64 BigEndian
+
+    let lift = make_lift (module Model.MIPS_64) `r64 BigEndian
   end
 
   module M64LE = struct
     module CPU = Model.MIPS_64_cpu
-    let lift = lift `r64 LittleEndian
+
+    let lift = make_lift (module Model.MIPS_64) `r64 LittleEndian
   end
 
   include Model
