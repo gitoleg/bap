@@ -35,10 +35,10 @@ module ToIR = struct
 
   (* copypasted from op2e_s below, but keeps the opcode width *)
   let op2e_s_keep_width mode ss has_rex t = function
-    | Ovec r when t = reg256_t -> (bits2ymme r, t)
-    | Ovec r when t = reg128_t -> (bits2ymm128e r, t)
-    | Ovec r when t = reg64_t -> (bits2ymm64e r, t)
-    | Ovec r when t = reg32_t -> (bits2ymm32e r, t)
+    | Ovec r when t = reg256_t -> (bits2ymme mode r, t)
+    | Ovec r when t = reg128_t -> (bits2ymm128e mode r, t)
+    | Ovec r when t = reg64_t -> (bits2ymm64e mode r, t)
+    | Ovec r when t = reg32_t -> (bits2ymm32e mode r, t)
     | Ovec _ ->
       let i = match t with
         | Type.Imm n -> ": "^(string_of_int n)
@@ -57,10 +57,10 @@ module ToIR = struct
     | Oimm i -> Bil.(Int (resize_word i !!t), t)
 
   let op2e_s mode ss has_rex t = function
-    | Ovec r when t = reg256_t -> bits2ymme r
-    | Ovec r when t = reg128_t -> bits2ymm128e r
-    | Ovec r when t = reg64_t -> bits2ymm64e r
-    | Ovec r when t = reg32_t -> bits2ymm32e r
+    | Ovec r when t = reg256_t -> bits2ymme mode r
+    | Ovec r when t = reg128_t -> bits2ymm128e mode r
+    | Ovec r when t = reg64_t -> bits2ymm64e mode r
+    | Ovec r when t = reg32_t -> bits2ymm32e mode r
     | Ovec _ ->
       let i = match t with
         | Type.Imm n -> ": "^(string_of_int n)
@@ -104,10 +104,10 @@ module ToIR = struct
     match v, t with
     (* Zero-extend 128-bit assignments to 256-bit ymms. *)
     | Ovec r, Type.Imm (128|64|32) when has_vex ->
-      let v = bits2ymm r in
+      let v = bits2ymm mode r in
       sub_assn reg256_t v Bil.(Cast (UNSIGNED, !!reg256_t, e))
     | Ovec r, Type.Imm (256|128|64|32) ->
-      let v = bits2ymm r in
+      let v = bits2ymm mode r in
       sub_assn t v e
     | Ovec _, _ -> disfailwith mode "invalid SIMD register size for assignment"
     (* Zero-extend 32-bit assignments to 64-bit registers. *)
@@ -1234,12 +1234,16 @@ module ToIR = struct
         :: set_aopszf_sub t' (Bil.Var tmp) (int_exp 1 t') (op2e t o) (* CF is maintained *)
       | Sub(t, o1, o2) (* o1 = o1 - o2 *) ->
         let oldo1 = tmp t in
-        let o2 =
+        let oldo2 = tmp t in
+        let op1 = op2e t o1 in
+        let op2 =
           if is_small_imm o2 t then sign_extend_imm o2 t
           else op2e t o2 in
-        Bil.Move (oldo1, op2e t o1)
-        :: assn t o1 Bil.(op2e t o1 - o2)
-        :: set_flags_sub !!t (Bil.Var oldo1) o2 (op2e t o1)
+        Bil.([
+            oldo1 := op1;
+            oldo2 := op2;
+            assn t o1 (op1 - op2);
+          ] @ set_flags_sub (bitwidth_of_type t) (var oldo1) (var oldo2) op1)
       | Sbb(t, o1, o2) ->
         let tmp_s = tmp t in
         let tmp_d = tmp t in
