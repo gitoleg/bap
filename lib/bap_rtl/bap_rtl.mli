@@ -1,6 +1,5 @@
 
 (**
-
     {2 Intro}
 
     This module is the only one that needed to write lifter functions.
@@ -335,49 +334,8 @@ open Bap.Std
 
 module Std : sig
 
-  (** Operands and registers bitwidth.  *)
-  type bitwidth
-
-  val bit  : bitwidth
-  val byte : bitwidth
-  val word : bitwidth
-  val halfword : bitwidth
-  val doubleword : bitwidth
-  val quadword : bitwidth
-  val bitwidth : int -> bitwidth
-
   type exp [@@deriving bin_io, compare, sexp]
   type rtl [@@deriving bin_io, compare, sexp]
-
-  (** expression constructor  *)
-  type 'a ec
-
-  (** [signed ec] - returnst a signed expression from given [ec] *)
-  val signed : 'a ec -> 'a
-
-  (** [unsigned ec] - returns an unsigned expression from given [ec] *)
-  val unsigned : 'a ec -> 'a
-
-  (** imm constructor - constructs an immediate from operand *)
-  val imm : (op -> exp) ec
-
-  (** var constructor - constructs a variable of bitwidth *)
-  val var : (bitwidth -> exp) ec
-
-  (** const constructor - constructs a constant of [bitwidth] and integer *)
-  val const : (bitwidth -> int -> exp) ec
-
-  (** [of_string] - constructs an expression from string.
-      String must be either in a decimal, binary, octal or hexadecimal format.
-      Bitwidth of an expression is defined as following:
-      if format is decimal then bitwidth equals to a number of significant bits
-      else bitwidth equals to a number of all listed bits in a string.
-      Examples:
-       - bitwidth of [unsigned of_string "0b00"] is eqauls to 2
-       - bitwidth of [unsigned of_string "0o474"] is eqauls to 9;
-       - bitwidth of [unsigned of_string "0b03FA"] is eqauls to 16;
-       - bitwidth of [unsigned of_string "42"] is eqauls to 6; *)
-  val of_string : (string -> exp) ec
 
   (** Set of operators. Briefly it contains next operators:
       - assignment
@@ -482,6 +440,47 @@ module Std : sig
 
   end
 
+  (** Operands and registers bitwidth.  *)
+  type bitwidth
+
+  val bit  : bitwidth
+  val byte : bitwidth
+  val word : bitwidth
+  val halfword : bitwidth
+  val doubleword : bitwidth
+  val quadword : bitwidth
+  val bitwidth : int -> bitwidth
+
+    (** expression constructor  *)
+  type 'a ec
+
+  (** [signed ec] - returnst a signed expression from given [ec] *)
+  val signed : 'a ec -> 'a
+
+  (** [unsigned ec] - returns an unsigned expression from given [ec] *)
+  val unsigned : 'a ec -> 'a
+
+  (** imm constructor - constructs an immediate from operand *)
+  val imm : (op -> exp) ec
+
+  (** var constructor - constructs a variable of bitwidth *)
+  val var : (bitwidth -> exp) ec
+
+  (** const constructor - constructs a constant of [bitwidth] and integer *)
+  val const : (bitwidth -> int -> exp) ec
+
+  (** [of_string] - constructs an expression from string.
+      String must be either in a decimal, binary, octal or hexadecimal format.
+      Bitwidth of an expression is defined as following:
+      if format is decimal then bitwidth equals to a number of significant bits
+      else bitwidth equals to a number of all listed bits in a string.
+      Examples:
+       - bitwidth of [unsigned of_string "0b00"] is eqauls to 2
+       - bitwidth of [unsigned of_string "0o474"] is eqauls to 9;
+       - bitwidth of [unsigned of_string "0b03FA"] is eqauls to 16;
+       - bitwidth of [unsigned of_string "42"] is eqauls to 6; *)
+  val of_string : (string -> exp) ec
+
   (** [zero] is a one bit length expression set to zero *)
   val zero : exp
 
@@ -553,20 +552,5 @@ module Std : sig
 
   (** [bil_of_rtl rtl] - returns a bil code *)
   val bil_of_rtl : rtl list -> bil
-
-  (* (\** The type of lifter functions *\) *)
-  (* type lift = cpu -> op array -> rtl list *)
-
-  (* (\** [concat insn insn'] - returns a lifter, that is a *)
-  (*     concatenation of code for insn and insn' *\) *)
-  (* val concat : lift -> lift -> lift *)
-
-  (* (\** [^] same as concat  *\) *)
-  (* val (^) : lift -> lift -> lift *)
-
-  (* (\** Registration *\) *)
-
-  (* (\** [name >| lift]  - registers a lifter for instruction [name]  *\) *)
-  (* val (>|) : string -> lift -> unit *)
 
 end
