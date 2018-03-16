@@ -20,6 +20,7 @@ B _build/lib/bap_elf
 B _build/lib/bap_future
 B _build/lib/bap_image
 B _build/lib/bap_plugins
+B _build/lib/bap_rtl
 B _build/lib/bap_sema
 B _build/lib/bap_types
 B _build/lib/graphlib
@@ -47,4 +48,5 @@ S lib/monads
 S lib/bap_primus
 S lib/bap_llvm
 S lib/ogre
+S lib/bap_rtl
 S ../core_kernel.113.33.00/src

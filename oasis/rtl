@@ -1,0 +1,13 @@
+Flag rtl
+  Description: Build bap-rtl library
+  Default: false
+
+Library bap_rtl
+  XMETADescription: provide primitives for lifters developers
+  Path:             lib/bap_rtl
+  Build$:           flag(everything) || flag(rtl)
+  BuildDepends:     bap, zarith
+  FindlibName:      bap-rtl
+  InternalModules:  Bap_rtl,
+                    Bap_rtl_helpers,
+                    Bap_rtl_kernel
