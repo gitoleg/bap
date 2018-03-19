@@ -18,6 +18,6 @@ module Std = struct
 
   module Array = Op_array
 
-
+  module Model = Bap_rtl_model
 
 end
