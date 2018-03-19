@@ -527,6 +527,10 @@ module Std : sig
   (** const constructor - constructs a constant of [bitwidth] and integer *)
   val const : (bitwidth -> int -> exp) ec
 
+  (** register constructor - construct a register expression from
+      a search function and operand *)
+  val reg : (reg -> exp) -> (op -> exp) ec
+
   (** [of_string] - constructs an expression from string.
       String must be either in a decimal, binary, octal or hexadecimal format.
       Bitwidth of an expression is defined as following:
