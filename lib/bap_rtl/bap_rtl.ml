@@ -9,6 +9,7 @@ module Std = struct
 
   module RTL = struct
     include Bap_rtl_kernel
+    include Exp
     include Infix
   end
 

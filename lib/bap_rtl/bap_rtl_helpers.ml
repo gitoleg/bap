@@ -53,13 +53,13 @@ let const signed width value =
 
 let of_string signed s =
   let s = String.filter ~f:(fun c -> c <> '_') s in
-  let chop (prefix, len) =
+  let chop (prefix, multiplier) =
     match String.chop_prefix ~prefix s with
     | None -> None
-    | Some data -> Some (len,data) in
-  let width,data =
+    | Some data -> Some (multiplier,data) in
+  let width,_data =
     match List.find_map ~f:chop ["0x",4; "0o",3; "0b",1;] with
-    | Some (len, data) -> String.length data * len, data
+    | Some (mul, data) -> String.length data * mul, data
     | None -> Z.numbits (Z.of_string s), s in
   let suf = if signed then "s" else "u" in
   let w = Word.of_string (sprintf "%s:%d%s" s width suf) in
@@ -68,13 +68,14 @@ let of_string signed s =
 let zero = Exp.of_word Word.b0
 let one  = Exp.of_word Word.b1
 
-let first e bits =
+let last e bits =
   let w = Exp.width e in
   Exp.extract (w - 1) (w - bits) e
 
-let last e bits = Exp.extract (bits - 1) 0 e
-let high w e = first e (int_of_bitwidth w)
-let low w e = last e (int_of_bitwidth w)
+let first e bits = Exp.extract (bits - 1) 0 e
+
+let high w e = last e (int_of_bitwidth w)
+let low w e = first e (int_of_bitwidth w)
 
 let msb e =
   let h = Exp.width e - 1 in
@@ -83,28 +84,10 @@ let msb e =
 let lsb e = Exp.extract 0 0 e
 
 let nth w e index =
-  let width = Exp.width e in
   let step = int_of_bitwidth w in
-  let x = width / step - index - 1 in
-  let hi = (x + 1) * step - 1 in
-  let lo = x * step in
-  let n = width / step in
-  let hi, lo =
-    if n * step < width then
-      let sh = width - n * step in
-      hi + sh, lo + sh
-    else hi, lo in
+  let hi = (index + 1) * step - 1 in
+  let lo = index * step in
   Exp.extract hi lo e
-
-let extract e left right =
-  let width = Exp.width e in
-  let target_width = right - left + 1 in
-  if width >= target_width then
-    let hi = width - left - 1 in
-    let lo = width - right - 1 in
-    Exp.extract hi lo e
-  else
-    Exp.extract (target_width - 1) 0 e
 
 let when_ cond then_ = if_ cond then_ []
 let ifnot cond else_ = if_ cond [] else_

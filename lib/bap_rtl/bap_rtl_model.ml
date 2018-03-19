@@ -14,11 +14,10 @@ module type M = sig
   val endian : endian
 end
 
-type cls = string [@@deriving bin_io,compare,sexp]
 exception Register_not_found of string
 
 module Reg_class = struct
-  type t = cls [@@deriving bin_io,compare,sexp]
+  type t = string [@@deriving bin_io,compare,sexp]
 
   let gpr = "GPR"
   let fpr = "FPR"
@@ -28,6 +27,8 @@ module Reg_class = struct
   let create = ident
 
 end
+
+type cls = Reg_class.t [@@deriving bin_io,compare,sexp]
 
 module Make(M : M) = struct
   open M
@@ -55,7 +56,7 @@ module Make(M : M) = struct
   let find_view cls =
     Hashtbl.find_or_add classes cls ~default:create_view
 
-  let add_exp name exp ?(aliases = []) ?index cls =
+  let add_reg' name exp ?(aliases = []) ?index cls =
     let view = find_view cls in
     List.iter (name :: aliases) ~f:(fun name ->
         Hashtbl.change view.names name (function
@@ -64,12 +65,8 @@ module Make(M : M) = struct
         Hashtbl.change view.numbs num (function
             | _ -> Some exp))
 
-  let add_reg name width ?(aliases = []) ?index cls =
-    let var = Var.create name (Type.Imm width) in
-    add_exp name (Exp.of_var var) ~aliases ?index cls
-
-  let add_var var ?(aliases = []) ?index cls =
-    add_exp (Var.name var) (Exp.of_var var) ~aliases ?index cls
+  let add_reg var ?(aliases = []) ?index cls =
+    add_reg' (Var.name var) (Exp.of_var var) ~aliases ?index cls
 
   let reg_not_found x =
     let errs = match x with

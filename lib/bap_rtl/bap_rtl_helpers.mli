@@ -27,12 +27,6 @@ val unsigned : 'a ec -> 'a
 val zero : exp
 val one  : exp
 
-(** [extract e lx rx] extracts portion of [e] starting
-    at bit [lx] and ending at bit [rx], all bounds
-    are inclusive. Bits indexes start from the most
-    significant bit. *)
-val extract : exp -> int -> int -> exp
-
 (** [low width e] - extracts low [width] bits from [e]  *)
 val low : bitwidth -> exp -> exp
 

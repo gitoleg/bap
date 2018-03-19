@@ -305,46 +305,20 @@
    ]}
     or by index:
    {[
-     let x = find gpr 15
-   ]}
-
-
-    {2 Lifter}
-
-    Any lifter function must have two arguments. The first one is
-    a model of CPU that contains all information like registers,
-    memory access, instruction address, etc. The second argument
-    is an array of instruction operands, and it's a user responsibility
-    to treat each element of this array according to instruction
-    semantics. So, if the first operand of add instruction is a target
-    register, the second operand is a source register, and the
-    third operand is an immediate:
-   {[
-     let tar = signed cpu.reg ops.(0) in
-     let src = signed cpu.reg ops.(1) in
-     let imm = unsigned imm ops.(2) in
-     RTL.[
-       tar := src + imm;
-     ]
+     let x = findi gpr 15
    ]}
 
     {2 Misc}
 
     There are few useful constructions that either a part of RTL
     ([if_], [foreach]) or simplify code ([when_], [ifnot], [switch]).
-    Also, one needs to register a lifted function, so
-    it could be called when appropriative instruction will be
-    encountered. There are two operators for this purpose:
-    - [(|>)] - just registers a function (see example below)
-    - [(|>.)] - does the same, plus does some extra job (see
-             a description below)
 
     {2 Complete example}
 
     To be more concrete let's create an artificial example.
    {[
      1 let sort_of_add cpu ops =
-         2   let rt = unsigned reg ops.(0) in
+     2   let rt = unsigned reg ops.(0) in
      3   let ra = signed reg ops.(1) in
      4   let im = unsigned imm ops.(2) in
      5   let rc = unsigned reg ops.(3) in
@@ -352,12 +326,10 @@
      7   let xv = unsigned const word 42 in
      8   let sh = unsinged const byte 2 in
      9   RTL.[
-         10        rt := ra + im;
-         11        tm = cpu.load rt halfword + xv;
-         12        rc := (tm lsl sh) + cpu.ca;
-         13    ]
-       14   let () =
-              15     "SomeSortOfAdd" >| sort_of_add;
+    10        rt := ra + im;
+    11        tm = cpu.load rt halfword + xv;
+    12        rc := (tm lsl sh) + cpu.ca;
+    13    ]
    ]}
 
     There is a lifter for instruction [SomeSortOfAdd]. It's required
@@ -378,7 +350,6 @@
     - [lines 2-5] - parsed instruction operands
     - [lines 6-8] - defined useful constants
     - [lines 9-13] - wrote RTL code for this instruction.
-    - [lines 14-15] - registered lifter for this instruction
 
     What happens on each line of RTL code:
     - [line 10]: sum of signed [ra] and unsigned imm is a signed expression,
@@ -680,10 +651,19 @@ module Std : sig
           describes a storing [data] of [size] to a memory at [addr] *)
       val store : exp -> exp -> bitwidth -> rtl
 
-      (** [add_reg name width ~aliases ~index cls] - adds a new register
-          [reg] of bitwidth [width] and class [cls] to a model. Register name,
-          aliases and [index] could be used later to find this register. *)
-      val add_reg : string -> int -> ?aliases:string list -> ?index:int -> cls  -> unit
+      (** [add_reg reg ~aliases ~index cls] - adds a new register
+          [reg] of class [cls] to a model. Register name, aliases and
+          [index] could be used later to find this register. *)
+      val add_reg : var -> ?aliases:string list -> ?index:int -> cls  -> unit
+
+      (** [add_reg' name exp ~aliases ~index cls] - the same as
+          above, but adds an expression for register [name] to a
+          model. This could be useful when register in question can't
+          be represented as a separate variable, e.g. in case when a
+          particular bits of a bigger registers have special meaning.
+          Then one could register them as a separate name:
+          {[add_reg' name (extrace 16 8 bigger_reg gpr]} *)
+      val add_reg' : string -> exp -> ?aliases:string list -> ?index:int -> cls  -> unit
 
       (** [find cls reg] - return an expression for register [reg]
           class [cls] if such is in a model.
