@@ -8,7 +8,12 @@ Library bap_rtl
   Build$:           flag(everything) || flag(rtl)
   BuildDepends:     bap, zarith
   FindlibName:      bap-rtl
-  InternalModules:  Bap_rtl,
+  Modules:          Bap_rtl
+  InternalModules:  Bap_rtl_bitwidth,
+                    Bap_rtl_core,
+                    Bap_rtl_exp,
                     Bap_rtl_helpers,
-                    Bap_rtl_kernel,
-                    Bap_rtl_model
+                    Bap_rtl_model,
+                    Bap_rtl_translate,
+                    Bap_rtl_types,
+                    Bap_rtl_utils

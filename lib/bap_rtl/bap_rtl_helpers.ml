@@ -1,69 +1,9 @@
 open Core_kernel.Std
 open Bap.Std
-open Regular.Std
+open Bap_rtl_types
 
-open Bap_rtl_kernel
-
-type 'a ec = bool -> 'a
-
-type bitwidth = int
-
-let bit = 1
-let byte = 8
-let halfword = 16
-let word = 32
-let doubleword = 64
-let quadword = 128
-let bitwidth x = x
-
-let int_of_bitwidth = ident
-
-let width_of_size = Size.in_bits
-
-let int_of_imm = function
-  | Op.Reg _ | Op.Fmm _ -> failwith "imm operand expected"
-  | Op.Imm x -> match Imm.to_int x with
-    | Some x -> x
-    | None -> failwith "failed to convert imm operand to int"
-
-let imm signed op =
-  let w = Word.of_int ~width:32 (int_of_imm op) in
-  if signed then Exp.(signed @@ of_word w)
-  else Exp.(unsigned @@ of_word w)
-
-let signed f = f true
-let unsigned f = f false
-
-let apply_signess signed e =
-  if signed then Exp.signed e
-  else Exp.unsigned e
-
-let var signed width =
-  Exp.tmp (int_of_bitwidth width) |>
-  apply_signess signed
-
-let reg find signed op = match op with
-  | Op.Imm _ | Op.Fmm _ -> failwith "reg operand expected"
-  | Op.Reg x -> apply_signess signed (find x)
-
-let const signed width value =
-  let width = int_of_bitwidth width in
-  let x = Word.of_int ~width value in
-  apply_signess signed (Exp.of_word x)
-
-let of_string signed s =
-  let s = String.filter ~f:(fun c -> c <> '_') s in
-  let chop (prefix, multiplier) =
-    match String.chop_prefix ~prefix s with
-    | None -> None
-    | Some data -> Some (multiplier,data) in
-  let width,_data =
-    match List.find_map ~f:chop ["0x",4; "0o",3; "0b",1;] with
-    | Some (mul, data) -> String.length data * mul, data
-    | None -> Z.numbits (Z.of_string s), s in
-  let suf = if signed then "s" else "u" in
-  let w = Word.of_string (sprintf "%s:%d%s" s width suf) in
-  apply_signess signed (Exp.of_word w)
+module Exp = Bap_rtl_exp.Exp
+open Bap_rtl_bitwidth
 
 let zero = Exp.of_word Word.b0
 let one  = Exp.of_word Word.b1
@@ -89,35 +29,88 @@ let nth w e index =
   let lo = index * step in
   Exp.extract hi lo e
 
-let when_ cond then_ = if_ cond then_ []
-let ifnot cond else_ = if_ cond [] else_
+module Normalize = struct
+  open Bap.Std
 
-type clause = [
-  | `Case of (exp * rtl list)
-  | `Default of rtl list
-]
+  let jmp_exists bil =
+    (object inherit [unit] Stmt.finder
+      method! enter_jmp _ r = r.return (Some ())
+    end)#find bil |> Option.is_some
 
-let case x y = `Case (x,y)
-let default y = `Default y
+  let remove_if bil =
+    let open Bil in
+    let product xs ys = match xs,ys with
+      | x, [] | [], x -> x
+      | xs, ys ->
+        List.fold xs ~init:[]
+          ~f:(fun acc x ->
+              List.fold ys ~init:acc
+                ~f:(fun acc y -> (y @ x) :: acc)) in
+    let rec loop acc n = function
+      | [] -> acc, n
+      | If (_e, ts, es) :: bil ->
+        let ts,n = loop [] n ts in
+        let es,n = loop [] n es in
+        let acc1 = product acc ts in
+        let acc2 = product acc es in
+        loop (acc1 @ acc2) n bil
+      | x :: bil ->
+        match acc with
+        | [] -> loop [[n,x] ] (succ n) bil
+        | _ ->
+        let acc = List.map acc ~f:(fun xs -> (n, x) :: xs) in
+        loop acc (succ n) bil in
+    let vars,_ = loop [] 0 bil in
+    List.map ~f:List.rev vars
 
-let switch exp cases =
-  let default = List.filter_map ~f:(function
-      | `Default y -> Some y
-      |  _ -> None) cases in
-  let default = Option.value ~default:[] (List.hd default) in
-  let cases = List.filter_map ~f:(function
-      | `Case (x,y) -> Some (x,y)
-      | _ -> None) cases in
-  let cond x = Infix.(exp = x) in
-  match cases with
-  | [] -> failwith "empty switch"
-  | (x, code) :: [] -> (if_ (cond x) code default;)
-  | (x, code) :: cases ->
-    let else_ =
-      List.fold (List.rev cases) ~init:default ~f:(fun acc (x,code) ->
-          [if_ (cond x) code acc;]) in
-    (if_ (cond x) code else_)
+  let replace_jmp line addr bil =
+    let open Bil in
+    let rec loop acc n = function
+      | [] -> List.rev acc,n
+      | Jmp _ :: bil when Int.equal n line ->
+        let acc = (Jmp (Int addr)) :: acc in
+        loop acc (succ n) bil
+      | If (e, ts, es) :: bil ->
+        let ts,n = loop [] n ts in
+        let es,n = loop [] n es in
+        let acc = (If (e, ts,es)) :: acc in
+        loop acc n bil
+      | x :: bil -> loop (x :: acc) (succ n) bil in
+    let bil, _ = loop [] 0 bil in
+    bil
 
-let width e =
-  let w = Exp.width e in
-  Exp.of_word (Word.of_int ~width:w w)
+  let norm_jumps bil =
+    if not (jmp_exists bil) then bil
+    else
+      let get_bil lines = List.map lines ~f:snd in
+      let jmp_line lines =
+        List.find_map_exn lines ~f:(fun (n, s) ->
+            match s with
+            | Bil.Jmp _ -> Some n
+            | _ -> None) in
+      let jmps =
+        remove_if bil |>
+        List.filter ~f:(fun lines ->
+            jmp_exists (get_bil lines)) |>
+        List.filter_map ~f:(fun lines ->
+            let n = jmp_line lines in
+            let c = Stmt.eval (get_bil lines) (new Bili.context) in
+            match c#pc with
+            | Bil.Imm a -> Some (n, a)
+            | _ -> None) in
+      match jmps with
+      | [] -> bil
+      | (n,x) :: [] -> replace_jmp n x bil
+      | jmps ->
+        let jmps = List.sort jmps
+            ~cmp:(fun (n,_) (m,_) -> Int.compare n m) in
+        let jmps = List.group jmps ~break:(fun (n,_) (m,_) -> n <> m) in
+        List.fold jmps ~init:bil ~f:(fun bil -> function
+            | [] -> bil
+            | (line, jmp) :: jmps when List.for_all jmps
+                  ~f:(fun (m,j) -> m = line && Word.equal jmp j) ->
+              replace_jmp line jmp bil
+            | _ -> bil)
+end
+
+let norm_jumps = Normalize.norm_jumps

@@ -234,17 +234,7 @@
      ];
    ]}
 
-    {2 Model}
-
-    There are not any mandatory rules and requirements that
-    one should follow to represent target CPU: it's completly
-    user choice how to model memory, register, flags etc.
-
-    But there is a way, that helps to create models.
-    There are two aspects that we most carry about: memory and
-    registers.
-
-    {3 Memory}
+    {2 Memory model}
 
     Basicly, we can't express load and store operations dependless
     of a knowledge of a target architecture: there are different
@@ -253,60 +243,8 @@
     target model is defined, it shold be sufficient to fix
     this knowledge and don't mention it in lifter, because it
     leads to duplicated, more verbose and less readable code.
-
-    {3 Registers}
-
-    Reading and writing to registers are a bit less comlicated
-    operations: we just need to create properly variables for each of
-    them and don't care about anything else: RTL will do all
-    remaining job for us. But there are lot's of code that
-    user have to write to describe register: some of them
-    are easily represented both as variables and expressions,
-    some of them are just part of some bigger register and
-    we can reperesent them only like an expression, and some registers
-    have aliases and/or integer indexes associated with them.
-    Those make search of a register more compilcated, and it's again
-    a place where code become more verbose and less readable.
-
-    {3 RTL cpu model}
-
-    We still can't create an abstract model of cpu for lifters,
-    since all architectures are different. So it's a completly
-    lifter writer task to describe a cpu model. But we provide
-    a few helpful building blocks to simplify this task.
-
-    So, when memory model is defined, we can include
-    it in cpu model and reduce user code for load/store instructions.
-    E.g., a general way to load somehing from memory will look
-    something like following:
-   {[
-     RTL.[
-       x := load mem addr endian size
-     ]
-   ]}
-    and if we fix memory variable and endianess, we will get something
-    like following:
-   {[
-     RTL.[
-       x := load addr size
-     ]
-   ]}
-
-    Also it helps to create and search for registers variables and
-    expressions. E.g., to create a register, that has an alias and
-    also could be refered by some integer index, one can write:
-   {[
-     let () = add_reg "A" 32 ~aliases:["A0"] ~index:0 gpr
-   ]}
-    And then, depending on user needs and instruction operands
-    representation, this register could be found by name or by alias:
-   {[
-     let x = find gpr ops.(0)
-   ]}
-    or by index:
-   {[
-     let x = findi gpr 15
-   ]}
+    So, we can create a memory model and reduce user code for
+    load/store instructions. See [Mem_model] for details.
 
     {2 Misc}
 
@@ -376,11 +314,121 @@ module Std : sig
   type exp [@@deriving bin_io, compare, sexp]
   type rtl [@@deriving bin_io, compare, sexp]
 
-  (** Set of operators. Briefly it contains next operators:
-      - assignment
-      - math operators: +, -, *, \, %, <, >, <= , >= , =, <>
-      - logical operators: lsl, lsr, lnot, land, lor, lxor  *)
+  module Exp : sig
+
+    (** [of_var v] - creates an expression from variable [v] *)
+    val of_var  : var -> exp
+
+    (** [of_vars vs] - creates an expression as a concatination of [vs] *)
+    val of_vars : var list -> exp
+
+    (** [of_word w] - creates an expression from word [w]   *)
+    val of_word : word -> exp
+
+    (** [tmp width] - creates an expression of temporary variable of [width] *)
+    val tmp : int -> exp
+
+    (** [width e] - returns a bitwidth of an [e] *)
+    val width  : exp -> int
+
+    (** [width' e] - returns width of [e] as an expression *)
+    val width' : exp -> exp
+
+  end
+
   module RTL : sig
+
+    (** [load mem addr endian size] - loads a data of [size]
+        at [addr] from [mem] with [endian]. *)
+    val load : var -> exp -> endian -> size -> exp
+
+    (** [extract hi lo e] - extracts portion of [e] starting
+        from bit [lo] to bit [hi], all bounds are inclusive.
+        Bits indexes start from the least significant bit. *)
+    val extract : int -> int -> exp -> exp
+
+    (** [store mem addr data endian size] - stores a [data]
+        of [size] at [addr] from [mem] with [endian]. *)
+    val store : var -> exp -> exp -> endian -> size -> rtl
+
+    (** [if_ cond then_ else_] *)
+    val if_ : exp -> rtl list -> rtl list -> rtl
+
+    (** [jmp addr] - jump to an address [addr] *)
+    val jmp : exp -> rtl
+
+    (** [foreach step e rtl] - repeat [rtl] for each [step] of [e].
+        One must create an iteration variable to iterate over some
+        expression. So, in example below, assuming the first operand
+        is a 64-bit register, [cnt] will be equal to 8:
+        ...
+        let reg = unsigned reg ops.(0) in
+        let cnt = unsigned const byte in
+        let byte_i = unsigned var byte in
+        RTL.[
+           cnt := zero;
+           foreach byte_i reg [
+               cnt := cnt + one;
+           ]
+        ]
+        ...
+
+        One can use iteration variable to change content of register,
+        e.g. :
+        ...
+        RTL.[
+           cnt := zero;
+           foreach byte_i reg [
+               if_ (cnt = zero) [
+                   byte_i := zero;
+               ]
+               cnt := cnt + one;
+           ]
+        ]
+        ...
+        will set a most significant byte of [reg] to zero *)
+    val foreach : exp -> exp -> rtl list -> rtl
+
+    (** [foreach' step e rtl] - the same as [foreach] above, but starts
+        iteration from the most significant [step] *)
+    val foreach' : exp -> exp -> rtl list -> rtl
+
+    (** [when_ cond rtl] = if_ cond rtl [] *)
+    val when_ : exp -> rtl list -> rtl
+
+    (** [ifnot cond rtl] = if_ cond [] rtl *)
+    val ifnot : exp -> rtl list -> rtl
+
+    (** switch clause  *)
+    type clause
+
+    (** [switch x clauses] - create a switch construction.
+        Example:
+        ...
+        ra := <...>
+        switch (x) [
+          case one   [ rs := <...>; ];
+          case zero  [ rt := <...>;
+                       rs := <...>; ];
+          default [rs := zero];
+        ]
+        ...  *)
+    val switch  : exp -> clause list -> rtl
+
+    (** [case exp code] - creates a switch case *)
+    val case : exp -> rtl list -> clause
+
+    (** [default code] - creates a switch default *)
+    val default : rtl list -> clause
+
+    (** [message m] - embeds a string [m] in code *)
+    val message : string -> rtl
+
+
+    (** Set of operators. Briefly it contains next operators:
+        - assignment
+        - math operators: +, -, *, \, %, <, >, <= , >= , =, <>
+        - logical operators: lsl, lsr, lnot, land, lor, lxor  *)
 
     (** [x := y] - assignment *)
     val ( := ) : exp -> exp -> rtl
@@ -439,63 +487,6 @@ module Std : sig
     (** [lnot x] - logical not*)
     val lnot : exp -> exp
 
-    (** [load mem addr endian size] - loads a data of [size]
-        at [addr] from [mem] with [endian]. *)
-    val load : var -> exp -> endian -> size -> exp
-
-    (** [store mem addr data endian size] - stores a [data]
-        of [size] at [addr] from [mem] with [endian]. *)
-    val store : var -> exp -> exp -> endian -> size -> rtl
-
-    (** [extract hi lo e] - extracts portion of [e] starting
-        from bit [lo] to bit [hi], all bounds are inclusive.
-        Bits indexes start from the least significant bit. *)
-    val extract : int -> int -> exp -> exp
-
-    (** [width e] - returns a bitwidth of an [e] *)
-    val width : exp -> int
-
-    (** [if_ cond then_ else_] *)
-    val if_ : exp -> rtl list -> rtl list -> rtl
-
-    (** [jmp addr] - jump to an address [addr] *)
-    val jmp : exp -> rtl
-
-    (** [foreach step e rtl] - repeat [rtl] for each [step] of [e].
-        One must create an iteration variable to iterate over some
-        expression. So, in example below, assuming the first operand
-        is a 64-bit register, [cnt] will be equal to 8:
-        ...
-        let reg = unsigned reg ops.(0) in
-        let cnt = unsigned const byte in
-        let byte_i = unsigned var byte in
-        RTL.[
-           cnt := zero;
-           foreach byte_i reg [
-               cnt := cnt + one;
-           ]
-        ]
-        ...
-
-        One can use iteration variable to change content of register,
-        e.g. :
-        ...
-        RTL.[
-           cnt := zero;
-           foreach byte_i reg [
-               if_ (cnt = zero) [
-                   byte_i := zero;
-               ]
-               cnt := cnt + one;
-           ]
-        ]
-        ...
-        will set a most significant byte of [reg] to zero *)
-    val foreach : inverse:bool -> exp -> exp -> rtl list -> rtl
-
-    (** [message m] - embeds a string [m] in code *)
-    val message : string -> rtl
-
   end
 
   (** Operands and registers bitwidth.  *)
@@ -504,10 +495,11 @@ module Std : sig
   val bit  : bitwidth
   val byte : bitwidth
   val word : bitwidth
-  val halfword : bitwidth
+  val halfword   : bitwidth
   val doubleword : bitwidth
-  val quadword : bitwidth
-  val bitwidth : int -> bitwidth
+  val quadword   : bitwidth
+  val bitwidth_of_int : int -> bitwidth
+  val int_of_bitwidth : bitwidth -> int
 
   (** expression constructor  *)
   type 'a ec
@@ -575,75 +567,19 @@ module Std : sig
   (** [lsb e] - extracts the least significant bit from [e] *)
   val lsb : exp -> exp
 
-  (** [when_ cond rtl] = if_ cond rtl [] *)
-  val when_ : exp -> rtl list -> rtl
+  (** [bil_of_rtl rtl] - returns a bil code *)
+  val bil_of_rtl : rtl list -> bil
 
-  (** [ifnot cond rtl] = if_ cond [] rtl *)
-  val ifnot : exp -> rtl list -> rtl
-
-  (** switch clause  *)
-  type clause
-
-  (** [switch x clauses] - create a switch construction.
-      Example:
-      ...
-      ra := <...>
-      switch (x) [
-        case one   [ rs := <...>; ];
-        case zero  [ rt := <...>;
-                     rs := <...>; ];
-        default [rs := zero];
-      ]
-      ...  *)
-  val switch  : exp -> clause list -> rtl
-
-  (** [case exp code] - creates a switch case *)
-  val case : exp -> rtl list -> clause
-
-  (** [default code] - creates a switch default *)
-  val default : rtl list -> clause
-
-  (** [width e] - returns width of [e] as an expression *)
-  val width : exp -> exp
-
-  (** Building blocks for cpu model representation. One can
-      think about this module as a handsome (but not mandatory!)
-      helper to describe a desireable target.
-      Basicly, Model = Memory + Registers. *)
-  module Model : sig
+  (** Building blocks for cpu memory representation. It's a
+      a handsome, but not mandatory helper to describe a desireable
+      target. *)
+  module Mem_model : sig
 
     (** Memory representation *)
     module type M = sig
       val mem : var
       val endian : endian
     end
-
-    (** Register class  *)
-    module Reg_class : sig
-      type t [@@deriving bin_io,compare,sexp]
-
-      (** [create name] - creates a new register class [name] *)
-      val create : string -> t
-
-      (** Few predefined register classes  *)
-
-      (** General Purpose Registers *)
-      val gpr : t
-
-      (** Floating Point Registers *)
-      val fpr : t
-
-      (** Flags  *)
-      val flag : t
-
-      (** Vector registers  *)
-      val vector : t
-
-    end
-
-    type cls = Reg_class.t [@@deriving bin_io,compare,sexp]
-
-    exception Register_not_found of string
 
     module Make(M : M) : sig
 
@@ -655,34 +591,8 @@ module Std : sig
           describes a storing [data] of [size] to a memory at [addr] *)
       val store : exp -> exp -> bitwidth -> rtl
 
-      (** [add_reg reg ~aliases ~index cls] - adds a new register
-          [reg] of class [cls] to a model. Register name, aliases and
-          [index] could be used later to find this register. *)
-      val add_reg : var -> ?aliases:string list -> ?index:int -> cls  -> unit
-
-      (** [add_reg' name exp ~aliases ~index cls] - the same as
-          above, but adds an expression for register [name] to a
-          model. This could be useful when register in question can't
-          be represented as a separate variable, e.g. in case when a
-          particular bits of a bigger registers have special meaning.
-          Then one could register them as a separate name:
-          {[add_reg' name (extrace 16 8 bigger_reg gpr]} *)
-      val add_reg' : string -> exp -> ?aliases:string list -> ?index:int -> cls  -> unit
-
-      (** [find cls reg] - return an expression for register [reg]
-          class [cls] if such is in a model.
-          Raise Register_not_found otherwise.*)
-      val find  : cls -> reg -> exp
-
-      (** [findi cls index] - return an expression for register with
-          [index] abd class [cls] if such is in a model.
-          Raise Register_not_found otherwise.*)
-      val findi : cls -> int -> exp
     end
 
   end
-
-  (** [bil_of_rtl rtl] - returns a bil code *)
-  val bil_of_rtl : rtl list -> bil
 
 end
