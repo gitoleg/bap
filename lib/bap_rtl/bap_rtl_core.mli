@@ -3,6 +3,7 @@ open Bap_rtl_types
 
 module Rtl : sig
 
+  val move : exp -> exp -> rtl
   val store : var -> exp -> exp -> endian -> size -> rtl
   val if_ : exp -> rtl list -> rtl list -> rtl
   val jmp : exp -> rtl

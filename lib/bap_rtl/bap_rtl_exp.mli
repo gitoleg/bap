@@ -15,9 +15,7 @@ module Exp : sig
   val concat : exp -> exp -> exp
   val cast : exp -> int -> sign -> exp
   val width : exp -> int
-  val width' : exp -> exp
   val bil_exp : exp -> Bap.Std.exp
-
 end
 
 module Infix : sig

@@ -185,11 +185,6 @@ module Exp = struct
 
   let cast = cast
   let concat = concat
-
-  let width' e =
-    let w = width e in
-    of_word (Word.of_int ~width:w w)
-
 end
 
 module Infix = struct

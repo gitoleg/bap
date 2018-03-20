@@ -331,8 +331,11 @@ module Std : sig
     (** [width e] - returns a bitwidth of an [e] *)
     val width  : exp -> int
 
-    (** [width' e] - returns width of [e] as an expression *)
-    val width' : exp -> exp
+    (** [signed e] - interpret [e] as signed *)
+    val signed : exp -> exp
+
+    (** [unsigned e] - interpret [e] as unsigned *)
+    val unsigned : exp -> exp
 
   end
 
@@ -570,9 +573,16 @@ module Std : sig
   (** [bil_of_rtl rtl] - returns a bil code *)
   val bil_of_rtl : rtl list -> bil
 
-  (** Building blocks for cpu memory representation. It's a
-      a handsome, but not mandatory helper to describe a desireable
-      target. *)
+  (** Module helps to describe a memory model of a desirable target.
+      So, instead of ugly
+      {[
+        x := load mem addr LittleEndian `r8
+      ]}
+      one can write just something like
+      {[
+        x := load addr `r8
+      ]}
+  *)
   module Mem_model : sig
 
     (** Memory representation *)
@@ -590,9 +600,7 @@ module Std : sig
       (** [store addr data size] - returns a statement, that
           describes a storing [data] of [size] to a memory at [addr] *)
       val store : exp -> exp -> bitwidth -> rtl
-
     end
-
   end
 
 end
