@@ -2,10 +2,14 @@
 (**
     {2 Intro}
 
-    This module is the only one that needed to write lifter functions.
-    The main idea is to make a life of lifter writers as easy as
-    possible. This implies that only few lines of code should be
-    enough to describe any instruction.
+    The main idea of Bap_rtl library is idea is to make a life of
+    lifter writers as easy as possible. This implies that:
+    - library should be thin, and a newcomer should not spend
+      a noticeable part of his life to read the documentation;
+    - only few lines of code should be enough to describe an
+      instruction, so all our efforts spent to reduce a number
+      of rules and details that one should keep in his head to
+      write a code.
 
     We introduce RTL - the language we expect to be very expressive,
     with lots of details hidden under the hood, so a user should not
@@ -18,6 +22,13 @@
 
    {[
      open Bap_rtl.Std
+   ]}
+
+    or accomplish it with your own definitions:
+   {[
+     module My_target = struct
+       include Bap_rtl.Std
+                 ...
    ]}
 
     {2 RTL}
@@ -40,17 +51,21 @@
 
     {3 Expressions}
 
-    There are only few ways to construct an expression:
+    There are many ways to construct expressions, but only few of
+    them are designed for using in lifter functions. Usualy, one needs
+    to deal with instructions operands, constants and have some
+    temporary variables for convinience. So, one can create an
+    expression:
      - from instruction operand
-     - from constant
-     - from string
+     - from constant (integer or string)
      - by defining temporary variable
 
+    Example.
     To construct an expression that denotes an immediate and treat
     its content as an unsigned value, one should write:
 
    {v
-     let ra = unsigned imm op.(0)
+     let ra = unsigned   imm   op.(0)
               -------- ------- ------
                  ^         ^      ^
                  |         |      |
@@ -60,7 +75,7 @@
                  claim immediate from operands array at index 0
     v}
 
-    Also one may create variables for convenience:
+    Also one may create temporary variables for convenience:
 
    {[
      let x = unsigned var halfword
@@ -71,7 +86,7 @@
     And also it's possible to create a variable of arbitrary bitwidth:
 
    {[
-     let x = signed var (bitwidth 10)
+     let x = signed var (bitwidth_of_int 10)
    ]}
 
     or create an epxression from integer constant:
@@ -136,7 +151,7 @@
 
     There are lot's math operators: [plus], [modulo], [less than] etc.
     All they take one or more expressions and also return expression:
-    [x + y], [lnot y], [x lsl y] ...
+    [x + y], [lnot y], [x << y] ...
     There are not any special signed versions of operators. But if
     signedness is matter, then use signed operands. Like in example
     below, [<] is a signed comparison:
@@ -256,7 +271,7 @@
     To be more concrete let's create an artificial example.
    {[
      1 let sort_of_add cpu ops =
-     2   let rt = unsigned reg ops.(0) in
+         2   let rt = unsigned reg ops.(0) in
      3   let ra = signed reg ops.(1) in
      4   let im = unsigned imm ops.(2) in
      5   let rc = unsigned reg ops.(3) in
@@ -264,10 +279,10 @@
      7   let xv = unsigned const word 42 in
      8   let sh = unsinged const byte 2 in
      9   RTL.[
-    10        rt := ra + im;
-    11        tm = cpu.load rt halfword + xv;
-    12        rc := (tm lsl sh) + cpu.ca;
-    13    ]
+         10        rt := ra + im;
+         11        tm = cpu.load rt halfword + xv;
+         12        rc := (tm << sh) + cpu.ca;
+         13    ]
    ]}
 
     There is a lifter for instruction [SomeSortOfAdd]. It's required
@@ -313,31 +328,6 @@ module Std : sig
 
   type exp [@@deriving bin_io, compare, sexp]
   type rtl [@@deriving bin_io, compare, sexp]
-
-  module Exp : sig
-
-    (** [of_var v] - creates an expression from variable [v] *)
-    val of_var  : var -> exp
-
-    (** [of_vars vs] - creates an expression as a concatination of [vs] *)
-    val of_vars : var list -> exp
-
-    (** [of_word w] - creates an expression from word [w]   *)
-    val of_word : word -> exp
-
-    (** [tmp width] - creates an expression of temporary variable of [width] *)
-    val tmp : int -> exp
-
-    (** [width e] - returns a bitwidth of an [e] *)
-    val width  : exp -> int
-
-    (** [signed e] - interpret [e] as signed *)
-    val signed : exp -> exp
-
-    (** [unsigned e] - interpret [e] as unsigned *)
-    val unsigned : exp -> exp
-
-  end
 
   module RTL : sig
 
@@ -430,8 +420,8 @@ module Std : sig
 
     (** Set of operators. Briefly it contains next operators:
         - assignment
-        - math operators: +, -, *, \, %, <, >, <= , >= , =, <>
-        - logical operators: lsl, lsr, lnot, land, lor, lxor  *)
+        - math operators: +, -, *, \, %, <, >, <= , >= , =, <>, >>, <<
+        - logical operators: lnot, land, lor, lxor  *)
 
     (** [x := y] - assignment *)
     val ( := ) : exp -> exp -> rtl
@@ -572,6 +562,35 @@ module Std : sig
 
   (** [bil_of_rtl rtl] - returns a bil code *)
   val bil_of_rtl : rtl list -> bil
+
+
+  (** Module provides few primitives to construct expressions.
+      Functions from this module are not supposed to appear in
+      lifter functions, but could be handsome to create lifter. *)
+  module Exp : sig
+
+    (** [of_var v] - creates an expression from variable [v] *)
+    val of_var  : var -> exp
+
+    (** [of_vars vs] - creates an expression as a concatination of [vs] *)
+    val of_vars : var list -> exp
+
+    (** [of_word w] - creates an expression from word [w]   *)
+    val of_word : word -> exp
+
+    (** [tmp width] - creates an expression of temporary variable of [width] *)
+    val tmp : int -> exp
+
+    (** [width e] - returns a bitwidth of an [e] *)
+    val width  : exp -> int
+
+    (** [signed e] - interpret [e] as signed *)
+    val signed : exp -> exp
+
+    (** [unsigned e] - interpret [e] as unsigned *)
+    val unsigned : exp -> exp
+
+  end
 
   (** Module helps to describe a memory model of a desirable target.
       So, instead of ugly
