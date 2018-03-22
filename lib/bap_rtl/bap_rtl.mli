@@ -639,6 +639,8 @@ module Std : sig
   end
 
   (** Module helps to describe a memory model of a target.
+      It's not a mandatory approach, but just possible.
+
       So, instead of ugly
       {[
         x := load mem addr LittleEndian `r8
