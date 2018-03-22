@@ -2,7 +2,7 @@
 (**
     {2 Intro}
 
-    The main idea of Bap_rtl library is idea is to make a life of
+    The main idea of Bap_rtl library is to make a life of
     lifter writers as easy as possible. This implies that:
     - library should be thin, and a newcomer should not spend
       a noticeable part of his life to read the documentation;
@@ -13,9 +13,9 @@
 
     We introduce RTL - the language we expect to be very expressive,
     with lots of details hidden under the hood, so a user should not
-    care about minor details.
-    Also we add some useful abstractions that adds brevity and
-    therefore simplicity to user code.
+    care about minor details. Also we introduce some useful
+    abstractions that adds brevity and therefore simplicity to user
+    code.
 
     So proposed usage is just to open at the very beginning of your
     module:
@@ -26,9 +26,9 @@
 
     or accomplish it with your own definitions:
    {[
-     module My_target = struct
+     module My_target_lib = struct
        include Bap_rtl.Std
-                 ...
+       ...
    ]}
 
     {2 RTL}
@@ -59,6 +59,9 @@
      - from instruction operand
      - from constant (integer or string)
      - by defining temporary variable
+
+    Currently, RTL supports only two kinds of operands:
+    immediates and registers.
 
     Example.
     To construct an expression that denotes an immediate and treat
@@ -104,11 +107,11 @@
     {4 Extraction}
 
     There is a general way to extract a part of an expression:
-    [extract exp from to], where a [from] denotes a more significant
-    bit than [to].
+    [extract hi lo exp], where a [hi] denotes a more significant
+    bit than [lo].
 
     Also, there are few more convenient and readable ways to extract, e.g.:
-    - [low word x]  - extract fist (the least significant) word from [x]
+    - [low word x]  - extract first (the least significant) word from [x]
     - [high byte x] - extract last (the most significant) byte
     - [last x 5]    - extract last (the most significant) bits
     - [first x 2]   - extract second bit
@@ -122,7 +125,8 @@
     expression. So don't use it for sign casting, just use
     expression as it is where signedness matter.
 
-    Example 1. Apply extract explicitly. The result is 0x0000_FFFF.
+    Example 1. Apply extract explicitly. The result is 0x0000_FFFF:
+    halfword extended implicitly to a word.
    {[
      let x = signed const halfword 0xFFFF in
      let y = signed var word in
@@ -169,9 +173,10 @@
     false (0) and [<] will be unsigned comparison.
 
     The same is true for shift operators: [>>] and [<<].
-    There are not separate logical shift operators. But shift is a
-    logical one if operand is unsigned. And otherwise, shift is
-    an arithmetical one if operand is signed.
+    There is not such thing as logical shift operator, i.e. such one
+    that does shift without sign taking in account.
+    But shift is a logical one if operand is unsigned. And otherwise,
+    shift is an arithmetical one if operand is signed.
 
    {[
      let x = signed const halfword 0xFAAA in
@@ -200,17 +205,23 @@
     equaled to [rd], since a concatenation [rc ^ rb] returns a 64 bit
     expression while we may assign only 32 bit.
 
-    An expression in left hand side of assignment is always either of
-    expressions:
+    The most compicated (and powerful!) thing in assignment is it's
+    left part. Basicly, a valid expression in a left side of
+    assignment is either of:
      - constructed with var/reg constructors
-     - all expressions from cpu model, except pc
-     - extraction or concatenation of two cases above
+     - extraction or concatenation of case above
     So there are few examples of correct assignment:
 
    {[
-     low byte rt := ra + rb;
-     cpu.cr := zero;
-     nbit cpu.cr 1 := one;
+     let rt = unsigned cpu.reg op.(0) in
+     let im = unsigned imm op.(1) in
+     let tmp1 = unsigned var word in
+     let tmp2 = unsigned var word in
+     RTL.[
+       low byte tmp1 := im;
+       tmp1 ^ tmp2 := rt;
+       nbit rt 2 := one;
+     ]
    ]}
 
     {2 Bit,byte,whatever Order}
@@ -249,7 +260,21 @@
      ];
    ]}
 
-    {2 Memory model}
+    {2 Target architecture model}
+
+    It's a most tricky part, because it requires a deep
+    understanding how architecture looks like, what registers
+    and flags are defined, what operands are used
+    by instructions, etc. And etc.
+    E.g. register with name "A" could be aliased as "a", and model
+    should be ready to handle both names.
+    Also, certain instructions could encode this register just like
+    an immediate "42", and a model should be ready for this too.
+
+    It's a user responsibility to describe model. But there is
+    something that could come in handy.
+
+    {3 Memory model}
 
     Basicly, we can't express load and store operations dependless
     of a knowledge of a target architecture: there are different
@@ -261,6 +286,27 @@
     So, we can create a memory model and reduce user code for
     load/store instructions. See [Mem_model] for details.
 
+    {3 Registers and expressions}
+
+    RTL does not allow to use instructions operands directly:
+    one should convert them to expressoins instead.
+    It's quite obvious what to do with immediate operands,
+    beacuse there is a special expression constructor for them.
+
+    But it's a bit different story in case of registers,
+    an architecture details required here. That is why
+    [reg] expression constructor takes a function that converts
+    register operand to an expression. So, it's enough
+    to write a find function, that will return
+    an expression for any register operand and [reg]
+    expression constructor is ready for using.
+
+    There is [Reg_model], that partly simplify a process
+    of model creation: it allows to create model, add
+    registers (of any representation), supports aliases,
+    provides searching functions.
+
+
     {2 Misc}
 
     There are few useful constructions that either a part of RTL
@@ -271,18 +317,18 @@
     To be more concrete let's create an artificial example.
    {[
      1 let sort_of_add cpu ops =
-         2   let rt = unsigned reg ops.(0) in
-     3   let ra = signed reg ops.(1) in
+     2   let rt = unsigned cpu.reg ops.(0) in
+     3   let ra = signed cpu.reg ops.(1) in
      4   let im = unsigned imm ops.(2) in
-     5   let rc = unsigned reg ops.(3) in
+     5   let rc = unsigned cpu.reg ops.(3) in
      6   let tm = signed var doubleword in
      7   let xv = unsigned const word 42 in
      8   let sh = unsinged const byte 2 in
      9   RTL.[
-         10        rt := ra + im;
-         11        tm = cpu.load rt halfword + xv;
-         12        rc := (tm << sh) + cpu.ca;
-         13    ]
+    10     rt := ra + im;
+    11     tm = cpu.load rt halfword + xv;
+    12     rc := (tm << sh) + cpu.ca;
+    13   ]
    ]}
 
     There is a lifter for instruction [SomeSortOfAdd]. It's required
@@ -592,7 +638,7 @@ module Std : sig
 
   end
 
-  (** Module helps to describe a memory model of a desirable target.
+  (** Module helps to describe a memory model of a target.
       So, instead of ugly
       {[
         x := load mem addr LittleEndian `r8
@@ -620,6 +666,71 @@ module Std : sig
           describes a storing [data] of [size] to a memory at [addr] *)
       val store : exp -> exp -> bitwidth -> rtl
     end
+  end
+
+  (** Module helps to describe a register model of a target.
+      It's not a mandatory approach, but just possible.
+
+      Usually, it's convinient to have register representation both as
+      as a variable and an expression. Also, sometimes it's convinient
+      to represent a register as a some set of expressions and
+      operations over them, e.g. when each bit of a register has a
+      special meaning and better to represent the whole register as a
+      concatenation of a smaller, one bit width variables.
+      Also, often register has associated integer indexes and names aliases,
+      so it could come in handy to have an ability to find a register
+      by name, by alias, by index. *)
+  module Reg_model : sig
+
+    (** register model type  *)
+    type 'a t
+
+    (** aliases  *)
+    type alias = [
+      | `Index of int
+      | `Name of string
+    ]
+
+    (** [empty] - empty model   *)
+    val empty : 'a t
+
+    (** [add model ~aliases name data] - adds [data] to a [model],
+        [data] could be reached by [name] and [aliases] *)
+    val add   : 'a t -> ?aliases:alias list -> string -> 'a -> 'a t
+
+    (** [find model name] - returns a data associated with [name].
+        Raise Not_found if no data found. *)
+    val find  : 'a t -> string -> 'a
+
+    (** [find' model reg] - returns a data associated with a name of
+        register [reg]. Raise Not_found if no data found. *)
+    val find' : 'a t -> reg -> 'a
+
+    (** [findi model ind] - returns a data associated with a integer
+        [ind]. Raise Not_found if no data found. *)
+    val findi : 'a t -> int -> 'a
+
+
+    (** Register model based on variables *)
+    module Var : sig
+
+      (** [add model ~aliases name bitwidth] - adds a register
+          [name] of [bitwidth] to [model]. Register also could be reached
+          by aliases. *)
+      val add  : var t -> ?aliases:alias list -> string -> int -> var t
+
+      (** [add' model ~aliases name bitwidth] - the same as [add]
+          above, but returns a created register. *)
+      val add' : var t -> ?aliases:alias list -> string -> int -> var t * var
+
+    end
+
+    (** Register model based on expressions *)
+    module Exp : sig
+      (** [of_var m] - creates expression model from variables model *)
+      val of_var : var t -> exp t
+    end
+
   end
 
 end
