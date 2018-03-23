@@ -11,7 +11,7 @@
       of rules and details that one should keep in his head to
       write a code.
 
-    We introduce RTL - the language we expect to be very expressive,
+    We introduce RTL - the language we expect to be a very expressive,
     with lots of details hidden under the hood, so a user should not
     care about minor details. Also we introduce some useful
     abstractions that adds brevity and therefore simplicity to user
@@ -113,8 +113,8 @@
     Also, there are few more convenient and readable ways to extract, e.g.:
     - [low word x]  - extract first (the least significant) word from [x]
     - [high byte x] - extract last (the most significant) byte
-    - [last x 5]    - extract last (the most significant) bits
-    - [first x 2]   - extract second bit
+    - [last x 5]    - extract last (the most significant) 5 bits
+    - [first x 2]   - extract first (the least significant) 2 bits
     - [msb x]       - extract the most significant bit
 
     Note, that extraction of a bigger width from expression is
@@ -154,7 +154,7 @@
     {4 Operators}
 
     There are lot's math operators: [plus], [modulo], [less than] etc.
-    All they take one or more expressions and also return expression:
+    All of them take one or more expressions and return expression:
     [x + y], [lnot y], [x << y] ...
     There are not any special signed versions of operators. But if
     signedness is matter, then use signed operands. Like in example
@@ -208,8 +208,8 @@
     The most compicated (and powerful!) thing in assignment is it's
     left part. Basicly, a valid expression in a left side of
     assignment is either of:
-     - constructed with var/reg constructors
-     - extraction or concatenation of case above
+     - constructed with var/reg constructors;
+     - extraction or concatenation of above.
     So there are few examples of correct assignment:
 
    {[
@@ -224,7 +224,7 @@
      ]
    ]}
 
-    {2 Bit,byte,whatever Order}
+    {2 Bit,byte,whatever indexing}
 
     Everywhere in this module, where a notion of bit position
     (byte,word ...) does matter, a numeration starts from
@@ -320,7 +320,7 @@
      2   let rt = unsigned cpu.reg ops.(0) in
      3   let ra = signed cpu.reg ops.(1) in
      4   let im = unsigned imm ops.(2) in
-     5   let rc = unsigned cpu.reg ops.(3) in
+     5   let rc = signed cpu.reg ops.(3) in
      6   let tm = signed var doubleword in
      7   let xv = unsigned const word 42 in
      8   let sh = unsinged const byte 2 in
@@ -331,8 +331,8 @@
     13   ]
    ]}
 
-    There is a lifter for instruction [SomeSortOfAdd]. It's required
-    it has two arguments: cpu model and operand array.
+    There is a lifter for instruction [SomeSortOfAdd]. It has two
+    arguments: cpu model and operand array.
     An author carefully read an ISA of target architecture and
     figured out that this instruction has four operands, and that the
     first, the second and the fourth argument are registers and the
@@ -361,8 +361,9 @@
              sum operand) and than sum extended to a doubleword
              bitwidth with respect to a [tm] sign. So, the result of
              this sum is treated as a signed.
-    - [line 12]: Logical shift returns an unsigned result which is summed
-             with unsigned value. The interesting part is that it's
+    - [line 12]: Shift returns a signed result which is summed
+             with unsigned value. So a result of right part is a
+             signed value. The interesting part is that it's
              safe to add one-bit value (flag is one bit width) and a
              doubleword.
 *)
@@ -372,7 +373,10 @@ open Bap.Std
 
 module Std : sig
 
+  (** rtl expression  *)
   type exp [@@deriving bin_io, compare, sexp]
+
+  (** rtl statement  *)
   type rtl [@@deriving bin_io, compare, sexp]
 
   module RTL : sig
@@ -627,10 +631,10 @@ module Std : sig
     (** [width e] - returns a bitwidth of an [e] *)
     val width  : exp -> int
 
-    (** [signed e] - interpret [e] as signed *)
+    (** [signed e] - treats [e] as signed *)
     val signed : exp -> exp
 
-    (** [unsigned e] - interpret [e] as unsigned *)
+    (** [unsigned e] - treats [e] as unsigned *)
     val unsigned : exp -> exp
 
     (** [load mem addr endian size] - loads a data of [size]
@@ -642,6 +646,7 @@ module Std : sig
   (** Module helps to describe a memory and a register models of a target.
       It's not a mandatory approach, but just possible. *)
   module Model : sig
+
 
     (** Module helps to describe a memory model of a target.
         It's not a mandatory approach, but just possible.
@@ -655,6 +660,7 @@ module Std : sig
           x := load addr `r8
         ]}  *)
     module Mem : sig
+
 
       (** Memory representation *)
       module type M = sig
