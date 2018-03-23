@@ -580,6 +580,9 @@ module Std : sig
   (** [one] is a one bit length expression set to one *)
   val one  : exp
 
+  (** [ones width] - returns an expression of [width] with all bits set to one *)
+  val ones  : bitwidth -> exp
+
   (** [low width e] - extracts low [width] bits from [e]  *)
   val low : bitwidth -> exp -> exp
 
@@ -693,12 +696,12 @@ module Std : sig
       | `Name of string
     ]
 
-    (** [empty] - empty model   *)
-    val empty : 'a t
+    (** [create ()] - creates an empty model   *)
+    val create : unit -> 'a t
 
     (** [add model ~aliases name data] - adds [data] to a [model],
         [data] could be reached by [name] and [aliases] *)
-    val add   : 'a t -> ?aliases:alias list -> string -> 'a -> 'a t
+    val add   : 'a t -> ?aliases:alias list -> string -> 'a -> unit
 
     (** [find model name] - returns a data associated with [name].
         Raise Not_found if no data found. *)
@@ -719,11 +722,11 @@ module Std : sig
       (** [add model ~aliases name bitwidth] - adds a register
           [name] of [bitwidth] to [model]. Register also could be reached
           by aliases. *)
-      val add  : var t -> ?aliases:alias list -> string -> int -> var t
+      val add  : var t -> ?aliases:alias list -> string -> int -> unit
 
       (** [add' model ~aliases name bitwidth] - the same as [add]
           above, but returns a created register. *)
-      val add' : var t -> ?aliases:alias list -> string -> int -> var t * var
+      val add' : var t -> ?aliases:alias list -> string -> int -> var
 
     end
 

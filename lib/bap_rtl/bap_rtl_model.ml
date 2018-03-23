@@ -34,28 +34,28 @@ end
 
 module Reg = struct
 
-  type 'a t = 'a String.Map.t * 'a Int.Map.t
+  type 'a t = 'a String.Table.t * 'a Int.Table.t
 
   type alias = [
     | `Index of int
     | `Name of string
   ]
 
-  let empty = String.Map.empty, Int.Map.empty
+  let create () = String.Table.create (), Int.Table.create ()
 
-  let add_aliases model aliases data =
-    List.fold aliases ~init:model
-      ~f:(fun (names, indxs) -> function
-          | `Index i -> names, Int.Map.add indxs i data
-          | `Name n -> String.Map.add names n data, indxs)
+  let add_aliases (names,indxs) aliases data =
+    List.iter aliases
+      ~f:(function
+          | `Index i -> Hashtbl.add_exn indxs i data
+          | `Name n -> Hashtbl.add_exn names n data)
 
   let add (names, indxs) ?(aliases=[]) name data =
-    let names = Map.add names name data in
+    Hashtbl.add_exn names name data;
     add_aliases (names,indxs) aliases data
 
-  let find (names,_) name = Map.find_exn names name
+  let find (names,_) name = Hashtbl.find_exn names name
   let find' model reg = find model (Reg.name reg)
-  let findi (_,inds) ind = Map.find_exn inds ind
+  let findi (_,inds) ind = Hashtbl.find_exn inds ind
 
   module Var = struct
 
@@ -63,11 +63,11 @@ module Reg = struct
 
     let define_full model ?(aliases=[]) name width =
       let var = make_reg name width in
-      add model ~aliases name var, var
+      add model ~aliases name var;
+      var
 
     let add model ?(aliases=[]) name width =
-      let model, _ = define_full model ~aliases name width in
-      model
+      ignore @@ define_full model ~aliases name width
 
     let add' = define_full
   end
@@ -76,11 +76,12 @@ module Reg = struct
 
     let of_var (names,indxs) : exp t =
       let to_exp m init =
-        List.fold (Map.to_alist m) ~init
-          ~f:(fun m (key, v) -> Map.add m key (Exp.of_var v)) in
-      to_exp names String.Map.empty,
-      to_exp indxs Int.Map.empty
-
+        List.iter (Hashtbl.to_alist m)
+          ~f:(fun (key, v) -> Hashtbl.add_exn init key (Exp.of_var v)) in
+      let (names', indxs') as model = create () in
+      to_exp names names';
+      to_exp indxs indxs';
+      model
   end
 
 end

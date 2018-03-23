@@ -25,15 +25,15 @@ module Reg : sig
     | `Name of string
   ]
 
-  val empty : 'a t
-  val add   : 'a t -> ?aliases:alias list -> string -> 'a -> 'a t
+  val create : unit -> 'a t
+  val add   : 'a t -> ?aliases:alias list -> string -> 'a -> unit
   val find  : 'a t -> string -> 'a
   val find' : 'a t -> reg -> 'a
   val findi : 'a t -> int -> 'a
 
   module Var : sig
-    val add  : var t -> ?aliases:alias list -> string -> int -> var t
-    val add' : var t -> ?aliases:alias list -> string -> int -> var t * var
+    val add  : var t -> ?aliases:alias list -> string -> int -> unit
+    val add' : var t -> ?aliases:alias list -> string -> int -> var
   end
 
   module Exp : sig
