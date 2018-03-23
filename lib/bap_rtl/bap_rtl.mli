@@ -722,6 +722,9 @@ module Std : sig
       (** [exp_of_var m] - transforms a register model to an expression one. *)
       val exp_of_var : var t -> exp t
 
+      (** [data model] - returns all data from model *)
+      val data : 'a t -> 'a list
+
       (** [find model name] - returns [Some data] associated with [name].
           Returns None if no data found. *)
       val find  : 'a t -> string -> 'a option

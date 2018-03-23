@@ -38,6 +38,8 @@ module Reg : sig
   val findi : 'a t -> int -> 'a option
   val chain : ('a t -> 'b -> 'c option) -> 'a t list -> 'b -> 'c option
 
+  val data : 'a t -> 'a list
+
   module Exn : sig
     val find  : 'a t -> string -> 'a
     val find' : 'a t -> reg -> 'a

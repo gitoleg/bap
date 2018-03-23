@@ -83,6 +83,8 @@ module Reg = struct
   let findi (_,inds) ind = Hashtbl.find inds ind
   let chain find ms x = List.find_map ms ~f:(fun m -> find m x)
 
+  let data (names,_) = Hashtbl.data names
+
   module Exn = struct
 
     let find (names,_) name = Hashtbl.find_exn names name
