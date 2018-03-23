@@ -34,7 +34,6 @@ module Std = struct
     Helpers.norm_jumps @@
     Translate.run rtl
 
-  module Mem_model = Bap_rtl_model.Mem
-  module Reg_model = Bap_rtl_model.Reg
+  module Model = Bap_rtl_model
 
 end

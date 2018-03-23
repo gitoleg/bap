@@ -27,16 +27,22 @@ module Reg : sig
 
   val create : unit -> 'a t
   val add   : 'a t -> ?aliases:alias list -> string -> 'a -> unit
-  val find  : 'a t -> string -> 'a
-  val find' : 'a t -> reg -> 'a
-  val findi : 'a t -> int -> 'a
 
-  module Var : sig
-    val add  : var t -> ?aliases:alias list -> string -> int -> unit
-    val add' : var t -> ?aliases:alias list -> string -> int -> var
+  val add_reg  : var t -> ?aliases:alias list -> string -> int -> unit
+  val add_reg' : var t -> ?aliases:alias list -> string -> int -> var
+
+  val exp_of_var : var t -> exp t
+
+  val find  : 'a t -> string -> 'a option
+  val find' : 'a t -> reg -> 'a option
+  val findi : 'a t -> int -> 'a option
+  val chain : ('a t -> 'b -> 'c option) -> 'a t list -> 'b -> 'c option
+
+  module Exn : sig
+    val find  : 'a t -> string -> 'a
+    val find' : 'a t -> reg -> 'a
+    val findi : 'a t -> int -> 'a
+    val chain : ('a t -> 'b -> 'c) -> 'a t list -> 'b -> 'c
   end
 
-  module Exp : sig
-    val of_var : var t -> exp t
-  end
 end

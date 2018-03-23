@@ -641,101 +641,109 @@ module Std : sig
 
   end
 
-  (** Module helps to describe a memory model of a target.
-      It's not a mandatory approach, but just possible.
+  (** Module helps to describe a memory and a register models of a target.
+      It's not a mandatory approach, but just possible. *)
+  module Model : sig
 
-      So, instead of ugly
-      {[
-        x := load mem addr LittleEndian `r8
-      ]}
-      one can write just something like
-      {[
-        x := load addr `r8
-      ]}
-  *)
-  module Mem_model : sig
+    (** Module helps to describe a memory model of a target.
+        It's not a mandatory approach, but just possible.
 
-    (** Memory representation *)
-    module type M = sig
-      val mem : var
-      val endian : endian
+        So, instead of ugly
+        {[
+          x := load mem addr LittleEndian `r8
+        ]}
+        one can write just something like
+        {[
+          x := load addr `r8
+        ]}  *)
+    module Mem : sig
+
+      (** Memory representation *)
+      module type M = sig
+        val mem : var
+        val endian : endian
+      end
+
+      module Make(M : M) : sig
+
+        (** [load addr size] - returns an exp, that describes a loading
+            of a chunk of [size] from memory at [addr] *)
+        val load : exp -> bitwidth -> exp
+
+        (** [store addr data size] - returns a statement, that
+            describes a storing [data] of [size] to a memory at [addr] *)
+        val store : exp -> exp -> bitwidth -> rtl
+      end
     end
 
-    module Make(M : M) : sig
+    (** Module provides helpful primitives for constructing register
+        model of a target.
+        Usually, it's convinient to have register representation both as
+        as a variable and an expression. Also, sometimes it's convinient
+        to represent a register as a some set of expressions and
+        operations over them, e.g. when each bit of a register has a
+        special meaning and better to represent the whole register as a
+        concatenation of a smaller, one bit width variables.
+        Also, often register has associated integer indexes and names aliases,
+        so it could come in handy to have an ability to find a register
+        by name, by alias, by index. *)
+    module Reg : sig
 
-      (** [load addr size] - returns an exp, that describes a loading
-          of a chunk of [size] from memory at [addr] *)
-      val load : exp -> bitwidth -> exp
+      (** register model type  *)
+      type 'a t
 
-      (** [store addr data size] - returns a statement, that
-          describes a storing [data] of [size] to a memory at [addr] *)
-      val store : exp -> exp -> bitwidth -> rtl
-    end
-  end
+      (** aliases  *)
+      type alias = [
+        | `Index of int
+        | `Name of string
+      ]
 
-  (** Module helps to describe a register model of a target.
-      It's not a mandatory approach, but just possible.
+      (** [create ()] - creates an empty model   *)
+      val create : unit -> 'a t
 
-      Usually, it's convinient to have register representation both as
-      as a variable and an expression. Also, sometimes it's convinient
-      to represent a register as a some set of expressions and
-      operations over them, e.g. when each bit of a register has a
-      special meaning and better to represent the whole register as a
-      concatenation of a smaller, one bit width variables.
-      Also, often register has associated integer indexes and names aliases,
-      so it could come in handy to have an ability to find a register
-      by name, by alias, by index. *)
-  module Reg_model : sig
+      (** [add model ~aliases name data] - adds [data] to a [model],
+          [data] could be reached by [name] and [aliases] *)
+      val add   : 'a t -> ?aliases:alias list -> string -> 'a -> unit
 
-    (** register model type  *)
-    type 'a t
+      (** [add_reg model ~aliases name bitwidth] - adds a register
+          [name] of [bitwidth] to [model]. Register also could be
+          reached by aliases. *)
+      val add_reg  : var t -> ?aliases:alias list -> string -> int -> unit
 
-    (** aliases  *)
-    type alias = [
-      | `Index of int
-      | `Name of string
-    ]
-
-    (** [create ()] - creates an empty model   *)
-    val create : unit -> 'a t
-
-    (** [add model ~aliases name data] - adds [data] to a [model],
-        [data] could be reached by [name] and [aliases] *)
-    val add   : 'a t -> ?aliases:alias list -> string -> 'a -> unit
-
-    (** [find model name] - returns a data associated with [name].
-        Raise Not_found if no data found. *)
-    val find  : 'a t -> string -> 'a
-
-    (** [find' model reg] - returns a data associated with a name of
-        register [reg]. Raise Not_found if no data found. *)
-    val find' : 'a t -> reg -> 'a
-
-    (** [findi model ind] - returns a data associated with a integer
-        [ind]. Raise Not_found if no data found. *)
-    val findi : 'a t -> int -> 'a
-
-
-    (** Register model based on variables *)
-    module Var : sig
-
-      (** [add model ~aliases name bitwidth] - adds a register
-          [name] of [bitwidth] to [model]. Register also could be reached
-          by aliases. *)
-      val add  : var t -> ?aliases:alias list -> string -> int -> unit
-
-      (** [add' model ~aliases name bitwidth] - the same as [add]
+      (** [add_reg' model ~aliases name bitwidth] - the same as [add_reg]
           above, but returns a created register. *)
-      val add' : var t -> ?aliases:alias list -> string -> int -> var
+      val add_reg' : var t -> ?aliases:alias list -> string -> int -> var
+
+      (** [exp_of_var m] - transforms a register model to an expression one. *)
+      val exp_of_var : var t -> exp t
+
+      (** [find model name] - returns [Some data] associated with [name].
+          Returns None if no data found. *)
+      val find  : 'a t -> string -> 'a option
+
+      (** [find' model reg] - returns [Some data] associated with a name of
+          register [reg]. Returns None if no data found. *)
+      val find' : 'a t -> reg -> 'a option
+
+      (** [findi model ind] - returns [Some data] associated with a integer
+          [ind]. Returns None if no data found. *)
+      val findi : 'a t -> int -> 'a option
+
+      (** [chain search models key] - performs [search] in a model list
+          [models]. E.g. [chain ms findi 42].
+          Returns None if no data found.  *)
+      val chain : ('a t -> 'b -> 'c option) -> 'a t list -> 'b -> 'c option
+
+      (** same functions as above, but raises Not_found instead of
+          returning None*)
+      module Exn : sig
+        val find  : 'a t -> string -> 'a
+        val find' : 'a t -> reg -> 'a
+        val findi : 'a t -> int -> 'a
+        val chain : ('a t -> 'b -> 'c) -> 'a t list -> 'b -> 'c
+      end
 
     end
-
-    (** Register model based on expressions *)
-    module Exp : sig
-      (** [of_var m] - creates expression model from variables model *)
-      val of_var : var t -> exp t
-    end
-
   end
 
 end
