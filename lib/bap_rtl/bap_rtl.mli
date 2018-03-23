@@ -750,6 +750,7 @@ module Std : sig
 
     end
 
+
     (** Lifter model. Gather everything in one place.
 
         Assumed, that lift function for each instruction takes
@@ -773,5 +774,11 @@ module Std : sig
     end
 
   end
+
+  (** register model type  *)
+  type 'a reg_model = 'a Model.Reg.t
+
+  (** lifter model type *)
+  type 'a lift_model = 'a Model.Lifter.t
 
 end
