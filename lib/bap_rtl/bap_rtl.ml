@@ -33,6 +33,56 @@ module Std = struct
     Helpers.norm_jumps @@
     Translate.run rtl
 
-  module Model = Bap_rtl_model
+  module Model = struct
+
+    include Bap_rtl_model
+
+    module Array = struct
+
+      type 'a t = 'a Array.t
+
+      exception Invalid_operand_index of int
+
+      let get a n =
+        if n >= Array.length a then raise (Invalid_operand_index n)
+        else Array.get a n
+
+      let unsafe_get a n = get a n
+    end
+
+    module Lifter = struct
+
+      type 'a t = {
+        model : 'a;
+        lifts : ('a -> op array -> rtl list) String.Table.t;
+      }
+
+      let create model = { model; lifts = String.Table.create () }
+
+      let register {lifts} name lift = Hashtbl.add_exn lifts name lift
+
+      let lifter t =
+        let lift _mem insn =
+          let insn = Insn.of_basic insn in
+          let insn_name = Insn.name insn in
+          match Hashtbl.find t.lifts insn_name with
+          | None ->  Or_error.errorf "unknown instruction %s" insn_name
+          | Some lift ->
+            try
+              lift t.model (Insn.ops insn) |>
+              bil_of_rtl |>
+              Result.return
+            with
+            | Array.Invalid_operand_index n ->
+              let str =
+                sprintf "instruction %s doesn't have an operand with index %d"
+                  insn_name n in
+              Error (Error.of_string str)
+            | exn ->
+              let str = Exn.to_string exn in
+              Error (Error.of_string str) in
+        lift
+    end
+  end
 
 end

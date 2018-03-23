@@ -643,7 +643,8 @@ module Std : sig
 
   end
 
-  (** Module helps to describe a memory and a register models of a target.
+  (** Module helps to describe a memory and a register models of a
+      target and a lifter model.
       It's not a mandatory approach, but just possible. *)
   module Model : sig
 
@@ -733,8 +734,8 @@ module Std : sig
           [ind]. Returns None if no data found. *)
       val findi : 'a t -> int -> 'a option
 
-      (** [chain search models key] - performs [search] in a model list
-          [models]. E.g. [chain ms findi 42].
+      (** [chain search models key] - performs [search] in a list of
+          [models]. E.g. [chain findi ms 42].
           Returns None if no data found.  *)
       val chain : ('a t -> 'b -> 'c option) -> 'a t list -> 'b -> 'c option
 
@@ -748,6 +749,29 @@ module Std : sig
       end
 
     end
+
+    (** Lifter model. Gather everything in one place.
+
+        Assumed, that lift function for each instruction takes
+        two arguments: some user defined model of a target and
+        operand array.  *)
+    module Lifter : sig
+
+      (** lifter type *)
+      type 'a t
+
+      (** [create model] - builds a lifter from user defined cpu model  *)
+      val create : 'a -> 'a t
+
+      (** [register t insn_name lift] - registers a [lift]
+          function for instruction with name [insn_name] *)
+      val register : 'a t -> string -> ('a -> op array -> rtl list) -> unit
+
+      (** [lifter t] - transforms [t] to a bap lifter *)
+      val lifter : 'a t -> lifter
+
+    end
+
   end
 
 end
