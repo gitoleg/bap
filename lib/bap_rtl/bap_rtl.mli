@@ -2,7 +2,7 @@
 (**
     {2 Intro}
 
-    The main idea of Bap_rtl library is to make a life of
+    The main idea of [Bap_rtl] library is to make a life of
     lifter writers as easy as possible. This implies that:
     - library should be thin, and a newcomer should not spend
       a noticeable part of his life to read the documentation;
@@ -60,7 +60,7 @@
      - from constant (integer or string)
      - by defining temporary variable
 
-    Currently, RTL supports only two kinds of operands:
+    Currently, RTL supports only two kinds of instruction operands:
     immediates and registers.
 
     Example.
