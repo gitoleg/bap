@@ -18,7 +18,6 @@ module Std = struct
   module Exp = Bap_rtl_exp.Exp
 
   module RTL = struct
-    let load = Exp.load
     let extract = Exp.extract
     include Bap_rtl_core.Rtl
     include Infix

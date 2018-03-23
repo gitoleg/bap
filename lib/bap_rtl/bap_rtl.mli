@@ -284,7 +284,7 @@
     this knowledge and don't mention it in lifter, because it
     leads to duplicated, more verbose and less readable code.
     So, we can create a memory model and reduce user code for
-    load/store instructions. See [Mem_model] for details.
+    load/store instructions. See [Model.Mem] for details.
 
     {3 Registers and expressions}
 
@@ -299,9 +299,9 @@
     register operand to an expression. So, it's enough
     to write a find function, that will return
     an expression for any register operand and [reg]
-    expression constructor is ready for using.
+    expression constructor is ready.
 
-    There is [Reg_model], that partly simplify a process
+    There is [Model.Reg], that partly simplify a process
     of model creation: it allows to create model, add
     registers (of any representation), supports aliases,
     provides searching functions.
@@ -377,19 +377,6 @@ module Std : sig
 
   module RTL : sig
 
-    (** [load mem addr endian size] - loads a data of [size]
-        at [addr] from [mem] with [endian]. *)
-    val load : var -> exp -> endian -> size -> exp
-
-    (** [extract hi lo e] - extracts portion of [e] starting
-        from bit [lo] to bit [hi], all bounds are inclusive.
-        Bits indexes start from the least significant bit. *)
-    val extract : int -> int -> exp -> exp
-
-    (** [store mem addr data endian size] - stores a [data]
-        of [size] at [addr] from [mem] with [endian]. *)
-    val store : var -> exp -> exp -> endian -> size -> rtl
-
     (** [if_ cond then_ else_] *)
     val if_ : exp -> rtl list -> rtl list -> rtl
 
@@ -463,6 +450,14 @@ module Std : sig
     (** [message m] - embeds a string [m] in code *)
     val message : string -> rtl
 
+    (** [extract hi lo e] - extracts portion of [e] starting
+        from bit [lo] to bit [hi], all bounds are inclusive.
+        Bits indexes start from the least significant bit. *)
+    val extract : int -> int -> exp -> exp
+
+    (** [store mem addr data endian size] - stores a [data]
+        of [size] at [addr] from [mem] with [endian]. *)
+    val store : var -> exp -> exp -> endian -> size -> rtl
 
     (** Set of operators. Briefly it contains next operators:
         - assignment
@@ -612,7 +607,6 @@ module Std : sig
   (** [bil_of_rtl rtl] - returns a bil code *)
   val bil_of_rtl : rtl list -> bil
 
-
   (** Module provides few primitives to construct expressions.
       Functions from this module are not supposed to appear in
       lifter functions, but could be handsome to create lifter. *)
@@ -638,6 +632,10 @@ module Std : sig
 
     (** [unsigned e] - interpret [e] as unsigned *)
     val unsigned : exp -> exp
+
+    (** [load mem addr endian size] - loads a data of [size]
+        at [addr] from [mem] with [endian]. *)
+    val load : var -> exp -> endian -> size -> exp
 
   end
 
