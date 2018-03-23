@@ -3,7 +3,7 @@ Flag rtl
   Default: false
 
 Library bap_rtl
-  XMETADescription: provide primitives for lifters developers
+  XMETADescription: provides primitives for lifters developers
   Path:             lib/bap_rtl
   Build$:           flag(everything) || flag(rtl)
   BuildDepends:     bap, zarith
