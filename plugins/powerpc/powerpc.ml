@@ -3,11 +3,10 @@ open Bap.Std
 
 open Powerpc_types
 
-module Model = Powerpc_model
 
 module Std = struct
 
-  open Powerpc_rtl
+  open Bap_rtl.Std
 
   include Powerpc_utils
   include Powerpc_cpu
@@ -20,8 +19,7 @@ module Std = struct
     let foreach = foreach ~inverse:true
   end
 
-  type rtl = RTL.rtl [@@deriving bin_io, compare, sexp]
-  type exp = RTL.exp [@@deriving bin_io, compare, sexp]
+
   type lift = cpu -> op array -> rtl list
 
   let bil_of_rtl = RTL.bil_of_t
@@ -41,6 +39,7 @@ module Std = struct
       nth bit cpu.cr 2 := x = zero;
     ]
 
+
   let lifters = String.Table.create ()
 
   let register name lifter =
@@ -50,6 +49,10 @@ module Std = struct
 
   let (>|) = register
   let (>.) = register_dot
+
+  let lift addr_size endian mem insn =
+    let cpu = make_cpu addr_size endian mem  in
+    Model.Lifter.create cpu
 
   let lift addr_size endian mem insn =
     let insn = Insn.of_basic insn in
@@ -65,6 +68,9 @@ module Std = struct
     match Hashtbl.find lifters (Insn.name insn) with
     | None -> Or_error.errorf "unknown instruction %s" insn_name
     | Some lifter -> lift lifter
+
+
+  module Model = Powerpc_model
 
   module T32 = struct
     module CPU = Model.PowerPC_32_cpu

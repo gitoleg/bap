@@ -1,21 +1,18 @@
 open Core_kernel.Std
 open Bap.Std
 
-open Powerpc_rtl
+open Bap_rtl.Std
 
 module type Model = sig
   type t
   (** all general purpose registers *)
-  val gpr  : t String.Map.t
-  val gpri : t Int.Map.t
+  val gpr  : t reg_model
 
   (** all floating point registers *)
-  val fpr : t String.Map.t
-  val fpri : t Int.Map.t
+  val fpr : t reg_model
 
   (** all vector registers *)
-  val vr : t String.Map.t
-  val vri : t Int.Map.t
+  val vr : t reg_model
 
   (** count register  *)
   val ctr : t
@@ -26,11 +23,8 @@ module type Model = sig
   (** target register  *)
   val tar : t
 
-  (** condition register bits, starting from msb *)
-  val cri : t Int.Map.t
-
   (** condition register bits *)
-  val crn : t String.Map.t
+  val cr : t reg_model
 
   (** fixed precision flags *)
   val so : t   (** summary overflow        *)
@@ -42,12 +36,12 @@ end
 
 module type Model_exp = sig
   include Model with type t := exp
+
   (** condition register  *)
-  val cr : exp
+  val cr' : exp
 
   (** condition register fields *)
-  val cr_fields  : exp String.Map.t
-  val cri_fields : exp Int.Map.t
+  val cr_fields  : exp reg_model
 end
 
 module type PowerPC = sig

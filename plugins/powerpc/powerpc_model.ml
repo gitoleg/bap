@@ -1,7 +1,6 @@
 open Core_kernel.Std
 open Bap.Std
 
-(* open Powerpc_rtl *)
 open Bap_rtl.Std
 
 module type Model = sig
@@ -23,11 +22,10 @@ end
 module type Model_exp = sig
   include Model with type t := exp
   (** condition register  *)
-  val cr : exp
+  val cr' : exp
 
   (** condition register fields *)
   val cr_fields  : exp reg_model
-
 end
 
 module type PowerPC = sig
@@ -46,7 +44,6 @@ module type PowerPC = sig
 end
 
 let range32 = List.range 0 32
-let range64 = List.range 0 64
 
 let flag name = Var.create name (Type.imm 1)
 
@@ -142,6 +139,13 @@ module Vars = struct
   let cr30 = cr_bit 1 "CR0GT"
   let cr31 = cr_bit 0 "CR0LT"
 
+  let cr_bits = [
+    cr0;  cr1;  cr2;  cr3;  cr4;  cr5;  cr6;  cr7;
+    cr8;  cr9;  cr10; cr11; cr12; cr13; cr14; cr15;
+    cr16; cr17; cr18; cr19; cr20; cr21; cr22; cr23;
+    cr24; cr25; cr26; cr27; cr28; cr29; cr30; cr31;
+  ]
+
   let cr_fields = [
     "CR0", 0, (cr28, cr29, cr30, cr31);
     "CR1", 1, (cr24, cr25, cr26, cr27);
@@ -160,6 +164,7 @@ module Exps = struct
 
   let to_exp = Model.Reg.exp_of_var
 
+  let gpr = to_exp gpr
   let fpr = to_exp fpr
   let vr = to_exp vr
   let ctr = Exp.of_var ctr
@@ -173,9 +178,11 @@ module Exps = struct
 
   let cr = to_exp cr
 
+  let cr' = Exp.of_vars (List.rev cr_bits)
+
   let cr_fields = Model.Reg.create ()
 
-  let cr_fields =
+  let () =
     List.iter Vars.cr_fields
       ~f:(fun (name,ind,(b3,b2,b1,b0)) ->
           let e = Exp.of_vars [b0;b1;b2;b3] in
@@ -228,15 +235,15 @@ module Make_cpu(P : PowerPC) : CPU = struct
   let mem = P.mem
 
   let gpr =
-    let data = Map.data gpr in
+    let data = Model.Reg.data gpr in
     List.fold data ~init:Var.Set.empty
       ~f:(fun regs v -> Var.Set.add regs v)
 
   let sp = Var.Set.find_exn gpr ~f:(fun v -> Var.name v = "R1")
   let vf = ov
   let cf = ca
-  let nf = Map.find_exn cri 0
-  let zf = Map.find_exn cri 1
+  let nf = Model.Reg.Exn.findi cr 0
+  let zf = Model.Reg.Exn.findi cr 1
 
   let flags = Var.Set.of_list [
       so; ca; ov; cf; nf; zf; ca32; ov32;
