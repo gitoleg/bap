@@ -1,21 +1,18 @@
 open Core_kernel.Std
 open Bap.Std
 
-open Powerpc_rtl
+(* open Powerpc_rtl *)
+open Bap_rtl.Std
 
 module type Model = sig
   type t
-  val gpr  : t String.Map.t
-  val gpri : t Int.Map.t
-  val fpr : t String.Map.t
-  val fpri : t Int.Map.t
-  val vr : t String.Map.t
-  val vri : t Int.Map.t
+  val gpr : t reg_model
+  val fpr : t reg_model
+  val vr  : t reg_model
   val ctr : t
-  val lr : t
+  val lr  : t
   val tar : t
-  val cri : t Int.Map.t
-  val crn : t String.Map.t
+  val cr : t reg_model
   val so : t
   val ca : t
   val ov : t
@@ -29,8 +26,8 @@ module type Model_exp = sig
   val cr : exp
 
   (** condition register fields *)
-  val cr_fields  : exp String.Map.t
-  val cri_fields : exp Int.Map.t
+  val cr_fields  : exp reg_model
+
 end
 
 module type PowerPC = sig
@@ -51,26 +48,6 @@ end
 let range32 = List.range 0 32
 let range64 = List.range 0 64
 
-let make_name prefix i = sprintf "%s%d" prefix i
-
-let make_var_i typ prefix i = Var.create (make_name prefix i) typ
-
-let make_regs typ ?alias prefix range =
-  List.fold ~init:String.Map.empty ~f:(fun regs i ->
-      let var = make_var_i typ prefix i in
-      let name = Var.name var in
-      let regs = Map.add regs name var in
-      match alias with
-      | None -> regs
-      | Some a ->
-        let name = make_name a i in
-        Map.add regs name var) range
-
-
-let make_regs_i typ prefix range =
-  List.fold ~init:Int.Map.empty ~f:(fun regs i ->
-      Map.add regs i (make_var_i typ prefix i)) range
-
 let flag name = Var.create name (Type.imm 1)
 
 module Bitwidth = struct
@@ -85,13 +62,21 @@ end
 module Vars = struct
   open Bitwidth
 
-  (** floating point registers *)
-  let fpr = make_regs (Type.imm fpr_bitwidth) "F" range32
-  let fpri = make_regs_i (Type.imm fpr_bitwidth) "F" range32
+  let make () = Model.Reg.create ()
+  let add = Model.Reg.add_reg
 
-  (** vector registers *)
-  let vr = make_regs (Type.imm vr_bitwidth) "VR" range32
-  let vri = make_regs_i (Type.imm vr_bitwidth) "VR" range32
+  let gpr = make ()
+  let fpr = make ()
+  let vr  = make ()
+
+  let () = List.iter range32 (fun i ->
+      let gname = sprintf "R%d" i in
+      let xname = sprintf "X%d" i in
+      let fname = sprintf "F%d" i in
+      let vname = sprintf "VR%d" i in
+      add gpr ~aliases:[`Name xname; `Index i] gname fpr_bitwidth;
+      add fpr ~aliases:[`Index i] fname fpr_bitwidth;
+      add vr  ~aliases:[`Index i] vname vr_bitwidth;)
 
   (** count register  *)
   let ctr = Var.create "CTR" (Type.imm ctr_bitwidth)
@@ -116,60 +101,48 @@ module Vars = struct
   let float_greater = flag "FG"   (** Floating-Point Equal or Zero    *)
   let float_unordered = flag "FU" (** Floating-Point Unordered or NaN *)
 
+  (** condition register *)
+  let cr = make ()
+
+  (** condition register bit *)
+  let cr_bit ind name =
+    Model.Reg.add_reg' cr ~aliases:[`Index ind] name 1
+
   (** condition register bits  *)
-  let cr0  = flag "CR7UN"
-  let cr1  = flag "CR7EQ"
-  let cr2  = flag "CR7GT"
-  let cr3  = flag "CR7LT"
-  let cr4  = flag "CR6UN"
-  let cr5  = flag "CR6EQ"
-  let cr6  = flag "CR6GT"
-  let cr7  = flag "CR6LT"
-  let cr8  = flag "CR5UN"
-  let cr9  = flag "CR5EQ"
-  let cr10 = flag "CR5GT"
-  let cr11 = flag "CR5LT"
-  let cr12 = flag "CR4UN"
-  let cr13 = flag "CR4EQ"
-  let cr14 = flag "CR4GT"
-  let cr15 = flag "CR4LT"
-  let cr16 = flag "CR3UN"
-  let cr17 = flag "CR3EQ"
-  let cr18 = flag "CR3GT"
-  let cr19 = flag "CR3LT"
-  let cr20 = flag "CR2UN"
-  let cr21 = flag "CR2EQ"
-  let cr22 = flag "CR2GT"
-  let cr23 = flag "CR2LT"
-  let cr24 = flag "CR1UN"
-  let cr25 = flag "CR1EQ"
-  let cr26 = flag "CR1GT"
-  let cr27 = flag "CR1LT"
-  let cr28 = flag "CR0UN"
-  let cr29 = flag "CR0EQ"
-  let cr30 = flag "CR0GT"
-  let cr31 = flag "CR0LT"
+  let cr0  = cr_bit 31 "CR7UN"
+  let cr1  = cr_bit 30 "CR7EQ"
+  let cr2  = cr_bit 29 "CR7GT"
+  let cr3  = cr_bit 28 "CR7LT"
+  let cr4  = cr_bit 27 "CR6UN"
+  let cr5  = cr_bit 26 "CR6EQ"
+  let cr6  = cr_bit 25 "CR6GT"
+  let cr7  = cr_bit 24 "CR6LT"
+  let cr8  = cr_bit 23 "CR5UN"
+  let cr9  = cr_bit 22 "CR5EQ"
+  let cr10 = cr_bit 21 "CR5GT"
+  let cr11 = cr_bit 20 "CR5LT"
+  let cr12 = cr_bit 19 "CR4UN"
+  let cr13 = cr_bit 18 "CR4EQ"
+  let cr14 = cr_bit 17 "CR4GT"
+  let cr15 = cr_bit 16 "CR4LT"
+  let cr16 = cr_bit 15 "CR3UN"
+  let cr17 = cr_bit 14 "CR3EQ"
+  let cr18 = cr_bit 13 "CR3GT"
+  let cr19 = cr_bit 12 "CR3LT"
+  let cr20 = cr_bit 11 "CR2UN"
+  let cr21 = cr_bit 10 "CR2EQ"
+  let cr22 = cr_bit 9 "CR2GT"
+  let cr23 = cr_bit 8 "CR2LT"
+  let cr24 = cr_bit 7 "CR1UN"
+  let cr25 = cr_bit 6 "CR1EQ"
+  let cr26 = cr_bit 5 "CR1GT"
+  let cr27 = cr_bit 4 "CR1LT"
+  let cr28 = cr_bit 3 "CR0UN"
+  let cr29 = cr_bit 2 "CR0EQ"
+  let cr30 = cr_bit 1 "CR0GT"
+  let cr31 = cr_bit 0 "CR0LT"
 
-  let cr_bits = [
-    cr0;  cr1;  cr2;  cr3;  cr4;  cr5;  cr6;  cr7;
-    cr8;  cr9;  cr10; cr11; cr12; cr13; cr14; cr15;
-    cr16; cr17; cr18; cr19; cr20; cr21; cr22; cr23;
-    cr24; cr25; cr26; cr27; cr28; cr29; cr30; cr31;
-  ]
-
-  let cri =
-    let _, bits =
-      List.fold (List.rev cr_bits) ~init:(0,Int.Map.empty)
-        ~f:(fun (num, bits) bit ->
-            num + 1, Map.add bits ~key:num ~data:bit) in
-    bits
-
-  let crn =
-    Int.Map.fold cri ~init:String.Map.empty
-      ~f:(fun ~key ~data:var acc ->
-          Map.add acc (Var.name var) var)
-
-  let fields = [
+  let cr_fields = [
     "CR0", 0, (cr28, cr29, cr30, cr31);
     "CR1", 1, (cr24, cr25, cr26, cr27);
     "CR2", 2, (cr20, cr21, cr22, cr23);
@@ -180,28 +153,15 @@ module Vars = struct
     "CR7", 7, (cr0,  cr1,  cr2,  cr3);
   ]
 
-  let cr_fields =
-    List.fold fields ~init:String.Map.empty ~f:(fun fs (name, _, fd) ->
-        Map.add fs name fd)
-
-  let cri_fields =
-    List.fold fields ~init:Int.Map.empty ~f:(fun fs (_, index, fd) ->
-        Map.add fs index fd)
 end
-
-let of_vars vars =
-  Map.map vars ~f:(fun v -> Exp.of_var v)
-
-let of_vars_i vars =
-  Map.map vars ~f:(fun v -> Exp.of_var v)
 
 module Exps = struct
   open Vars
 
-  let fpri = of_vars_i fpri
-  let fpr = of_vars fpr
-  let vri = of_vars_i vri
-  let vr = of_vars vr
+  let to_exp = Model.Reg.exp_of_var
+
+  let fpr = to_exp fpr
+  let vr = to_exp vr
   let ctr = Exp.of_var ctr
   let lr  = Exp.of_var lr
   let tar = Exp.of_var tar
@@ -211,21 +171,15 @@ module Exps = struct
   let ca32 = Exp.of_var ca32
   let ov32 = Exp.of_var ov32
 
-  let crn =
-    Int.Map.fold cri ~init:String.Map.empty
-      ~f:(fun ~key ~data:var acc ->
-          Map.add acc (Var.name var) (Exp.of_var var))
+  let cr = to_exp cr
 
-  let cri = Map.map cri ~f:(fun v -> Exp.of_var v)
-
-  let cr = Exp.of_vars (List.rev cr_bits)
+  let cr_fields = Model.Reg.create ()
 
   let cr_fields =
-    Map.map cr_fields ~f:(fun (b3,b2,b1,b0) -> Exp.of_vars [b0;b1;b2;b3])
-
-  let cri_fields =
-    Map.map cri_fields ~f:(fun (b3,b2,b1,b0) -> Exp.of_vars [b0;b1;b2;b3])
-
+    List.iter Vars.cr_fields
+      ~f:(fun (name,ind,(b3,b2,b1,b0)) ->
+          let e = Exp.of_vars [b0;b1;b2;b3] in
+          Model.Reg.add cr_fields ~aliases:[`Index ind] name e)
 end
 
 module type Spec = sig
@@ -237,24 +191,20 @@ module Make_ppc(S : Spec) : PowerPC = struct
   include Bitwidth
   let gpr_bitwidth = S.gpr_bitwidth
 
-
   include Vars
-  let gpr = make_regs (Type.imm gpr_bitwidth) "R" ~alias:"X" range32
-  let gpri = make_regs_i (Type.imm gpr_bitwidth) "R" range32
 
   module E = struct
     include Exps
-    let gpri = of_vars_i gpri
-    let gpr = of_vars gpr
+
   end
 
   let mem = Var.create "mem" (Type.mem S.addr_size `r8)
 
   let flags = Var.Set.of_list [
       so; ca; ca32; ov; ov32;
-      Map.find_exn cri 0;
-      Map.find_exn cri 1;
-      Map.find_exn cri 2;
+      Model.Reg.Exn.findi cr 0;
+      Model.Reg.Exn.findi cr 1;
+      Model.Reg.Exn.findi cr 2;
     ]
 
 end
