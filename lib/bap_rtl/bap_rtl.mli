@@ -693,58 +693,44 @@ module Std : sig
         by name, by alias, by index. *)
     module Reg : sig
 
-      (** register model type  *)
-      type 'a t
+      (** register model *)
+      type t
 
-      (** aliases  *)
-      type alias = [
+      (** name type  *)
+      type name = [
         | `Index of int
         | `Name of string
       ]
 
       (** [create ()] - creates an empty model   *)
-      val create : unit -> 'a t
+      val create : unit -> t
 
-      (** [add model ~aliases name data] - adds [data] to a [model],
-          [data] could be reached by [name] and [aliases] *)
-      val add   : 'a t -> ?aliases:alias list -> string -> 'a -> unit
+      (** [add model ~aliases reg] - adds a register [reg] to a [model].
+          Register also could be reached by aliases. *)
+      val add : t -> ?aliases:name list -> var -> unit
 
-      (** [add_reg model ~aliases name bitwidth] - adds a register
-          [name] of [bitwidth] to [model]. Register also could be
-          reached by aliases. *)
-      val add_reg  : var t -> ?aliases:alias list -> string -> int -> unit
+      (** [add' model ~aliases name bitwidth] - adds an [exp] with
+          [name] to a [model] *)
+      val add' : t -> ?aliases:name list -> name -> exp -> unit
 
-      (** [add_reg' model ~aliases name bitwidth] - the same as [add_reg]
-          above, but returns a created register. *)
-      val add_reg' : var t -> ?aliases:alias list -> string -> int -> var
-
-      (** [exp_of_var m] - transforms a register model to an expression one. *)
-      val exp_of_var : var t -> exp t
-
-      (** [find model name] - returns [Some data] associated with [name].
+      (** [find model name] - returns [Some reg] associated with [name].
           Returns None if no data found. *)
-      val find  : 'a t -> string -> 'a option
+      val find  : t -> name -> var option
 
-      (** [find' model reg] - returns [Some data] associated with a name of
+      (** [find_reg model reg] - returns [Some exp] associated with a name of
           register [reg]. Returns None if no data found. *)
-      val find' : 'a t -> reg -> 'a option
+      val find_reg : t -> reg -> exp option
 
-      (** [findi model ind] - returns [Some data] associated with a integer
-          [ind]. Returns None if no data found. *)
-      val findi : 'a t -> int -> 'a option
-
-      (** [chain search models key] - performs [search] in a model list
-          [models]. E.g. [chain ms findi 42].
-          Returns None if no data found.  *)
-      val chain : ('a t -> 'b -> 'c option) -> 'a t list -> 'b -> 'c option
+      (** [find_exp model ind] - returns [Some exp] associated with a
+          [name]. Returns None if no data found. *)
+      val find_exp : t -> name -> exp option
 
       (** same functions as above, but raises Not_found instead of
           returning None*)
       module Exn : sig
-        val find  : 'a t -> string -> 'a
-        val find' : 'a t -> reg -> 'a
-        val findi : 'a t -> int -> 'a
-        val chain : ('a t -> 'b -> 'c) -> 'a t list -> 'b -> 'c
+        val find : t -> name -> var
+        val find_reg : t -> reg -> exp
+        val find_exp : t -> name -> exp
       end
 
     end

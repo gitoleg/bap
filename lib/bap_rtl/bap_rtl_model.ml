@@ -1,5 +1,6 @@
 open Core_kernel.Std
 open Bap.Std
+open Regular.Std
 
 open Bap_rtl_types
 open Bap_rtl_exp
@@ -34,66 +35,73 @@ end
 
 module Reg = struct
 
-  type 'a t = 'a String.Table.t * 'a Int.Table.t
+  module Name = struct
+    type t = [
+      | `Index of int
+      | `Name of string
+    ] [@@deriving bin_io,compare,sexp]
 
-  type alias = [
-    | `Index of int
-    | `Name of string
-  ]
+    include Regular.Make(struct
+        type nonrec t = t [@@deriving bin_io,compare,sexp]
+        let module_name = Some "Model.Reg.Name"
+        let hash = Hashtbl.hash
+        let version = "0.1"
+        let pp fmt = function
+          | `Name n -> Format.fprintf fmt "%s" n
+          | `Index i -> Format.fprintf fmt "%d" i
 
-  let create () = String.Table.create (), Int.Table.create ()
+      end)
+  end
 
-  let change tab key data = Hashtbl.change tab key ~f:(fun _ -> Some data)
+  type data =
+    | Var of var
+    | Exp of exp
 
-  let add_aliases (names,indxs) aliases data =
-    List.iter aliases
-      ~f:(function
-          | `Index i -> change indxs i data
-          | `Name n -> change names n data)
+  type name = Name.t
 
-  let add (names, indxs) ?(aliases=[]) name data =
-    change names name data;
-    add_aliases (names,indxs) aliases data
+  type t = data Name.Table.t
 
+  let create () = Name.Table.create ()
+  let change t key data = Hashtbl.change t key ~f:(fun _ -> Some data)
+  let change' t keys data = List.iter ~f:(fun k -> change t k data) keys
 
-  let make_reg name width = Var.create name (Type.Imm width)
+  let add t ?(aliases=[]) name data =
+    let names = name :: aliases in
+    change' t names data
 
-  let define_full model ?(aliases=[]) name width =
-    let var = make_reg name width in
-    add model ~aliases name var;
-    var
+  let add' t ?(aliases=[]) name e =
+    add t ~aliases name (Exp e)
 
-  let add_reg model ?(aliases=[]) name width =
-    ignore @@ define_full model ~aliases name width
+  let add t ?(aliases=[]) reg =
+    let name = `Name (Var.name reg) in
+    add t ~aliases name (Var reg)
 
-  let add_reg' = define_full
+  let find t name = match Hashtbl.find t name with
+    | Some (Var v) -> Some v
+    | _ -> None
 
-  let exp_of_var (names,indxs) : exp t =
-    let to_exp m init =
-      List.iter (Hashtbl.to_alist m)
-        ~f:(fun (key, v) -> change init key (Exp.of_var v)) in
-    let (names', indxs') as model = create () in
-    to_exp names names';
-    to_exp indxs indxs';
-    model
+  let find_exp t name =
+    match Hashtbl.find t name with
+    | Some (Var v) -> Some (Exp.of_var v)
+    | Some (Exp e) -> Some e
+    | None -> None
 
-
-  let find (names,_) name = Hashtbl.find names name
-  let find' model reg = find model (Reg.name reg)
-  let findi (_,inds) ind = Hashtbl.find inds ind
+  let find_reg t reg = find_exp t (`Name (Reg.name reg))
   let chain find ms x = List.find_map ms ~f:(fun m -> find m x)
 
   module Exn = struct
 
-    let find (names,_) name = Hashtbl.find_exn names name
-    let find' model reg = find model (Reg.name reg)
-    let findi (_,inds) ind = Hashtbl.find_exn inds ind
+    let raise_on_none = function
+      | Some x -> x
+      | None -> raise Not_found
+
+    let find t name = raise_on_none @@ find t name
+    let find_reg t reg  = raise_on_none @@ find_reg t reg
+    let find_exp t name = raise_on_none @@ find_exp t name
 
     let chain find ms x =
       let f m = Option.try_with (fun () -> find m x) in
-      List.find_map ms ~f |> function
-      | Some x -> x
-      | None -> raise Not_found
+      List.find_map ms ~f |> raise_on_none
   end
 
 end

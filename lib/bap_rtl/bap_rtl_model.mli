@@ -18,31 +18,26 @@ end
 
 module Reg : sig
 
-  type 'a t
+  type t
 
-  type alias = [
+  type name = [
     | `Index of int
     | `Name of string
   ]
 
-  val create : unit -> 'a t
-  val add   : 'a t -> ?aliases:alias list -> string -> 'a -> unit
+  val create : unit ->  t
 
-  val add_reg  : var t -> ?aliases:alias list -> string -> int -> unit
-  val add_reg' : var t -> ?aliases:alias list -> string -> int -> var
+  val add  : t -> ?aliases:name list -> var -> unit
+  val add' : t -> ?aliases:name list -> name -> exp -> unit
 
-  val exp_of_var : var t -> exp t
-
-  val find  : 'a t -> string -> 'a option
-  val find' : 'a t -> reg -> 'a option
-  val findi : 'a t -> int -> 'a option
-  val chain : ('a t -> 'b -> 'c option) -> 'a t list -> 'b -> 'c option
+  val find : t -> name -> var option
+  val find_reg : t -> reg -> exp option
+  val find_exp : t -> name -> exp option
 
   module Exn : sig
-    val find  : 'a t -> string -> 'a
-    val find' : 'a t -> reg -> 'a
-    val findi : 'a t -> int -> 'a
-    val chain : ('a t -> 'b -> 'c) -> 'a t list -> 'b -> 'c
+    val find : t -> name -> var
+    val find_reg : t -> reg -> exp
+    val find_exp : t -> name -> exp
   end
 
 end
