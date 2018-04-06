@@ -745,11 +745,12 @@ module Std : sig
 
     end
 
-    (** Lifter model. Gather everything in one place.
+    (** Lifter model.
 
         Assumed, that lift function for each instruction takes
         two arguments: some user defined model of a target and
-        operand array.  *)
+        operand array.
+    *)
     module Lifter (T : T) : sig
 
       (** [init m] adds a model [m] to a lifter *)
