@@ -223,6 +223,12 @@ module Constructor = struct
     if signed then Exp.(signed @@ of_word w)
     else Exp.(unsigned @@ of_word w)
 
+  let fixed_imm signed width op =
+    let width = int_of_bitwidth width in
+    let w = Word.of_int ~width (int_of_imm op) in
+    if signed then Exp.(signed @@ of_word w)
+    else Exp.(unsigned @@ of_word w)
+
   let signed f = f true
   let unsigned f = f false
 

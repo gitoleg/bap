@@ -551,10 +551,14 @@ module Std : sig
   (** [imm] immediate constructor, constructs an immediate from operand *)
   val imm : (op -> exp) ec
 
+  (** [fixed_imm] immediate constructor, construct an immediate of
+      [bitwidth] from operand *)
+  val fixed_imm : (bitwidth -> op -> exp) ec
+
   (** [var] variable constructor, constructs a variable of [bitwidth] *)
   val var : (bitwidth -> exp) ec
 
-  (** [const] constant constructorm, constructs a constant of [bitwidth] and integer *)
+  (** [const] constant constructor, constructs a constant of [bitwidth] and integer *)
   val const : (bitwidth -> int -> exp) ec
 
   (** [reg search] register constructor, construct a register expression from
