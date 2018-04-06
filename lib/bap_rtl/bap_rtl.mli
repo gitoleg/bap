@@ -750,20 +750,17 @@ module Std : sig
         Assumed, that lift function for each instruction takes
         two arguments: some user defined model of a target and
         operand array.  *)
-    module Lifter : sig
+    module Lifter (T : T) : sig
 
-      (** lifter type *)
-      type 'a t
+      (** [init m] adds a model [m] to a lifter *)
+      val init : T.t -> unit
 
-      (** [create model] builds a lifter from user defined cpu model  *)
-      val create : 'a -> 'a t
-
-      (** [register t insn_name lift] registers a [lift]
+      (** [register insn_name lift] registers a [lift]
           function for instruction with name [insn_name] *)
-      val register : 'a t -> string -> ('a -> op array -> rtl list) -> unit
+      val register : string -> (T.t -> op array -> rtl list) -> unit
 
-      (** [lifter t] transforms [t] to a bap lifter *)
-      val lifter : 'a t -> lifter
+      (** [lifter] is a classical bap lifter *)
+      val lifter : lifter
 
     end
 
@@ -771,8 +768,5 @@ module Std : sig
 
   (** register model type  *)
   type reg_model = Model.Reg.t
-
-  (** lifter model type *)
-  type 'a lift_model = 'a Model.Lifter.t
 
 end
