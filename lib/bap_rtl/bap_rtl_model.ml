@@ -1,5 +1,6 @@
 open Core_kernel.Std
 open Bap.Std
+open Regular.Std
 
 open Bap_rtl_types
 open Bap_rtl_exp
@@ -34,66 +35,87 @@ end
 
 module Reg = struct
 
-  type 'a t = 'a String.Table.t * 'a Int.Table.t
+  module Name = struct
 
-  type alias = [
-    | `Index of int
-    | `Name of string
-  ]
+    type t = [
+      | `Index of int
+      | `Name of string
+    ] [@@deriving bin_io,compare,sexp]
 
-  let create () = String.Table.create (), Int.Table.create ()
+    include Regular.Make(struct
+        type nonrec t = t [@@deriving bin_io,compare,sexp]
 
-  let change tab key data = Hashtbl.change tab key ~f:(fun _ -> Some data)
+        let module_name = Some "Model.Reg.Name"
+        let hash = Hashtbl.hash
+        let version = "0.1"
+        let pp fmt = function
+          | `Index i -> Format.fprintf fmt "index %d" i
+          | `Name n -> Format.fprintf fmt "name %s" n
+      end)
+  end
 
-  let add_aliases (names,indxs) aliases data =
-    List.iter aliases
-      ~f:(function
-          | `Index i -> change indxs i data
-          | `Name n -> change names n data)
+  type name = Name.t
+  type data = var option * exp
+  type t = data Name.Table.t
 
-  let add (names, indxs) ?(aliases=[]) name data =
-    change names name data;
-    add_aliases (names,indxs) aliases data
+  let create () = Name.Table.create ()
+  let update t key data = Hashtbl.update t key (fun _ -> data)
 
+  let add_reg t ?(aliases=[]) var =
+    let names = `Name (Var.name var) :: aliases in
+    let data = Some var, Exp.of_var var in
+    List.iter names
+      ~f:(fun name -> Hashtbl.update t name (fun _ -> data))
 
-  let make_reg name width = Var.create name (Type.Imm width)
+  let add_exp t ?(aliases=[]) name exp =
+    List.iter (name :: aliases)
+      ~f:(fun name ->
+          Hashtbl.update t name (function
+              | None -> None, exp
+              | Some (v, _) -> v, exp))
 
-  let define_full model ?(aliases=[]) name width =
-    let var = make_reg name width in
-    add model ~aliases name var;
-    var
+  let find t n = Hashtbl.find t (`Name n)
+  let find_ind t i = Hashtbl.find t (`Index i)
 
-  let add_reg model ?(aliases=[]) name width =
-    ignore @@ define_full model ~aliases name width
+  let get_reg = function
+    | Some (v, _) -> v
+    | _ -> None
 
-  let add_reg' = define_full
+  let get_exp = function
+    | Some (_, e) -> Some e
+    | _ -> None
 
-  let exp_of_var (names,indxs) : exp t =
-    let to_exp m init =
-      List.iter (Hashtbl.to_alist m)
-        ~f:(fun (key, v) -> change init key (Exp.of_var v)) in
-    let (names', indxs') as model = create () in
-    to_exp names names';
-    to_exp indxs indxs';
-    model
-
-
-  let find (names,_) name = Hashtbl.find names name
-  let find' model reg = find model (Reg.name reg)
-  let findi (_,inds) ind = Hashtbl.find inds ind
-  let chain find ms x = List.find_map ms ~f:(fun m -> find m x)
+  let reg  t n = find t n |> get_reg
+  let regi t i = find_ind t i |> get_reg
+  let exp  t n = find t n |> get_exp
+  let expi t i = find_ind t i |> get_exp
 
   module Exn = struct
 
-    let find (names,_) name = Hashtbl.find_exn names name
-    let find' model reg = find model (Reg.name reg)
-    let findi (_,inds) ind = Hashtbl.find_exn inds ind
+    let er_msg what = function
+      | `Index i -> sprintf "%s not found by index %d" what i
+      | `Name n -> sprintf "%s not found by name %s" what n
 
-    let chain find ms x =
-      let f m = Option.try_with (fun () -> find m x) in
-      List.find_map ms ~f |> function
-      | Some x -> x
-      | None -> raise Not_found
+    let get_reg x = function
+      | Some (Some r, _) -> r
+      | _ -> failwith (er_msg "register" x)
+
+    let get_exp x = function
+      | Some (_, e) -> e
+      | _ -> failwith (er_msg "expression" x)
+
+    let find_reg t x = Hashtbl.find t x |> get_reg x
+    let find_exp t x = Hashtbl.find t x |> get_exp x
+
+    let reg  t n = find_reg t (`Name n)
+    let regi t i = find_reg t (`Index i)
+    let exp  t n = find_exp t (`Name n)
+    let expi t i = find_exp t (`Index i)
   end
+
+
+  let reg_ec t =
+    let find reg = Exn.exp t (Reg.name reg) in
+    Constructor.reg find
 
 end

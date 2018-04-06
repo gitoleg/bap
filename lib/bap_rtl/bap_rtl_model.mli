@@ -1,4 +1,5 @@
 open Bap.Std
+open Bap_rtl_exp
 open Bap_rtl_types
 open Bap_rtl_bitwidth
 
@@ -18,31 +19,28 @@ end
 
 module Reg : sig
 
-  type 'a t
+  type t
 
-  type alias = [
+  type name = [
     | `Index of int
     | `Name of string
   ]
 
-  val create : unit -> 'a t
-  val add   : 'a t -> ?aliases:alias list -> string -> 'a -> unit
-
-  val add_reg  : var t -> ?aliases:alias list -> string -> int -> unit
-  val add_reg' : var t -> ?aliases:alias list -> string -> int -> var
-
-  val exp_of_var : var t -> exp t
-
-  val find  : 'a t -> string -> 'a option
-  val find' : 'a t -> reg -> 'a option
-  val findi : 'a t -> int -> 'a option
-  val chain : ('a t -> 'b -> 'c option) -> 'a t list -> 'b -> 'c option
+  val create  : unit -> t
+  val add_reg : t -> ?aliases:name list -> var -> unit
+  val add_exp : t -> ?aliases:name list -> name -> exp -> unit
+  val reg  : t -> string -> var option
+  val regi : t -> int -> var option
+  val exp  : t -> string -> exp option
+  val expi : t -> int -> exp option
 
   module Exn : sig
-    val find  : 'a t -> string -> 'a
-    val find' : 'a t -> reg -> 'a
-    val findi : 'a t -> int -> 'a
-    val chain : ('a t -> 'b -> 'c) -> 'a t list -> 'b -> 'c
+    val reg  : t -> string -> var
+    val exp  : t -> string -> exp
+    val regi : t -> int -> var
+    val expi : t -> int -> exp
   end
+
+  val reg_ec : t -> (op -> exp) ec
 
 end

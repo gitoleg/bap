@@ -50,26 +50,25 @@ module Std = struct
       let unsafe_get a n = get a n
     end
 
-    module Lifter = struct
+    module Lifter (T : T) = struct
+      let lifts = String.Table.create ()
+      let model : T.t option ref  = ref None
 
-      type 'a t = {
-        model : 'a;
-        lifts : ('a -> op array -> rtl list) String.Table.t;
-      }
+      let init m = model := Some m
 
-      let create model = { model; lifts = String.Table.create () }
+      let register name lift = Hashtbl.add_exn lifts name lift
 
-      let register {lifts} name lift = Hashtbl.add_exn lifts name lift
-
-      let lifter t =
-        let lift _mem insn =
+      let lifter _mem insn =
+        match !model with
+        | None -> failwith "trying to use uninitialized lifter"
+        | Some model ->
           let insn = Insn.of_basic insn in
           let insn_name = Insn.name insn in
-          match Hashtbl.find t.lifts insn_name with
+          match Hashtbl.find lifts insn_name with
           | None ->  Or_error.errorf "unknown instruction %s" insn_name
           | Some lift ->
             try
-              lift t.model (Insn.ops insn) |>
+              lift model (Insn.ops insn) |>
               bil_of_rtl |>
               Result.return
             with
@@ -80,13 +79,10 @@ module Std = struct
               Error (Error.of_string str)
             | exn ->
               let str = Exn.to_string exn in
-              Error (Error.of_string str) in
-        lift
+              Error (Error.of_string str)
     end
   end
 
-
-  type 'a reg_model = 'a Model.Reg.t
-  type 'a lift_model = 'a Model.Lifter.t
+  type reg_model = Model.Reg.t
 
 end

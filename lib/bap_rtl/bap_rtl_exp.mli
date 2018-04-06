@@ -48,6 +48,7 @@ module Constructor : sig
   val reg : (reg -> exp) -> (op -> exp) ec
   val const : (bitwidth -> int -> exp) ec
   val of_string : (string -> exp) ec
+  val fixed_imm : (bitwidth -> op -> exp) ec
 
   val signed : 'a ec -> 'a
   val unsigned : 'a ec -> 'a
