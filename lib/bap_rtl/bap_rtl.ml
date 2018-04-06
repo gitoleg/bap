@@ -85,8 +85,7 @@ module Std = struct
     end
   end
 
-
-  type 'a reg_model = 'a Model.Reg.t
+  type reg_model = Model.Reg.t
   type 'a lift_model = 'a Model.Lifter.t
 
 end
