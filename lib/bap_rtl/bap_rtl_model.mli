@@ -1,4 +1,5 @@
 open Bap.Std
+open Bap_rtl_exp
 open Bap_rtl_types
 open Bap_rtl_bitwidth
 
@@ -25,19 +26,21 @@ module Reg : sig
     | `Name of string
   ]
 
-  val create : unit ->  t
-
-  val add  : t -> ?aliases:name list -> var -> unit
-  val add' : t -> ?aliases:name list -> name -> exp -> unit
-
-  val find : t -> name -> var option
-  val find_reg : t -> reg -> exp option
-  val find_exp : t -> name -> exp option
+  val create  : unit -> t
+  val add_reg : t -> ?aliases:name list -> var -> unit
+  val add_exp : t -> ?aliases:name list -> name -> exp -> unit
+  val reg  : t -> string -> var option
+  val regi : t -> int -> var option
+  val exp  : t -> string -> exp option
+  val expi : t -> int -> exp option
 
   module Exn : sig
-    val find : t -> name -> var
-    val find_reg : t -> reg -> exp
-    val find_exp : t -> name -> exp
+    val reg  : t -> string -> var
+    val exp  : t -> string -> exp
+    val regi : t -> int -> var
+    val expi : t -> int -> exp
   end
+
+  val reg_ec : t -> (op -> exp) ec
 
 end
