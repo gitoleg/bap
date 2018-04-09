@@ -685,113 +685,93 @@ module Std : sig
       end
     end
 
-    (** Module provides helpful primitives for constructing register
-        model of a target.
-        Usually, it's convinient to have register representation both as
-        as a variable and an expression. Also, sometimes it's convinient
-        to represent a register as a some set of expressions and
-        operations over them, e.g. when each bit of a register has a
-        special meaning and better to represent the whole register as a
-        concatenation of a smaller, one bit width variables.
-        Also, often register has associated integer indexes and names aliases,
-        so it could come in handy to have an ability to find a register
-        by name, by alias, by index. *)
-    module Reg : sig
+    (** Register representation.
 
+        Usually, it's convinient to have register representation both as
+        as a variable and an expression. More than, sometimes it's
+        convinient to represent a register as a some set of
+        expressions and operations over them, e.g. when each bit of a
+        register has a special meaning and better to represent the
+        whole register as a concatenation of a smaller, one bit width variables.
+        And, finally, it's convinient to define some class of
+        registers, and refer to a paticular register as to an element of
+        in a sequence of all registers of a given class, e.g. "R14"
+        register is just a 14th GPR registster, so this register
+        could be reached by index [14] amoung all gpr registers. *)
+
+    (** A class of a register.  *)
+    module Cls : sig
       type t
 
-      type name = [
-        | `Index of int
-        | `Name of string
-      ]
+      (** [of_string s] creates a new class of
+          registers from string [s] *)
+      val of_string : string -> t
 
-      module Cls : sig
-        type t
+      (** There are few predefined classes *)
 
-        val of_string : string -> t
+      (** general purpose registers *)
+      val gpr : t
 
-        val gpr : t
-        val fpr : t
-        val vector : t
-        val system : t
-        val flag : t
-      end
+      (** floating point registers *)
+      val fpr : t
 
-      type cls = Cls.t
+      (** vector registers *)
+      val vector : t
 
-      val create   : unit -> t
-      val add_reg  : t -> cls -> ?aliases:name list -> var -> unit
-      val add_reg' : t -> cls -> ?aliases:name list -> name -> exp -> unit
-      val reg   : t -> ?cls:cls -> string -> var option
-      val exp'  : t -> ?cls:cls -> string -> exp option
-      val regi : t -> cls -> int -> var option
-      val expi : t -> cls -> int -> exp option
+      (** system registers *)
+      val system : t
 
-      module Exn : sig
-        val reg  : t -> ?cls:cls -> string -> var
-        val exp  : t -> ?cls:cls -> string -> exp
-        val regi : t -> cls -> int -> var
-        val expi : t -> cls -> int -> exp
-      end
+      (** flags  *)
+      val flag : t
+    end
 
-      val reg_ec : t -> (op -> exp) ec
+    type cls = Cls.t
 
 
+    (** Module provides helpful primitives for constructing register
+        model of a target. *)
+    module Reg : sig
 
 
-      (**
       (** register model type  *)
       type t
 
+      (** register name/alias  *)
       type name = [
         | `Index of int
         | `Name of string
       ]
 
+
       (** [create ()] creates an empty model   *)
-      val create  : unit -> t
+      val create   : unit -> t
 
-      (** [add model ~aliases reg] adds [reg] to a [model],
+      (** [add_reg model cls ~aliases reg] adds [reg] of class [cls] to a [model],
           [reg] could be reached by its name or [aliases] *)
-      val add_reg : t -> ?aliases:name list -> var -> unit
+      val add_reg  : t -> cls -> ?aliases:name list -> var -> unit
 
-      (** [add model ~aliases name exp] adds [exp] to a [model],
-          [exp] could be reached by [name] or [aliases] *)
-      val add_exp : t -> ?aliases:name list -> name -> exp -> unit
+      (** [add_exp model cls ~aliases name exp] adds [exp] to a model.
+          [exp] is a representation of some register of class [cls]  (or it's part)
+          and could be reached by [name] or [aliases] *)
+      val add_exp : t -> cls -> ?aliases:name list -> name -> exp -> unit
 
       (** [reg model name] returns [Some reg] associated with [name].
           Returns None if no register found. *)
-      val reg  : t -> string -> var option
+      val reg  : t -> ?cls:cls -> name -> var option
 
       (** [exp model name] returns [Some exp] associated with [name].
           Returns None if no expression found. *)
-      val exp  : t -> string -> exp option
-
-      (** [regi model index] returns [Some reg] associated with [index].
-          Returns None if no register found. *)
-      val regi : t -> int -> var option
-
-      (** [expi model index] returns [Some exp] associated with [index].
-          Returns None if no expression found. *)
-      val expi : t -> int -> exp option
+      val exp  : t -> ?cls:cls -> name -> exp option
 
       (** same functions as above, but raises Failure instead of
           returning None *)
-      module Exn : sig
-        val reg  : t -> string -> var
-        val exp  : t -> string -> exp
-        val regi : t -> int -> var
-        val expi : t -> int -> exp
-      end
+      val reg_exn  : t -> ?cls:cls -> name -> var
+      val exp_exn  : t -> ?cls:cls -> name -> exp
 
       (** [reg_ec model] returns a register expression constructor
-          that constructs a register expression from operan d*)
+          that constructs a register expression from operand *)
       val reg_ec : t -> (op -> exp) ec
 
-
-
-
-      *)
     end
 
     (** Lifter model.
