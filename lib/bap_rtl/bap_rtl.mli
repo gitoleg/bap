@@ -742,7 +742,6 @@ module Std : sig
         | `Name of string
       ]
 
-
       (** [create ()] creates an empty model   *)
       val create   : unit -> t
 
@@ -776,10 +775,9 @@ module Std : sig
 
     (** Lifter model.
 
-        Assumed, that lift function for each instruction takes
+        Lift function for each instruction takes
         two arguments: some user defined model of a target and
-        operand array.
-    *)
+        operand array. *)
     module Lifter (T : T) : sig
 
       (** [init m] adds a model [m] to a lifter *)
