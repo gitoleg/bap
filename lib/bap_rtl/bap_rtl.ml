@@ -50,15 +50,30 @@ module Std = struct
       let unsafe_get a n = get a n
     end
 
-    module Lifter (T : T) = struct
+    module type Cpu = sig
+      type t
+
+      (** [update m pc]  updates a model with an address of a
+          current instruction *)
+      val update : t -> addr -> t
+    end
+
+    module Lifter (T : Cpu) = struct
       let lifts = String.Table.create ()
       let model : T.t option ref  = ref None
+
+      let update_model mem =
+        match !model with
+        | None -> ()
+        | Some m ->
+          model := Some (T.update m (Memory.min_addr mem))
 
       let init m = model := Some m
 
       let register name lift = Hashtbl.add_exn lifts name lift
 
-      let lifter _mem insn =
+      let lifter mem insn =
+        update_model mem;
         match !model with
         | None -> failwith "trying to use uninitialized lifter"
         | Some model ->

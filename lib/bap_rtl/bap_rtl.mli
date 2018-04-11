@@ -773,12 +773,21 @@ module Std : sig
 
     end
 
+    module type Cpu = sig
+      type t
+
+      (** [update m pc]  updates a model with an address of a
+          current instruction *)
+      val update : t -> addr -> t
+    end
+
+
     (** Lifter model.
 
         Lift function for each instruction takes
         two arguments: some user defined model of a target and
         operand array. *)
-    module Lifter (T : T) : sig
+    module Lifter (T : Cpu) : sig
 
       (** [init m] adds a model [m] to a lifter *)
       val init : T.t -> unit
