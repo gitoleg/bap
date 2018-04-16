@@ -1,0 +1,27 @@
+Flag sparc
+ Description: Build Sparc lifter
+ Default: false
+
+Library sparc_plugin
+  XMETADescription: provide Sparc lifter
+  Path:             plugins/sparc
+  Build$:           flag(everything) || flag(sparc)
+  BuildDepends:     bap, bap-abi, bap-c, bap-primus, zarith
+  FindLibName:      bap-plugin-sparc
+  Modules:          Sparc_abi,
+                    Sparc_dsl,
+                    Sparc_model,
+                    Sparc_rtl,
+                    Sparc_utils,
+                    Sparc_cpu,
+                    Sparc,
+                    Sparc_main,
+                    Sparc_branch,
+                    Sparc_store,
+                    Sparc_load,
+                    Sparc_add,
+                    Sparc_sub,
+                    Sparc_misc,
+                    Sparc_logic,
+                    Sparc_compare
+  XMETAExtraLines:  tags="sparc, lifter"
