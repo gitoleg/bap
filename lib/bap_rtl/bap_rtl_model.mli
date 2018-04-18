@@ -49,6 +49,6 @@ module Reg : sig
   val reg_exn  : t -> ?cls:cls -> name -> var
   val exp_exn  : t -> ?cls:cls -> name -> exp
 
-  val reg_ec : t -> (op -> exp) ec
+  val ec : t -> (op -> exp) ec
 
 end

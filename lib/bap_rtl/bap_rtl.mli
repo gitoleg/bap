@@ -767,9 +767,9 @@ module Std : sig
       val reg_exn  : t -> ?cls:cls -> name -> var
       val exp_exn  : t -> ?cls:cls -> name -> exp
 
-      (** [reg_ec model] returns a register expression constructor
+      (** [ec model] returns a register expression constructor
           that constructs a register expression from operand *)
-      val reg_ec : t -> (op -> exp) ec
+      val ec : t -> (op -> exp) ec
 
     end
 
@@ -786,7 +786,7 @@ module Std : sig
 
         Lift function for each instruction takes
         two arguments: some user defined model of a target and
-        operand array. *)
+        operands array. *)
     module Lifter (T : Cpu) : sig
 
       (** [init m] adds a model [m] to a lifter *)

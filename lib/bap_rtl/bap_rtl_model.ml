@@ -165,7 +165,7 @@ module Reg = struct
   let exp_exn = Exn.exp
 
 
-  let reg_ec t =
+  let ec t =
     let find reg = Exn.exp t (`Name (Reg.name reg)) in
     Constructor.reg find
 

@@ -52,9 +52,6 @@ module Std = struct
 
     module type Cpu = sig
       type t
-
-      (** [update m pc]  updates a model with an address of a
-          current instruction *)
       val update : t -> addr -> t
     end
 
@@ -73,10 +70,10 @@ module Std = struct
       let register name lift = Hashtbl.add_exn lifts name lift
 
       let lifter mem insn =
-        update_model mem;
         match !model with
         | None -> failwith "trying to use uninitialized lifter"
         | Some model ->
+          update_model mem;
           let insn = Insn.of_basic insn in
           let insn_name = Insn.name insn in
           match Hashtbl.find lifts insn_name with
