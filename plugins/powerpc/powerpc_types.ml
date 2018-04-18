@@ -1,6 +1,5 @@
 open Bap.Std
-open Powerpc_rtl
-open Powerpc_dsl
+open Bap_rtl.Std
 
 type cpu = {
   load       : exp -> bitwidth -> exp;

@@ -8,13 +8,13 @@ open Powerpc.Std
 let mtspr cpu ops =
   let sr = unsigned imm ops.(0) in
   let rs = unsigned cpu.reg ops.(1) in
-  let tmp = unsigned var (bitwidth 10) in
+  let tmp = unsigned var (bitwidth_of_int 10) in
   let num = unsigned var word in
   let lr_num  = unsigned const word 8 in
   let ctr_num = unsigned const word 9 in
   RTL.[
     tmp := sr;
-    num := extract tmp 5 9 ^ extract tmp 0 4;
+    num := extract 5 9 tmp ^ extract 0 4 tmp;
     switch (num) [
       case lr_num   [ cpu.lr  := rs ];
       case ctr_num  [ cpu.ctr := rs ];
@@ -29,13 +29,13 @@ let mtspr cpu ops =
 let mfspr cpu ops =
   let rt = unsigned cpu.reg ops.(0) in
   let sr = unsigned imm ops.(1) in
-  let tmp = unsigned var (bitwidth 10) in
+  let tmp = unsigned var (bitwidth_of_int 10) in
   let num = unsigned var word in
   let lr_num  = unsigned const word 8 in
   let ctr_num = unsigned const word 9 in
   RTL.[
     tmp := sr;
-    num := extract tmp 5 9 ^ extract tmp 0 4;
+    num := extract 5 9 tmp ^ extract 0 4 tmp;
     switch (num) [
       case lr_num  [ rt := cpu.lr  ];
       case ctr_num [ rt := cpu.ctr ];
@@ -52,8 +52,8 @@ let mtcrf cpu ops =
   let rs = unsigned cpu.reg ops.(1) in
   let mask = unsigned var word in
   let bit_i = unsigned var bit in
-  let halfbyte_i = unsigned var (bitwidth 4) in
-  let ones = unsigned const (bitwidth 4) 0xF in
+  let halfbyte_i = unsigned var (bitwidth_of_int 4) in
+  let ones = unsigned const (bitwidth_of_int 4) 0xF in
   let ind = unsigned var byte in
   let fxm = unsigned var byte in
   RTL.[

@@ -3,16 +3,11 @@ open Bap.Std
 
 open Bap_rtl.Std
 
+val cr_bit   : Model.Cls.t
+val cr_field : Model.Cls.t
+
 module type Model = sig
   type t
-  (** all general purpose registers *)
-  val gpr  : t reg_model
-
-  (** all floating point registers *)
-  val fpr : t reg_model
-
-  (** all vector registers *)
-  val vr : t reg_model
 
   (** count register  *)
   val ctr : t
@@ -23,9 +18,6 @@ module type Model = sig
   (** target register  *)
   val tar : t
 
-  (** condition register bits *)
-  val cr : t reg_model
-
   (** fixed precision flags *)
   val so : t   (** summary overflow        *)
   val ca : t   (** carry flag              *)
@@ -34,19 +26,9 @@ module type Model = sig
   val ov32 : t (** overflow of 32 bits     *)
 end
 
-module type Model_exp = sig
-  include Model with type t := exp
-
-  (** condition register  *)
-  val cr' : exp
-
-  (** condition register fields *)
-  val cr_fields  : exp reg_model
-end
-
 module type PowerPC = sig
-  module E : Model_exp
-  include Model with type t := var
+  val model : reg_model
+  val mem : var
   val gpr_bitwidth : int
   val fpr_bitwidth : int
   val lr_bitwidth  : int
@@ -54,8 +36,15 @@ module type PowerPC = sig
   val tar_bitwidth : int
   val cr_bitwidth  : int
   val vr_bitwidth  : int
-  val mem : var
-  val flags : Var.Set.t
+
+  include Model with type t := var
+
+  module E  : sig
+    include Model with type t := exp
+
+    (** condition register  *)
+    val cr  : exp
+  end
 end
 
 module PowerPC_32 : PowerPC

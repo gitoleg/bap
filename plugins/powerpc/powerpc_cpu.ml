@@ -1,69 +1,43 @@
 open Core_kernel.Std
 open Bap.Std
-open Powerpc_rtl
-open Powerpc_dsl
+
+open Bap_rtl.Std
+open Model
 open Powerpc_utils
 open Powerpc_model
 open Powerpc_types
-
-let size_of_width x =
-  let x = int_of_bitwidth x in
-  match Size.of_int x with
-  | Ok s -> s
-  | Error _ -> ppc_fail "invalid size: %d" x
-
-let find m reg =
-  let (module M : PowerPC) = m in
-  let open M in
-  let open E in
-  let find_reg regs reg = Map.find regs (Reg.name reg) in
-  let find_gpr = find_reg gpr in
-  let find_vr  = find_reg vr in
-  let find_fpr = find_reg fpr in
-  let find_cr_bit = find_reg crn in
-  let find_cr_field = find_reg cr_fields in
-  let reg_searches =
-    [find_gpr; find_cr_bit; find_cr_field; find_fpr; find_vr] in
-  List.filter_map reg_searches ~f:(fun f -> f reg) |> function
-  | [] -> Exp.of_word (Word.zero gpr_bitwidth)
-  | hd :: [] -> hd
-  | _ -> ppc_fail "Register name %s is ambiguous!!!" (Reg.name reg)
 
 let make_cpu addr_size endian memory =
   let (module M) = match addr_size with
     | `r32 -> (module PowerPC_32 : PowerPC)
     | `r64 -> (module PowerPC_64) in
-  let open M in
-  let open E in
-  let reg = reg (find (module M)) in
-  let load addr width =
-    let size = size_of_width width in
-    Exp.load mem addr endian size in
-  let store addr data width =
-    let size = size_of_width width in
-    store mem addr data endian size in
+  let open M.E in
+  let reg = Model.Reg.ec M.model in
+  let load = Model.Mem.load M.mem endian in
+  let store = Model.Mem.store M.mem endian in
   let pc = Memory.min_addr memory |>
            Exp.of_word |>
            Exp.signed in
   let jmp e = match addr_size with
-    | `r32 -> jmp (low word e)
-    | `r64 -> jmp e in
-  let find name regs n =
-    try
-      Map.find_exn regs n
-    with _ ->
-      ppc_fail "%s with number %d not found" name n in
-  let gpr n = find "GPR" gpri n in
-  let fpr n = find "FPR" fpri n in
-  let vr  n = find "VR"  vri  n in
-  let cr0 = Map.find_exn cri_fields 0 in
-  let cr1 = Map.find_exn cri_fields 1 in
-  let cr2 = Map.find_exn cri_fields 2 in
-  let cr3 = Map.find_exn cri_fields 3 in
-  let cr4 = Map.find_exn cri_fields 4 in
-  let cr5 = Map.find_exn cri_fields 5 in
-  let cr6 = Map.find_exn cri_fields 6 in
-  let cr7 = Map.find_exn cri_fields 7 in
+    | `r32 -> RTL.jmp (low word e)
+    | `r64 -> RTL.jmp e in
+  let model_findi cls i =
+    match Reg.find' M.model ~cls (`Index i) with
+    | None ->
+      let cls = Sexp.to_string (sexp_of_cls cls) in
+      ppc_fail "%s with number %d not found" cls i
+    | Some e -> e in
+  let gpr = model_findi Cls.gpr in
+  let fpr = model_findi Cls.fpr in
+  let vr  = model_findi Cls.vector in
+  let cr0 = model_findi cr_field 0 in
+  let cr1 = model_findi cr_field 1 in
+  let cr2 = model_findi cr_field 2 in
+  let cr3 = model_findi cr_field 3 in
+  let cr4 = model_findi cr_field 4 in
+  let cr5 = model_findi cr_field 5 in
+  let cr6 = model_findi cr_field 6 in
+  let cr7 = model_findi cr_field 7 in
   let word_width = match addr_size with
     | `r32 -> word
     | `r64 -> doubleword in

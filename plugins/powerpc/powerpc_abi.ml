@@ -1,5 +1,6 @@
 open Core_kernel.Std
 open Bap.Std
+open Bap_rtl.Std
 open Bap_c.Std
 
 include Self()
@@ -22,10 +23,10 @@ type abi = (module abi)
 exception Unsupported
 
 module Abi32 = struct
-  open Powerpc.Std
-  open PowerPC_32
+  open Powerpc.Std.PowerPC_32
+  open Model
 
-  let reg i = Int.Map.find_exn gpri i |> Bil.var
+  let reg i = Reg.find_exn model ~cls:Cls.gpr (`Index i) |> Bil.var
   let name = "ppc32"
   let size = object
     inherit C.Size.base `ILP32

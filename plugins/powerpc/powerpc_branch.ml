@@ -45,7 +45,7 @@ let bc cpu ops =
   let sh = unsigned const byte 2 in
   let ctr_ok = unsigned var bit in
   let cond_ok = unsigned var bit in
-  let x = unsigned var (bitwidth 5) in
+  let x = unsigned var (bitwidth_of_int 5) in
   let tm = signed var cpu.word_width in
   RTL.[
     x := last bo 5;
@@ -67,7 +67,7 @@ let bca cpu ops =
   let sh = unsigned const byte 2 in
   let ctr_ok = unsigned var bit in
   let cond_ok = unsigned var bit in
-  let x = unsigned var (bitwidth 5) in
+  let x = unsigned var (bitwidth_of_int 5) in
   let tm = signed var cpu.word_width in
   RTL.[
     x := last bo 5;
@@ -122,7 +122,7 @@ let bclr cpu ops =
   let sh = unsigned const byte 2 in
   let ctr_ok = unsigned var bit in
   let cond_ok = unsigned var bit in
-  let x = unsigned var (bitwidth 5) in
+  let x = unsigned var (bitwidth_of_int 5) in
   RTL.[
     x := last bo 5;
     when_ (nth bit x 2 = zero) [
@@ -141,7 +141,7 @@ let bclrl cpu ops =
   let sh = unsigned const byte 2 in
   let ctr_ok = unsigned var bit in
   let cond_ok = unsigned var bit in
-  let x = unsigned var (bitwidth 5) in
+  let x = unsigned var (bitwidth_of_int 5) in
   let tm = unsigned var cpu.word_width in
   let step = unsigned const byte 4 in
   RTL.[
@@ -198,7 +198,7 @@ let bcctr cpu ops =
   let bo = unsigned imm ops.(0) in
   let bi = unsigned cpu.reg ops.(1) in
   let cond_ok = unsigned var bit in
-  let x = unsigned var (bitwidth 5) in
+  let x = unsigned var (bitwidth_of_int 5) in
   let sh = unsigned const byte 2 in
   RTL.[
     x := last bo 5;
@@ -234,7 +234,7 @@ let bctar cpu ops =
   let sh = unsigned const byte 2 in
   let cond_ok = unsigned var bit in
   let ctr_ok = unsigned var bit in
-  let x = unsigned var (bitwidth 5) in
+  let x = unsigned var (bitwidth_of_int 5) in
   RTL.[
     x := last bo 5;
     when_ (nth bit x 2 = zero) [
