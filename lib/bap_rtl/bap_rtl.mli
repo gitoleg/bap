@@ -666,23 +666,19 @@ module Std : sig
         ]}  *)
     module Mem : sig
 
+      (** [load addr size] returns an exp, that describes a loading
+          of a chunk of [size] from memory at [addr] *)
+      type load = exp -> bitwidth -> exp
 
-      (** Memory representation *)
-      module type M = sig
-        val mem : var
-        val endian : endian
-      end
+      (** [store addr data size] returns a statement, that
+          describes a storing [data] of [size] to a memory at [addr] *)
+      type store = exp -> exp -> bitwidth -> rtl
 
-      module Make(M : M) : sig
+      (** [load mem endian]  *)
+      val load  : var -> endian -> load
 
-        (** [load addr size] returns an exp, that describes a loading
-            of a chunk of [size] from memory at [addr] *)
-        val load : exp -> bitwidth -> exp
-
-        (** [store addr data size] returns a statement, that
-            describes a storing [data] of [size] to a memory at [addr] *)
-        val store : exp -> exp -> bitwidth -> rtl
-      end
+      (** [store mem endian]  *)
+      val store : var -> endian -> store
     end
 
     (** Register representation.
@@ -700,8 +696,10 @@ module Std : sig
         could be reached by index [14] amoung all gpr registers. *)
 
     (** A class of a register.  *)
+    type cls [@@deriving bin_io, compare, sexp]
+
     module Cls : sig
-      type t
+      type t = cls
 
       (** [of_string s] creates a new class of
           registers from string [s] *)
@@ -725,9 +723,6 @@ module Std : sig
       val flag : t
     end
 
-    type cls = Cls.t
-
-
     (** Module provides helpful primitives for constructing register
         model of a target. *)
     module Reg : sig
@@ -745,31 +740,35 @@ module Std : sig
       (** [create ()] creates an empty model   *)
       val create   : unit -> t
 
-      (** [add_reg model cls ~aliases reg] adds [reg] of class [cls] to a [model],
+      (** [add model cls ~aliases reg] adds [reg] of class [cls] to a [model],
           [reg] could be reached by its name or [aliases] *)
-      val add_reg  : t -> cls -> ?aliases:name list -> var -> unit
+      val add  : t -> cls -> ?aliases:name list -> var -> unit
 
-      (** [add_exp model cls ~aliases name exp] adds [exp] to a model.
+      (** [add' model cls ~aliases name exp] adds [exp] to a model.
           [exp] is a representation of some register of class [cls]  (or it's part)
           and could be reached by [name] or [aliases] *)
-      val add_exp : t -> cls -> ?aliases:name list -> name -> exp -> unit
+      val add' : t -> cls -> ?aliases:name list -> name -> exp -> unit
 
-      (** [reg model name] returns [Some reg] associated with [name].
+      (** [find model name] returns [Some reg] associated with [name].
           Returns None if no register found. *)
-      val reg  : t -> ?cls:cls -> name -> var option
+      val find  : t -> ?cls:cls -> name -> var option
 
-      (** [exp model name] returns [Some exp] associated with [name].
+      (** [find' model name] returns [Some exp] associated with [name].
           Returns None if no expression found. *)
-      val exp  : t -> ?cls:cls -> name -> exp option
+      val find'  : t -> ?cls:cls -> name -> exp option
 
       (** same functions as above, but raises Failure instead of
           returning None *)
-      val reg_exn  : t -> ?cls:cls -> name -> var
-      val exp_exn  : t -> ?cls:cls -> name -> exp
+      val find_exn  : t -> ?cls:cls -> name -> var
+      val find_exn' : t -> ?cls:cls -> name -> exp
 
       (** [ec model] returns a register expression constructor
           that constructs a register expression from operand *)
       val ec : t -> (op -> exp) ec
+
+      (** [all model cls] - returns all registers of a given [cls] *)
+      val all  : t -> cls -> var list
+      val all' : t -> cls -> exp list
 
     end
 

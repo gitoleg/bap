@@ -15,22 +15,19 @@ let size_of_width x =
 
 module Mem = struct
 
-  module type M = sig
-    val mem : var
-    val endian : endian
-  end
+  type load = exp -> bitwidth -> exp
+  type store = exp -> exp -> bitwidth -> rtl
 
-  module Make(M : M) = struct
-    open M
-
-    let load addr width =
+  let load mem endian =
+    fun addr width ->
       let size = size_of_width width in
       Exp.load mem addr endian size
 
-    let store addr data width =
+  let store mem endian =
+    fun addr data width ->
       let size = size_of_width width in
       store mem addr data endian size
-  end
+
 end
 
 module Name = struct
@@ -102,7 +99,7 @@ module Reg = struct
   let create () = Rid.Table.create ()
   let update t key data = Hashtbl.update t key (fun _ -> data)
 
-  let add_reg t cls ?(aliases=[]) var =
+  let add t cls ?(aliases=[]) var =
     let names = `Name (Var.name var) :: aliases in
     let data = {var = Some var; exp = Exp.of_var var;} in
     List.iter names
@@ -110,7 +107,7 @@ module Reg = struct
           let rid = {cls; name} in
           Hashtbl.update t rid (fun _ -> data))
 
-  let add_exp t cls ?(aliases=[]) name exp =
+  let add' t cls ?(aliases=[]) name exp =
     List.iter (name :: aliases)
       ~f:(fun name ->
           let rid = {cls; name} in
@@ -118,7 +115,7 @@ module Reg = struct
               | None -> {var=None; exp}
               | Some d -> {d with exp}))
 
-  let find t cls n = match cls with
+  let search t cls n = match cls with
     | Some cls -> Hashtbl.find t {cls; name=n}
     | None ->
       List.find_map (Hashtbl.to_alist t)
@@ -133,8 +130,8 @@ module Reg = struct
     | Some {exp} -> Some exp
     | _ -> None
 
-  let reg  t ?cls n = find t cls n |> get_reg
-  let exp  t ?cls n = find t cls n |> get_exp
+  let find  t ?cls n = search t cls n |> get_reg
+  let find' t ?cls n = search t cls n |> get_exp
 
   module Exn = struct
 
@@ -152,21 +149,29 @@ module Reg = struct
       | _ -> failwith (er_msg "expression" x)
 
     let find_reg t cls n =
-      find t cls n |> get_reg n
+      search t cls n |> get_reg n
 
     let find_exp t cls n =
-      find t cls n |> get_exp n
+      search t cls n |> get_exp n
 
     let reg  t ?cls n = find_reg t cls n
     let exp  t ?cls n = find_exp t cls n
   end
 
-  let reg_exn = Exn.reg
-  let exp_exn = Exn.exp
-
+  let find_exn = Exn.reg
+  let find_exn' = Exn.exp
 
   let ec t =
     let find reg = Exn.exp t (`Name (Reg.name reg)) in
     Constructor.reg find
+
+  let all (t : t) cls =
+    Hashtbl.filter_mapi t ~f:(fun ~key ~data ->
+        if Cls.equal key.cls cls then data.var
+        else None) |> Hashtbl.data
+
+  let all' (t : t) cls =
+    Hashtbl.filter_mapi t ~f:(fun ~key ~data ->
+        Option.some_if (Cls.equal key.cls cls) data.exp) |> Hashtbl.data
 
 end

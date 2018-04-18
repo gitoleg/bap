@@ -4,21 +4,17 @@ open Bap_rtl_types
 open Bap_rtl_bitwidth
 
 module Mem : sig
+  type load = exp -> bitwidth -> exp
+  type store = exp -> exp -> bitwidth -> rtl
 
-  module type M = sig
-    val mem : var
-    val endian : endian
-  end
-
-  module Make(M : M) : sig
-    val load  : exp -> bitwidth -> exp
-    val store : exp -> exp -> bitwidth -> rtl
-  end
-
+  val load  : var -> endian -> load
+  val store : var -> endian -> store
 end
 
+type cls [@@deriving bin_io, compare, sexp]
+
 module Cls : sig
-  type t
+  type t = cls
 
   val of_string : string -> t
 
@@ -28,8 +24,6 @@ module Cls : sig
   val system : t
   val flag : t
 end
-
-type cls = Cls.t
 
 module Reg : sig
 
@@ -41,14 +35,17 @@ module Reg : sig
   ]
 
   val create  : unit -> t
-  val add_reg : t -> cls -> ?aliases:name list -> var -> unit
-  val add_exp : t -> cls -> ?aliases:name list -> name -> exp -> unit
-  val reg  : t -> ?cls:cls -> name -> var option
-  val exp  : t -> ?cls:cls -> name -> exp option
+  val add  : t -> cls -> ?aliases:name list -> var -> unit
+  val add' : t -> cls -> ?aliases:name list -> name -> exp -> unit
+  val find  : t -> ?cls:cls -> name -> var option
+  val find' : t -> ?cls:cls -> name -> exp option
 
-  val reg_exn  : t -> ?cls:cls -> name -> var
-  val exp_exn  : t -> ?cls:cls -> name -> exp
+  val find_exn  : t -> ?cls:cls -> name -> var
+  val find_exn' : t -> ?cls:cls -> name -> exp
 
   val ec : t -> (op -> exp) ec
+
+  val all  : t -> cls -> var list
+  val all' : t -> cls -> exp list
 
 end
