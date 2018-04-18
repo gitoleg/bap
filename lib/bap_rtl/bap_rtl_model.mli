@@ -17,6 +17,20 @@ module Mem : sig
 
 end
 
+module Cls : sig
+  type t
+
+  val of_string : string -> t
+
+  val gpr : t
+  val fpr : t
+  val vector : t
+  val system : t
+  val flag : t
+end
+
+type cls = Cls.t
+
 module Reg : sig
 
   type t
@@ -27,20 +41,14 @@ module Reg : sig
   ]
 
   val create  : unit -> t
-  val add_reg : t -> ?aliases:name list -> var -> unit
-  val add_exp : t -> ?aliases:name list -> name -> exp -> unit
-  val reg  : t -> string -> var option
-  val regi : t -> int -> var option
-  val exp  : t -> string -> exp option
-  val expi : t -> int -> exp option
+  val add_reg : t -> cls -> ?aliases:name list -> var -> unit
+  val add_exp : t -> cls -> ?aliases:name list -> name -> exp -> unit
+  val reg  : t -> ?cls:cls -> name -> var option
+  val exp  : t -> ?cls:cls -> name -> exp option
 
-  module Exn : sig
-    val reg  : t -> string -> var
-    val exp  : t -> string -> exp
-    val regi : t -> int -> var
-    val expi : t -> int -> exp
-  end
+  val reg_exn  : t -> ?cls:cls -> name -> var
+  val exp_exn  : t -> ?cls:cls -> name -> exp
 
-  val reg_ec : t -> (op -> exp) ec
+  val ec : t -> (op -> exp) ec
 
 end
