@@ -23,18 +23,13 @@ let reconstructor =
   find_source (module Reconstructor.Factory) reconstructor
 
 let merge_streams ss ~f : 'a Source.t =
-  let stream, signal = Stream.create () in
-  List.iter ss ~f:(fun s -> Stream.observe s (fun x -> Signal.send signal x));
-  let pair x = Some x, Some x in
-  Stream.parse stream ~init:None
-    ~f:(fun prev curr -> match curr, prev with
-        | Ok curr, None -> pair (Ok curr)
-        | Ok curr, Some (Ok prev) -> pair (Ok (f prev curr))
-        | Ok _, Some (Error e)
-        | Error e, Some (Ok _) -> pair (Error e)
-        | Error e, None -> Some (Error e), None
-        | Error curr, Some (Error prev) ->
-          pair (Error (Error.of_list [prev; curr])))
+  Stream.concat_merge ss
+    ~f:(fun s s' -> match s, s' with
+        | Ok s, Ok s' -> Ok (f s s')
+        | Ok _, Error er
+        | Error er, Ok _ -> Error er
+        | Error er, Error er' ->
+          Error (Error.of_list [er; er']))
 
 let merge_sources create field (o : Bap_options.t) ~f =  match field o with
   | [] -> None
@@ -197,6 +192,7 @@ let program_info =
     `I ("$(b,--list-formats)", Bap_cmdline_terms.list_formats_doc)
   ] @ Bap_cmdline_terms.common_loader_options
     @ Bap_cmdline_terms.options_for_passes
+    @ Bap_cmdline_terms.recipe_doc
     @ [
       `S "BUGS";
       `P "Report bugs to \
@@ -265,9 +261,16 @@ let eval_recipe name =
 
 
 let print_recipe r =
-  printf "%s@\nRecipe Arguments: %s@\n"
-    (Recipe.descr r)
-    (String.concat_array ~sep:" " (Recipe.argv r))
+  printf "DESCRIPTION@\n@\n%s@\n@\n" (Recipe.descr r);
+  let params = Recipe.params r in
+  if params <> [] then begin
+    printf "PARAMETERS@\n@\n";
+    List.iter params ~f:(printf "- %a@\n" Recipe.pp_param);
+    printf "@\n";
+  end;
+  let args = Recipe.argv r in
+  let sep = if Array.length args > 4 then " \\\n" else " " in
+  printf "COMMAND LINE@\n@\n%s@\n" (String.concat_array ~sep args)
 
 let summary str =
   match String.index str '\n' with
@@ -286,7 +289,8 @@ let print_recipes_and_exit () =
             let name = Filename.chop_suffix file ".recipe" in
             match Recipe.load ~paths:recipe_paths name with
             | Ok r ->
-              printf "%-32s %s\n" name (summary (Recipe.descr r));
+              printf "%-32s %s\n" (Filename.basename name)
+                (summary (Recipe.descr r));
               Recipe.cleanup r
             | Error err ->
               eprintf "Malformed recipe %s: %a@\n%!" file
