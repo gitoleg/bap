@@ -28,7 +28,7 @@
    {[
      module My_target_lib = struct
        include Bap_rtl.Std
-       ...
+                 ...
    ]}
 
     {2 RTL}
@@ -317,7 +317,7 @@
     To be more concrete let's create an artificial example.
    {[
      1 let sort_of_add cpu ops =
-     2   let rt = unsigned cpu.reg ops.(0) in
+         2   let rt = unsigned cpu.reg ops.(0) in
      3   let ra = signed cpu.reg ops.(1) in
      4   let im = unsigned imm ops.(2) in
      5   let rc = signed cpu.reg ops.(3) in
@@ -325,10 +325,10 @@
      7   let xv = unsigned const word 42 in
      8   let sh = unsinged const byte 2 in
      9   RTL.[
-    10     rt := ra + im;
-    11     tm = cpu.load rt halfword + xv;
-    12     rc := (tm << sh) + cpu.ca;
-    13   ]
+         10     rt := ra + im;
+         11     tm = cpu.load rt halfword + xv;
+         12     rc := (tm << sh) + cpu.ca;
+         13   ]
    ]}
 
     There is a lifter for instruction [SomeSortOfAdd]. It has two
@@ -653,132 +653,143 @@ module Std : sig
 
   end
 
-  (** Module helps to describe a memory and a register models of a
-      target and a lifter model.
+  (** The following modules helps to describe a memory and a register
+      models of a target and a lifter model.
       It's not a mandatory approach, but just possible. *)
-  module Model : sig
+
+  (** Module helps to describe a memory model of a target.
+      It's not a mandatory approach, but just possible.
+
+      So, instead of ugly
+      {[
+        x := load mem addr LittleEndian `r8
+      ]}
+      one can write just something like
+      {[
+        x := load addr `r8
+      ]}  *)
+  module Mem_model : sig
+
+    (** [load addr size] returns an exp, that describes a loading
+        of a chunk of [size] from memory at [addr] *)
+    type load = exp -> bitwidth -> exp
+
+    (** [store addr data size] returns a statement, that
+        describes a storing [data] of [size] to a memory at [addr] *)
+    type store = exp -> exp -> bitwidth -> rtl
+
+    (** [load mem endian]  *)
+    val load  : var -> endian -> load
+
+    (** [store mem endian]  *)
+    val store : var -> endian -> store
+  end
+
+  (** Register representation.
+
+      Usually, it's convinient to have register representation both as
+      as a variable and an expression. More than, sometimes it's
+      convinient to represent a register as a some set of
+      expressions and operations over them, e.g. when each bit of a
+      register has a special meaning and better to represent the
+      whole register as a concatenation of a smaller, one bit width variables.
+      And, finally, it's convinient to define some class of
+      registers, and refer to a paticular register as to an element of
+      in a sequence of all registers of a given class, e.g. "R14"
+      register is just a 14th GPR registster, so this register
+      could be reached by index [14] amoung all gpr registers. *)
+
+  (** A class of a register.  *)
+  type cls [@@deriving bin_io, compare, sexp]
+
+  module Cls : sig
+    type t = cls
+
+    (** [of_string s] creates a new class of
+        registers from string [s] *)
+    val of_string : string -> t
+
+    (** There are few predefined classes *)
+
+    (** general purpose registers *)
+    val gpr : t
+
+    (** floating point registers *)
+    val fpr : t
+
+    (** vector registers *)
+    val vector : t
+
+    (** system registers *)
+    val system : t
+
+    (** flags  *)
+    val flag : t
+  end
 
 
-    (** Module helps to describe a memory model of a target.
-        It's not a mandatory approach, but just possible.
+  (** Module provides helpful primitives for constructing register
+      model of a target. *)
+  module Reg_model : sig
 
-        So, instead of ugly
-        {[
-          x := load mem addr LittleEndian `r8
-        ]}
-        one can write just something like
-        {[
-          x := load addr `r8
-        ]}  *)
-    module Mem : sig
+    (** register model type  *)
+    type t
 
-      (** [load addr size] returns an exp, that describes a loading
-          of a chunk of [size] from memory at [addr] *)
-      type load = exp -> bitwidth -> exp
+    (** register name/alias  *)
+    type name = [
+      | `Index of int
+      | `Name of string
+    ]
 
-      (** [store addr data size] returns a statement, that
-          describes a storing [data] of [size] to a memory at [addr] *)
-      type store = exp -> exp -> bitwidth -> rtl
+    (** [create ()] creates an empty model   *)
+    val create   : unit -> t
 
-      (** [load mem endian]  *)
-      val load  : var -> endian -> load
+    (** [add model cls ~aliases reg] adds [reg] of class [cls] to a [model],
+        [reg] could be reached by its name or [aliases] *)
+    val add  : t -> cls -> ?aliases:name list -> var -> unit
 
-      (** [store mem endian]  *)
-      val store : var -> endian -> store
-    end
+    (** [find model name] returns [Some reg] associated with [name].
+        Returns None if no register found. *)
+    val find  : t -> ?cls:cls -> name -> var option
 
-    (** Register representation.
+    (** same functions as above, but raises Failure instead of
+        returning None *)
+    val find_exn  : t -> ?cls:cls -> name -> var
 
-        Usually, it's convinient to have register representation both as
-        as a variable and an expression. More than, sometimes it's
-        convinient to represent a register as a some set of
-        expressions and operations over them, e.g. when each bit of a
-        register has a special meaning and better to represent the
-        whole register as a concatenation of a smaller, one bit width variables.
-        And, finally, it's convinient to define some class of
-        registers, and refer to a paticular register as to an element of
-        in a sequence of all registers of a given class, e.g. "R14"
-        register is just a 14th GPR registster, so this register
-        could be reached by index [14] amoung all gpr registers. *)
+    (** [all model cls] - returns all registers of a given [cls] *)
+    val all  : t -> cls -> var list
 
-    (** A class of a register.  *)
-    type cls [@@deriving bin_io, compare, sexp]
+    (** [ec model] returns a register expression constructor
+        that constructs a register expression from operand *)
+    val ec : t -> (op -> exp) ec
 
-    module Cls : sig
-      type t = cls
+    module Exp : sig
 
-      (** [of_string s] creates a new class of
-          registers from string [s] *)
-      val of_string : string -> t
-
-      (** There are few predefined classes *)
-
-      (** general purpose registers *)
-      val gpr : t
-
-      (** floating point registers *)
-      val fpr : t
-
-      (** vector registers *)
-      val vector : t
-
-      (** system registers *)
-      val system : t
-
-      (** flags  *)
-      val flag : t
-    end
-
-    (** Module provides helpful primitives for constructing register
-        model of a target. *)
-    module Reg : sig
-
-
-      (** register model type  *)
-      type t
-
-      (** register name/alias  *)
-      type name = [
-        | `Index of int
-        | `Name of string
-      ]
-
-      (** [create ()] creates an empty model   *)
-      val create   : unit -> t
-
-      (** [add model cls ~aliases reg] adds [reg] of class [cls] to a [model],
-          [reg] could be reached by its name or [aliases] *)
-      val add  : t -> cls -> ?aliases:name list -> var -> unit
-
-      (** [find model name] returns [Some reg] associated with [name].
-          Returns None if no register found. *)
-      val find  : t -> ?cls:cls -> name -> var option
-
-      (** same functions as above, but raises Failure instead of
-          returning None *)
-      val find_exn  : t -> ?cls:cls -> name -> var
-
-      (** [all model cls] - returns all registers of a given [cls] *)
-      val all  : t -> cls -> var list
-
-      (** [ec model] returns a register expression constructor
-          that constructs a register expression from operand *)
-      val ec : t -> (op -> exp) ec
-
-      (** [add' model cls ~aliases name exp] adds [exp] to a model.
+      (** [add model cls ~aliases name exp] adds [exp] to a model.
           [exp] is a representation of some register of class [cls]  (or it's part)
           and could be reached by [name] or [aliases] *)
-      val add' : t -> cls -> ?aliases:name list -> name -> exp -> unit
+      val add : t -> cls -> ?aliases:name list -> name -> exp -> unit
 
-      (** [find' model name] returns [Some exp] associated with [name].
+      (** [find model name] returns [Some exp] associated with [name].
           Returns None if no expression found. *)
-      val find'  : t -> ?cls:cls -> name -> exp option
+      val find  : t -> ?cls:cls -> name -> exp option
 
-      val find_exn' : t -> ?cls:cls -> name -> exp
+      val find_exn : t -> ?cls:cls -> name -> exp
 
-      val all' : t -> cls -> exp list
-
+      val all : t -> cls -> exp list
     end
+  end
+
+  (** register model type  *)
+  type reg_model = Reg_model.t
+
+
+  (** Lifter model.
+
+      Lift function for each instruction takes
+      two arguments: some user defined model of a target and
+      operands array. *)
+  module Lifter_model : sig
 
     module type Cpu = sig
       type t
@@ -788,13 +799,7 @@ module Std : sig
       val update : t -> addr -> t
     end
 
-
-    (** Lifter model.
-
-        Lift function for each instruction takes
-        two arguments: some user defined model of a target and
-        operands array. *)
-    module Lifter (T : Cpu) : sig
+    module Make(T : Cpu) : sig
 
       (** [init m] adds a model [m] to a lifter *)
       val init : T.t -> unit
@@ -807,10 +812,6 @@ module Std : sig
       val lifter : lifter
 
     end
-
   end
-
-  (** register model type  *)
-  type reg_model = Model.Reg.t
 
 end

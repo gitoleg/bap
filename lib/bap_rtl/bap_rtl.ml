@@ -32,29 +32,34 @@ module Std = struct
     Helpers.norm_jumps @@
     Translate.run rtl
 
-  module Model = struct
+  module Cls = Bap_rtl_model.Cls
+  module Mem_model = Bap_rtl_model.Mem
+  module Reg_model = Bap_rtl_model.Reg
 
-    include Bap_rtl_model
+  type cls = Bap_rtl_model.cls [@@deriving bin_io,compare,sexp]
+  type reg_model = Reg_model.t
 
-    module Array = struct
+  module Array = struct
 
-      type 'a t = 'a Array.t
+    type 'a t = 'a Array.t
 
-      exception Invalid_operand_index of int
+    exception Invalid_operand_index of int
 
-      let get a n =
-        if n >= Array.length a then raise (Invalid_operand_index n)
-        else Array.get a n
+    let get a n =
+      if n >= Array.length a then raise (Invalid_operand_index n)
+      else Array.get a n
 
-      let unsafe_get a n = get a n
-    end
+    let unsafe_get a n = get a n
+  end
+
+  module Lifter_model = struct
 
     module type Cpu = sig
       type t
       val update : t -> addr -> t
     end
 
-    module Lifter (T : Cpu) = struct
+    module Make (T : Cpu) = struct
       let lifts = String.Table.create ()
       let model : T.t option ref  = ref None
 
@@ -93,7 +98,4 @@ module Std = struct
               Error (Error.of_string str)
     end
   end
-
-  type reg_model = Model.Reg.t
-
 end
