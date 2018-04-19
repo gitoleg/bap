@@ -16,7 +16,6 @@ let rlwinm cpu ops =
   let stop  = unsigned var cpu.word_width in
   let mask  = unsigned var cpu.word_width in
   let w32 = unsigned const word 32 in
-  let ones = unsigned const cpu.word_width (-1) in
   RTL.[
     if_ (width ra <> w32) [
       start := mb + w32;
@@ -51,7 +50,6 @@ let rlwnm cpu ops =
   let stop  = unsigned var cpu.word_width in
   let mask  = unsigned var cpu.word_width in
   let w32  = unsigned const word 32 in
-  let ones = unsigned const cpu.word_width (-1) in
   RTL.[
     if_ (width ra <> w32) [
       start := mb + w32;
@@ -87,7 +85,6 @@ let rlwimi cpu ops =
   let stop  = unsigned var cpu.word_width in
   let mask  = unsigned var cpu.word_width in
   let w32  = unsigned const cpu.word_width 32 in
-  let ones = unsigned const cpu.word_width (-1) in
   RTL.[
     if_ (width ra <> w32) [
       start := mb + w32;
@@ -155,7 +152,6 @@ let rldic cpu ops =
   let mask = unsigned var doubleword in
   let mask1 = unsigned var doubleword in
   let mask2 = unsigned var doubleword in
-  let ones = unsigned const doubleword (-1) in
   RTL.[
     mask := ones;
     mask1 := mask >> mb;
@@ -213,7 +209,6 @@ let rldimi cpu ops =
   let mask  = unsigned var doubleword in
   let mask1 = unsigned var doubleword in
   let mask2 = unsigned var doubleword in
-  let ones = unsigned const doubleword (-1) in
   RTL.[
     mask := ones;
     mask1 := mask >> mb;

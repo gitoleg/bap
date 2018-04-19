@@ -47,7 +47,6 @@ let srawi cpu ops =
   let sh = unsigned imm ops.(2) in
   let mask = unsigned var cpu.word_width in
   let carry_ones = unsigned var bit in
-  let ones = unsigned const cpu.word_width (-1) in
   let w32 = unsigned const byte 32 in
   let tm = signed var word in
   RTL.[

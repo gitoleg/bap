@@ -2,39 +2,20 @@ open Core_kernel.Std
 open Bap.Std
 open Bap_rtl.Std
 
+(** Powerpc standart library
+
+    Contains some definitions from Bap_rtl to achieve
+    a weird PowerPc arch bits numering and other stuff
+    like PowerPC models. So the main idea is still the
+    same: all one needs to complement the lifter is just
+    [ open Powerpc.Std ]
+*)
+
 module Std : sig
 
   module RTL : module type of RTL
-
-  val bit  : bitwidth
-  val byte : bitwidth
-  val word : bitwidth
-  val halfword   : bitwidth
-  val doubleword : bitwidth
-  val quadword   : bitwidth
-  val bitwidth_of_int : int -> bitwidth
-  val int_of_bitwidth : bitwidth -> int
-
-  val signed : 'a ec -> 'a
-  val unsigned : 'a ec -> 'a
-  val imm : (op -> exp) ec
-  val fixed_imm : (bitwidth -> op -> exp) ec
-  val var : (bitwidth -> exp) ec
-  val const : (bitwidth -> int -> exp) ec
-  val reg : (reg -> exp) -> (op -> exp) ec
-
-  val of_string : (string -> exp) ec
-  val zero : exp
-  val one  : exp
-  val ones  : bitwidth -> exp
-  val low : bitwidth -> exp -> exp
-  val high : bitwidth -> exp -> exp
-  val first : exp -> int -> exp
-  val last : exp -> int -> exp
-  val nth : bitwidth -> exp -> int -> exp
-  val msb : exp -> exp
-  val lsb : exp -> exp
-
+  include module type of Bitwidth
+  include module type of Ec
 
   type cpu = {
     load       : exp -> bitwidth -> exp;
@@ -92,6 +73,11 @@ module Std : sig
   val (>.) : string -> lift -> unit
 
   val width : exp -> exp
+
+
+  val cr_bit   : Model.Cls.t
+  val cr_field : Model.Cls.t
+
 
   module type Model = sig
     type t

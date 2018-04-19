@@ -53,7 +53,6 @@ let mtcrf cpu ops =
   let mask = unsigned var word in
   let bit_i = unsigned var bit in
   let halfbyte_i = unsigned var (bitwidth_of_int 4) in
-  let ones = unsigned const (bitwidth_of_int 4) 0xF in
   let ind = unsigned var byte in
   let fxm = unsigned var byte in
   RTL.[

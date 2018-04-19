@@ -123,6 +123,7 @@ let bclr cpu ops =
   let ctr_ok = unsigned var bit in
   let cond_ok = unsigned var bit in
   let x = unsigned var (bitwidth_of_int 5) in
+  let mask = unsigned var cpu.word_width in
   RTL.[
     x := last bo 5;
     when_ (nth bit x 2 = zero) [
@@ -131,7 +132,8 @@ let bclr cpu ops =
     ctr_ok := nth bit x 2 lor ((cpu.ctr <> zero) lxor (nth bit x 3));
     cond_ok := nth bit x 0 lor (bi lxor (lnot (nth bit x 1)));
     when_ (ctr_ok land cond_ok) [
-      cpu.jmp (cpu.lr land (ones cpu.word_width << sh));
+      mask := ones;
+      cpu.jmp (cpu.lr land (mask << sh));
     ];
   ]
 
@@ -144,6 +146,7 @@ let bclrl cpu ops =
   let x = unsigned var (bitwidth_of_int 5) in
   let tm = unsigned var cpu.word_width in
   let step = unsigned const byte 4 in
+  let mask = unsigned var cpu.word_width in
   RTL.[
     x := last bo 5;
     when_ (nth bit x 2 = zero) [
@@ -151,7 +154,8 @@ let bclrl cpu ops =
     ];
     ctr_ok := nth bit x 2 lor ((cpu.ctr <> zero) lxor (nth bit x 3));
     cond_ok := nth bit x 0 lor (bi lxor (lnot (nth bit x 1)));
-    tm := cpu.lr land (ones cpu.word_width << sh);
+    mask := ones;
+    tm := cpu.lr land (mask << sh);
     cpu.lr := cpu.pc + step;
     when_ (ctr_ok land cond_ok) [
       cpu.jmp tm;
@@ -165,16 +169,20 @@ let bclrl cpu ops =
     4e 80 00 21   blrl *)
 let blr cpu _ops =
   let sh = unsigned const byte 2 in
+  let mask = unsigned var cpu.word_width in
   RTL.[
-    cpu.jmp (cpu.lr land (ones cpu.word_width << sh))
+    mask := ones;
+    cpu.jmp (cpu.lr land (mask << sh))
   ]
 
 let blrl cpu _ops =
   let sh = unsigned const byte 2 in
   let tm = unsigned var cpu.word_width in
   let step = unsigned const byte 4 in
+  let mask = unsigned var cpu.word_width in
   RTL.[
-    tm := cpu.lr land (ones cpu.word_width << sh);
+    mask := ones;
+    tm := cpu.lr land (mask << sh);
     cpu.lr := cpu.pc + step;
     cpu.jmp tm;
   ]
@@ -182,10 +190,12 @@ let blrl cpu _ops =
 (** bdnzlr = bclr 16,0,0  *)
 let bdnzlr cpu _ops =
   let sh = unsigned const byte 2 in
+  let mask = unsigned var cpu.word_width in
   RTL.[
     cpu.ctr := cpu.ctr - one;
     when_ (cpu.ctr <> zero) [
-      cpu.jmp (cpu.lr land (ones cpu.word_width << sh));
+      mask := ones;
+      cpu.jmp (cpu.lr land (ones << sh));
     ];
   ]
 
@@ -200,11 +210,13 @@ let bcctr cpu ops =
   let cond_ok = unsigned var bit in
   let x = unsigned var (bitwidth_of_int 5) in
   let sh = unsigned const byte 2 in
+  let mask = unsigned var cpu.word_width in
   RTL.[
     x := last bo 5;
     cond_ok := (nth bit x 0 = one) lor (bi lxor (lnot (nth bit x 1)));
     when_ (cond_ok) [
-      cpu.jmp (cpu.ctr land (ones cpu.word_width << sh));
+      mask := ones;
+      cpu.jmp (cpu.ctr land (mask << sh));
     ];
   ]
 
@@ -217,8 +229,10 @@ let bcctrl = update_link_register ^ bcctr
     4e 80 04 21   bctrl *)
 let bctr cpu _ops =
   let sh = unsigned const byte 2 in
+  let mask = unsigned var cpu.word_width in
   RTL.[
-    cpu.jmp (cpu.ctr land (ones cpu.word_width << sh));
+    mask := ones;
+    cpu.jmp (cpu.ctr land (mask << sh));
   ]
 
 let bctrl = update_link_register ^ bctr
@@ -235,6 +249,7 @@ let bctar cpu ops =
   let cond_ok = unsigned var bit in
   let ctr_ok = unsigned var bit in
   let x = unsigned var (bitwidth_of_int 5) in
+  let mask = unsigned var cpu.word_width in
   RTL.[
     x := last bo 5;
     when_ (nth bit x 2 = zero) [
@@ -243,7 +258,8 @@ let bctar cpu ops =
     ctr_ok := nth bit x 2 lor ((cpu.ctr <> zero) lxor (nth bit x 3));
     cond_ok := nth bit x 0 lor (bi lxor (lnot (nth bit x 1)));
     when_ (ctr_ok land cond_ok) [
-      cpu.jmp (cpu.tar land (ones cpu.word_width << sh));
+      mask := ones;
+      cpu.jmp (cpu.tar land (mask << sh));
     ]
   ]
 
