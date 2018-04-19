@@ -1,6 +1,6 @@
 open Core_kernel.Std
 open Bap.Std
-open Bap_rtl.Std
+
 open Bap_c.Std
 
 include Self()
@@ -23,6 +23,7 @@ type abi = (module abi)
 exception Unsupported
 
 module Abi32 = struct
+  open Bap_rtl.Std
   open Powerpc.Std.PowerPC_32
   open Model
 

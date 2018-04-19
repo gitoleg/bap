@@ -4,7 +4,37 @@ open Bap_rtl.Std
 
 module Std : sig
 
-  include module type of Bap_rtl.Std
+  module RTL : module type of RTL
+
+  val bit  : bitwidth
+  val byte : bitwidth
+  val word : bitwidth
+  val halfword   : bitwidth
+  val doubleword : bitwidth
+  val quadword   : bitwidth
+  val bitwidth_of_int : int -> bitwidth
+  val int_of_bitwidth : bitwidth -> int
+
+  val signed : 'a ec -> 'a
+  val unsigned : 'a ec -> 'a
+  val imm : (op -> exp) ec
+  val fixed_imm : (bitwidth -> op -> exp) ec
+  val var : (bitwidth -> exp) ec
+  val const : (bitwidth -> int -> exp) ec
+  val reg : (reg -> exp) -> (op -> exp) ec
+
+  val of_string : (string -> exp) ec
+  val zero : exp
+  val one  : exp
+  val ones  : bitwidth -> exp
+  val low : bitwidth -> exp -> exp
+  val high : bitwidth -> exp -> exp
+  val first : exp -> int -> exp
+  val last : exp -> int -> exp
+  val nth : bitwidth -> exp -> int -> exp
+  val msb : exp -> exp
+  val lsb : exp -> exp
+
 
   type cpu = {
     load       : exp -> bitwidth -> exp;

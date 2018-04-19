@@ -1,6 +1,7 @@
 open Core_kernel.Std
 open Bap.Std
 open Bap_primus.Std
+open Bap_rtl.Std
 open Powerpc.Std
 
 include Self()
@@ -16,7 +17,8 @@ module Component(Machine : Primus.Machine.S) = struct
 
   let init32 () =
     let open PowerPC_32 in
-    initialize_regs (ctr :: Set.to_list flags)
+    let flags = Model.(Reg.all model Cls.flag) in
+    initialize_regs (ctr :: flags)
 
   let init () =
     Machine.get () >>= fun proj ->

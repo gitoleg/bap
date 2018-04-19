@@ -52,12 +52,32 @@ module Std = struct
   include Powerpc_cpu
   include Powerpc_types
 
-  include Bap_rtl.Std
+  module RTL = struct
+    include RTL
+    let extract = Shadow_rtl.extract
+  end
 
-  (* module RTL = struct *)
-  (*   include RTL *)
-  (*   include Shadow_rtl *)
-  (* end *)
+  let bit = bit
+  let byte = byte
+  let word = word
+  let halfword  = halfword
+  let doubleword = doubleword
+  let quadword   = quadword
+  let bitwidth_of_int = bitwidth_of_int
+  let int_of_bitwidth = int_of_bitwidth
+  let signed = signed
+  let unsigned = unsigned
+  let imm = imm
+  let fixed_imm = fixed_imm
+  let var = var
+  let const = const
+  let reg = reg
+  let of_string = of_string
+  let zero = zero
+  let one  = one
+  let ones = ones
+
+  include Shadow_rtl
 
   type lift = cpu -> op array -> rtl list
 
