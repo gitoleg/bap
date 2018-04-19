@@ -107,14 +107,6 @@ module Reg = struct
           let rid = {cls; name} in
           Hashtbl.update t rid (fun _ -> data))
 
-  let add' t cls ?(aliases=[]) name exp =
-    List.iter (name :: aliases)
-      ~f:(fun name ->
-          let rid = {cls; name} in
-          Hashtbl.update t rid (function
-              | None -> {var=None; exp}
-              | Some d -> {d with exp}))
-
   let search t cls n = match cls with
     | Some cls -> Hashtbl.find t {cls; name=n}
     | None ->
@@ -131,7 +123,6 @@ module Reg = struct
     | _ -> None
 
   let find  t ?cls n = search t cls n |> get_reg
-  let find' t ?cls n = search t cls n |> get_exp
 
   module Exn = struct
 
@@ -159,7 +150,6 @@ module Reg = struct
   end
 
   let find_exn = Exn.reg
-  let find_exn' = Exn.exp
 
   let ec t =
     let find reg = Exn.exp t (`Name (Reg.name reg)) in
@@ -170,8 +160,27 @@ module Reg = struct
         if Cls.equal key.cls cls then data.var
         else None) |> Hashtbl.data
 
-  let all' (t : t) cls =
-    Hashtbl.filter_mapi t ~f:(fun ~key ~data ->
-        Option.some_if (Cls.equal key.cls cls) data.exp) |> Hashtbl.data
+  module Exp = struct
+
+    let add t cls ?(aliases=[]) name exp =
+      List.iter (name :: aliases)
+        ~f:(fun name ->
+            let rid = {cls; name} in
+            Hashtbl.update t rid (function
+                | None -> {var=None; exp}
+                | Some d -> {d with exp}))
+
+
+    let find t ?cls n = search t cls n |> get_exp
+
+    let all (t : t) cls =
+      Hashtbl.filter_mapi t ~f:(fun ~key ~data ->
+          Option.some_if (Cls.equal key.cls cls) data.exp) |>
+      Hashtbl.data
+
+    let find_exn = Exn.exp
+
+  end
+
 
 end
