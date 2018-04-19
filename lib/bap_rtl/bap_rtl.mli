@@ -17,7 +17,7 @@
     abstractions that adds brevity and therefore simplicity to user
     code.
 
-    Bap_rtl is a foundations, where one can build a lifter.
+    Bap_rtl is a foundation, where one can build a lifter.
     It consists from the next modules:
     - RTL
     - Bitwidth
@@ -330,7 +330,7 @@
     To be more concrete let's create an artificial example.
    {[
      1 let sort_of_add cpu ops =
-         2   let rt = unsigned cpu.reg ops.(0) in
+     2   let rt = unsigned cpu.reg ops.(0) in
      3   let ra = signed cpu.reg ops.(1) in
      4   let im = unsigned imm ops.(2) in
      5   let rc = signed cpu.reg ops.(3) in
@@ -825,6 +825,13 @@ module Std : sig
       val lifter : lifter
 
     end
+  end
+
+  module Array : sig
+    type 'a t = 'a Array.t
+    exception Invalid_operand_index of int
+    val get : 'a t -> int -> 'a
+    val unsafe_get : 'a t -> int -> 'a
   end
 
 end
