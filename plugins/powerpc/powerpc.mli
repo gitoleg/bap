@@ -73,6 +73,7 @@ module Std : sig
       is used for storing of a result. *)
   val (>.) : string -> lift -> unit
 
+  (** [width e] returns a width of [e] as an expression *)
   val width : exp -> exp
 
   (** class of condition register bit   *)
