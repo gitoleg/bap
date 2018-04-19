@@ -1,6 +1,8 @@
 open Core_kernel.Std
 open Bap.Std
 
+include Self ()
+
 module Translate = Bap_rtl_translate
 module Helpers = Bap_rtl_helpers
 module Bitwidth = Bap_rtl_bitwidth
@@ -71,7 +73,13 @@ module Std = struct
 
       let init m = model := Some m
 
-      let register name lift = Hashtbl.add_exn lifts name lift
+      let register name lift =
+        match Hashtbl.add lifts name lift with
+        | `Ok -> ()
+        | `Duplicate ->
+          warning
+            "trying to register a %s instruction, that already exists"
+            name
 
       let lifter mem insn =
         match !model with
