@@ -3,8 +3,8 @@ open Bap.Std
 
 open Bap_rtl.Std
 
-val cr_bit   : Model.Cls.t
-val cr_field : Model.Cls.t
+val cr_bit   : cls
+val cr_field : cls
 
 module type Model = sig
   type t

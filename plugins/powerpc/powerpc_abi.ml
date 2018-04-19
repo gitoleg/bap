@@ -25,9 +25,8 @@ exception Unsupported
 module Abi32 = struct
   open Bap_rtl.Std
   open Powerpc.Std.PowerPC_32
-  open Model
 
-  let reg i = Reg.find_exn model ~cls:Cls.gpr (`Index i) |> Bil.var
+  let reg i = Reg_model.find_exn model ~cls:Cls.gpr (`Index i) |> Bil.var
   let name = "ppc32"
   let size = object
     inherit C.Size.base `ILP32

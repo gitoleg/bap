@@ -75,8 +75,8 @@ module Std : sig
   val width : exp -> exp
 
 
-  val cr_bit   : Model.Cls.t
-  val cr_field : Model.Cls.t
+  val cr_bit   : cls
+  val cr_field : cls
 
 
   module type Model = sig

@@ -88,7 +88,7 @@ module Std = struct
       {c with pc}
   end
 
-  include Model.Lifter(Cpu)
+  include Lifter_model.Make(Cpu)
 
   let register_dot name lifter = register name (dot lifter)
   let (>|) = register

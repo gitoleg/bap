@@ -17,7 +17,7 @@ module Component(Machine : Primus.Machine.S) = struct
 
   let init32 () =
     let open PowerPC_32 in
-    let flags = Model.(Reg.all model Cls.flag) in
+    let flags = Reg_model.all model Cls.flag in
     initialize_regs (ctr :: flags)
 
   let init () =

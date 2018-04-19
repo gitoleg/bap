@@ -2,7 +2,6 @@ open Core_kernel.Std
 open Bap.Std
 
 open Bap_rtl.Std
-open Model
 
 module type Model = sig
   type t
@@ -45,7 +44,7 @@ module Vars (B : Bitwidth) = struct
   open B
 
   let range32 = List.range 0 32
-  let model = Reg.create ()
+  let model = Reg_model.create ()
 
   let reg n w = Var.create n (Type.imm w)
   let bit n = Var.create n (Type.imm 1)
@@ -83,9 +82,9 @@ module Vars (B : Bitwidth) = struct
   let regs = List.concat [gprs; fprs; vr;]
 
   let () = List.iter regs
-      ~f:(fun (cls, reg, aliases) -> Reg.add model cls ~aliases reg)
+      ~f:(fun (cls, reg, aliases) -> Reg_model.add model cls ~aliases reg)
 
-  let () = List.iter ~f:(Reg.add model Cls.flag)
+  let () = List.iter ~f:(Reg_model.add model Cls.flag)
       [so; ca; ov; ca32; ov32; fc; fl; fe; fg; fu]
 
   let cr_fields = [
@@ -108,12 +107,12 @@ module Vars (B : Bitwidth) = struct
         let bit2 = bit bit2 in
         let bit3 = bit bit3 in
         let bit_index = 31 - ind * 4 in (** reverse indexes  *)
-        Reg.add model cr_bit ~aliases:[`Index (bit_index - 0)] bit0;
-        Reg.add model cr_bit ~aliases:[`Index (bit_index - 1)] bit1;
-        Reg.add model cr_bit ~aliases:[`Index (bit_index - 2)] bit2;
-        Reg.add model cr_bit ~aliases:[`Index (bit_index - 3)] bit3;
+        Reg_model.add model cr_bit ~aliases:[`Index (bit_index - 0)] bit0;
+        Reg_model.add model cr_bit ~aliases:[`Index (bit_index - 1)] bit1;
+        Reg_model.add model cr_bit ~aliases:[`Index (bit_index - 2)] bit2;
+        Reg_model.add model cr_bit ~aliases:[`Index (bit_index - 3)] bit3;
         let e = Exp.of_vars [bit3;bit2;bit1;bit0] in
-        Reg.add' model cr_field ~aliases:[`Index ind] (`Name field) e)
+        Reg_model.Exp.add model cr_field ~aliases:[`Index ind] (`Name field) e)
 
 end
 
@@ -154,7 +153,7 @@ module Make_ppc(S : Spec) : PowerPC = struct
 
     let cr =
       List.map range32
-        ~f:(fun i -> Reg.find_exn model ~cls:cr_bit (`Index i)) |>
+        ~f:(fun i -> Reg_model.find_exn model ~cls:cr_bit (`Index i)) |>
       Exp.of_vars
   end
 
@@ -180,13 +179,13 @@ module Make_cpu(P : PowerPC) : CPU = struct
   open P
 
   let mem = P.mem
-  let gpr = Reg.all P.model Cls.gpr |> Var.Set.of_list
+  let gpr = Reg_model.all P.model Cls.gpr |> Var.Set.of_list
   let sp = Var.Set.find_exn gpr ~f:(fun v -> Var.name v = "R1")
   let vf = ov
   let cf = ca
-  let nf = Reg.find_exn model ~cls:cr_bit (`Index 0)
-  let zf = Reg.find_exn model ~cls:cr_bit (`Index 1)
-  let flags = Var.Set.of_list @@ Reg.all model Cls.flag
+  let nf = Reg_model.find_exn model ~cls:cr_bit (`Index 0)
+  let zf = Reg_model.find_exn model ~cls:cr_bit (`Index 1)
+  let flags = Var.Set.of_list @@ Reg_model.all model Cls.flag
   let is = Var.same
   let is_reg r = Set.mem gpr (Var.base r)
   let is_flag r = Set.mem flags (Var.base r)

@@ -3,7 +3,6 @@ open Bap.Std
 
 open Bap_rtl.Std
 open Bitwidth
-open Model
 
 open Powerpc_utils
 open Powerpc_model
@@ -14,9 +13,9 @@ let make_cpu addr_size endian memory =
     | `r32 -> (module PowerPC_32 : PowerPC)
     | `r64 -> (module PowerPC_64) in
   let open M.E in
-  let reg = Model.Reg.ec M.model in
-  let load = Model.Mem.load M.mem endian in
-  let store = Model.Mem.store M.mem endian in
+  let reg = Reg_model.ec M.model in
+  let load = Mem_model.load M.mem endian in
+  let store = Mem_model.store M.mem endian in
   let pc = Memory.min_addr memory |>
            Exp.of_word |>
            Exp.signed in
@@ -24,7 +23,7 @@ let make_cpu addr_size endian memory =
     | `r32 -> RTL.(jmp (low word e))
     | `r64 -> RTL.jmp e in
   let model_findi cls i =
-    match Reg.find' M.model ~cls (`Index i) with
+    match Reg_model.Exp.find M.model ~cls (`Index i) with
     | None ->
       let cls = Sexp.to_string (sexp_of_cls cls) in
       ppc_fail "%s with number %d not found" cls i
