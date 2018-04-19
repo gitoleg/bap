@@ -5,7 +5,7 @@ open Bap_rtl_bitwidth
 
 val zero : exp
 val one  : exp
-val ones : bitwidth -> exp
+val ones : exp
 
 (** [low width e] - extracts low [width] bits from [e]  *)
 val low : bitwidth -> exp -> exp

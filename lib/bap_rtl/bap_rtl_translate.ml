@@ -19,7 +19,8 @@ let if_ probe then_ else_ =
 let rec expand_vars e = match e with
   | Vars (v, vs) -> v :: vs
   | Concat (x,y) ->  expand_vars x @ expand_vars y
-  | Cast _ | Extract _ | Load _ | Word _ | Binop _ | Unop _ -> []
+  | Cast _ | Extract _ | Load _
+  | Word _ | Binop _ | Unop _ | Pattern _ -> []
 
 let partial_assign v (hi_var, lo_var) rhs (hi_exp, lo_exp) =
   let width = var_bitwidth v in

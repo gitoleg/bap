@@ -3,7 +3,6 @@ open Bap.Std
 
 module Translate = Bap_rtl_translate
 module Helpers = Bap_rtl_helpers
-module Exp_constructor = Bap_rtl_exp.Constructor
 module Bitwidth = Bap_rtl_bitwidth
 
 module Infix = struct
@@ -21,13 +20,13 @@ module Std = struct
     let extract = Exp.extract
     include Bap_rtl_core.Rtl
     include Infix
+    include Helpers
   end
 
   type 'a ec = 'a Bap_rtl_exp.ec
 
-  include Exp_constructor
-  include Helpers
-  include Bitwidth
+  module Bitwidth = Bap_rtl_bitwidth
+  module Ec = Bap_rtl_exp.Constructor
 
   let bil_of_rtl rtl =
     Helpers.norm_jumps @@

@@ -15,6 +15,7 @@ type body =
   | Extract of (int * int * body)
   | Cast of (sign * int * body)
   | Unop of (unop * body)
+  | Pattern of word
 [@@deriving bin_io, compare, sexp]
 
 type exp = {

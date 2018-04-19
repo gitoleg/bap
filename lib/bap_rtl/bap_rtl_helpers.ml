@@ -7,7 +7,7 @@ open Bap_rtl_bitwidth
 
 let zero = Exp.of_word Word.b0
 let one  = Exp.of_word Word.b1
-let ones w = Exp.of_word (Word.ones (int_of_bitwidth w))
+let ones = Exp.pattern Word.b1
 
 let last e bits =
   let w = Exp.width e in
