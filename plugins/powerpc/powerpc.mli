@@ -17,6 +17,7 @@ module Std : sig
   module RTL : module type of RTL
   include module type of Bitwidth
   include module type of Ec
+  module Array : module type of Array
 
   type cpu = {
     load       : exp -> bitwidth -> exp;

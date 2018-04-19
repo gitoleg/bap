@@ -195,7 +195,7 @@ let bdnzlr cpu _ops =
     cpu.ctr := cpu.ctr - one;
     when_ (cpu.ctr <> zero) [
       mask := ones;
-      cpu.jmp (cpu.lr land (ones << sh));
+      cpu.jmp (cpu.lr land (mask << sh));
     ];
   ]
 

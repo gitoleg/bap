@@ -19,6 +19,7 @@ module Std = struct
   include Bitwidth
 
   module RTL = RTL
+  module Array = Array
 
   type lift = cpu -> op array -> rtl list
 

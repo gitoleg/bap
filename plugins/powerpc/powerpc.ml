@@ -54,6 +54,8 @@ module Std = struct
   include Powerpc_cpu
   include Powerpc_types
 
+  module Array = Array
+
   module RTL = struct
     include RTL
     include Shadow_rtl
