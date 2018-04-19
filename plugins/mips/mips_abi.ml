@@ -20,10 +20,11 @@ end
 exception Unsupported
 
 module Abi32 = struct
+  open Bap_rtl.Std
   open Mips.Std
   open MIPS_32
 
-  let reg n = Bil.Var (Map.find_exn gpri n)
+  let reg n = Bil.Var (Reg_model.find_exn model ~cls:Cls.gpr (`Index n))
   let name = "mips32"
   let size = object
     inherit C.Size.base `ILP32
@@ -35,10 +36,11 @@ module Abi32 = struct
 end
 
 module Abi64 = struct
+  open Bap_rtl.Std
   open Mips.Std
   open MIPS_64
 
-  let reg n = Bil.Var (Map.find_exn gpri n)
+  let reg n = Bil.Var (Reg_model.find_exn model ~cls:Cls.gpr (`Index n))
   let name = "mips64"
   let size = object
     inherit C.Size.base `ILP64

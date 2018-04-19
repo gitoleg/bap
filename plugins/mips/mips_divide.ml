@@ -9,8 +9,8 @@ let div cpu ops =
   let x = signed var doubleword in
   RTL.[
     x := zero;
-    cpu.lo := rs /$ rt;
-    cpu.hi := rs %$ rt;
+    cpu.lo := rs / rt;
+    cpu.hi := rs % rt;
   ]
 
 (* DIV rd, rs, rt
@@ -21,7 +21,7 @@ let div_r6 cpu ops =
   let rs = signed cpu.reg ops.(1) in
   let rt = signed cpu.reg ops.(2) in
   RTL.[
-    rd := rs /$ rt;
+    rd := rs / rt;
   ]
 
 (* MOD rd, rs, rt
@@ -32,7 +32,7 @@ let modulo cpu ops =
   let rs = signed cpu.reg ops.(1) in
   let rt = signed cpu.reg ops.(2) in
   RTL.[
-    rd := rs %$ rt;
+    rd := rs % rt;
   ]
 
 (* DIV rs, rt
@@ -78,7 +78,7 @@ let ddiv cpu ops =
   let rs = signed cpu.reg ops.(1) in
   let rt = signed cpu.reg ops.(2) in
   RTL.[
-    rd := rs /$ rt;
+    rd := rs / rt;
   ]
 
 (* DMOD rd, rs, rt
@@ -89,7 +89,7 @@ let dmodulo cpu ops =
   let rs = signed cpu.reg ops.(1) in
   let rt = signed cpu.reg ops.(2) in
   RTL.[
-    rd := rs %$ rt;
+    rd := rs % rt;
   ]
 
 (* DDIVU rd, rs, rt

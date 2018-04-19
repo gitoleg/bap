@@ -13,8 +13,8 @@ let rotr cpu ops =
     (* extract low 32bit word *)
     tm := last rt 32;
     (* rotate right *)
-    tt := tm lsr sa;
-    tm := tm lsl (unsigned const byte 32 - sa);
+    tt := tm >> sa;
+    tm := tm << (unsigned const byte 32 - sa);
     rd := tm lor tt;
   ]
 
@@ -31,8 +31,8 @@ let rotrv cpu ops =
     (* extract low 32bit word *)
     tm := last rt 32;
     (* rotate right at bits in rs *)
-    tt := tm lsr rs;
-    tm := tm lsl (unsigned const byte 32 - rs);
+    tt := tm >> rs;
+    tm := tm << (unsigned const byte 32 - rs);
     rd := tm lor tt;
   ]
 
@@ -44,7 +44,7 @@ let sll cpu ops =
   let rt = unsigned cpu.reg ops.(1) in
   let sa = unsigned imm ops.(2) in
   RTL.[
-    rd := low word rt lsl sa;
+    rd := low word rt << sa;
   ]
 
 (* SLLV rd, rt, rs
@@ -55,7 +55,7 @@ let sllv cpu ops =
   let rt = unsigned cpu.reg ops.(1) in
   let rs = unsigned cpu.reg ops.(2) in
   RTL.[
-    rd := low word rt lsl rs;
+    rd := low word rt << rs;
   ]
 
 (* DSLL rd, rt, imm
@@ -66,7 +66,7 @@ let dsll cpu ops =
   let rt = unsigned cpu.reg ops.(1) in
   let sa = unsigned imm ops.(2) in
   RTL.[
-    rd := rt lsl sa;
+    rd := rt << sa;
   ]
 
 (* DSLL32 rd, rt, imm
@@ -78,7 +78,7 @@ let dsll32 cpu ops =
   let sa = unsigned imm ops.(2) in
   let sh = unsigned const byte 32 in
   RTL.[
-    rd := rt lsl (sa + sh);
+    rd := rt << (sa + sh);
   ]
 
 (* DSLLV rd, rt, rs
@@ -89,7 +89,7 @@ let dsllv cpu ops =
   let rt = unsigned cpu.reg ops.(1) in
   let rs = unsigned cpu.reg ops.(2) in
   RTL.[
-    rd := rt lsl rs;
+    rd := rt << rs;
   ]
 
 (* SRA rd, rt, imm
@@ -99,8 +99,10 @@ let sra cpu ops =
   let rd = signed cpu.reg ops.(0) in
   let rt = unsigned cpu.reg ops.(1) in
   let sa = unsigned imm ops.(2) in
+  let tmp = signed var word in
   RTL.[
-    rd := low word rt asr sa;
+    tmp := low word rt;
+    rd := tmp >> sa;
   ]
 
 (* SRAV rd, rt, rs
@@ -110,8 +112,10 @@ let srav cpu ops =
   let rd = signed cpu.reg ops.(0) in
   let rt = unsigned cpu.reg ops.(1) in
   let rs = unsigned cpu.reg ops.(2) in
+  let tmp = signed var word in
   RTL.[
-    rd := low word rt asr last rs 5;
+    tmp := low word rt;
+    rd := tmp >> last rs 5;
   ]
 
 (* DSRA rd, rt, imm
@@ -119,10 +123,10 @@ let srav cpu ops =
  * Page 201 *)
 let dsra cpu ops =
   let rd = unsigned cpu.reg ops.(0) in
-  let rt = unsigned cpu.reg ops.(1) in
+  let rt = signed cpu.reg ops.(1) in
   let sa = unsigned imm ops.(2) in
   RTL.[
-    rd := rt asr sa;
+    rd := rt >> sa;
   ]
 
 (* DSRA32 rd, rt, imm
@@ -130,11 +134,11 @@ let dsra cpu ops =
  * Page 202 *)
 let dsra32 cpu ops =
   let rd = unsigned cpu.reg ops.(0) in
-  let rt = unsigned cpu.reg ops.(1) in
+  let rt = signed cpu.reg ops.(1) in
   let sa = unsigned imm ops.(2) in
   let sh = unsigned const byte 32 in
   RTL.[
-    rd := rt asr (sa + sh);
+    rd := rt >> (sa + sh);
   ]
 
 (* DSRAV rd, rt, rs
@@ -142,10 +146,10 @@ let dsra32 cpu ops =
  * Page 203 *)
 let dsrav cpu ops =
   let rd = unsigned cpu.reg ops.(0) in
-  let rt = unsigned cpu.reg ops.(1) in
+  let rt = signed cpu.reg ops.(1) in
   let rs = unsigned cpu.reg ops.(2) in
   RTL.[
-    rd := rt asr rs;
+    rd := rt >> rs;
   ]
 
 (* SRL rd, rt, imm
@@ -156,7 +160,7 @@ let srl cpu ops =
   let rt = unsigned cpu.reg ops.(1) in
   let sa = unsigned imm ops.(2) in
   RTL.[
-    rd := low word rt lsr sa;
+    rd := low word rt >> sa;
   ]
 
 (* SRLV rd, rt, rs
@@ -167,7 +171,7 @@ let srlv cpu ops =
   let rt = unsigned cpu.reg ops.(1) in
   let rs = unsigned cpu.reg ops.(2) in
   RTL.[
-    rd := low word rt lsr rs;
+    rd := low word rt >> rs;
   ]
 
 (* DSRL rd, rt, imm
@@ -178,7 +182,7 @@ let dsrl cpu ops =
   let rt = unsigned cpu.reg ops.(1) in
   let sa = unsigned imm ops.(2) in
   RTL.[
-    rd := rt lsr sa;
+    rd := rt >> sa;
   ]
 
 (* DSRL32 rd, rt, imm
@@ -189,7 +193,7 @@ let dsrl32 cpu ops =
   let rt = unsigned cpu.reg ops.(1) in
   let sa = unsigned imm ops.(2) in
   RTL.[
-    rd := rt lsr (sa + unsigned const byte 32);
+    rd := rt >> (sa + unsigned const byte 32);
   ]
 
 (* DSRLV rd, rt, rs
@@ -200,7 +204,7 @@ let dsrlv cpu ops =
   let rt = unsigned cpu.reg ops.(1) in
   let rs = unsigned cpu.reg ops.(2) in
   RTL.[
-    rd := rt lsr rs;
+    rd := rt >> rs;
   ]
 
 let () =

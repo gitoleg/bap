@@ -66,7 +66,7 @@ let ldpc cpu ops =
   let rt = signed cpu.reg ops.(0) in
   let off = signed imm ops.(1) in
   RTL.[
-    rt := cpu.load (cpu.cia + (off lsl unsigned const byte 3)) doubleword;
+    rt := cpu.load (cpu.cia + (off << unsigned const byte 3)) doubleword;
   ]
 
 (* LH rt, offset(base)
@@ -213,7 +213,7 @@ let lwpc cpu ops =
   let rt = signed cpu.reg ops.(0) in
   let off = signed imm ops.(1) in
   RTL.[
-    rt := cpu.load (cpu.cia + (off lsl unsigned const byte 2)) word;
+    rt := cpu.load (cpu.cia + (off << unsigned const byte 2)) word;
   ]
 
 (* LWU rt, offset(base)
@@ -234,7 +234,7 @@ let lwupc cpu ops =
   let rt = unsigned cpu.reg ops.(0) in
   let off = signed imm ops.(1) in
   RTL.[
-    rt := cpu.load (cpu.cia + (off lsl unsigned const byte 2)) word;
+    rt := cpu.load (cpu.cia + (off << unsigned const byte 2)) word;
   ]
 
 let () =
@@ -259,5 +259,3 @@ let () =
   "LWPC" >> lwpc;
   "LWu" >> lwu;
   "LWupc" >> lwupc;
-
-

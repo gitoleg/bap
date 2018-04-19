@@ -146,7 +146,7 @@ let bitswap cpu ops =
     foreach biti rd [
       byte_ind := cnt / width;
       pos := byte_ind * width + (max_ind - (cnt % width));
-      biti := lsb (rt lsr pos);
+      biti := lsb (rt >> pos);
       cnt := cnt + one;
     ];
   ]
@@ -168,7 +168,7 @@ let dbitswap cpu ops =
     foreach biti rd [
       byte_ind := cnt / width;
       pos := byte_ind * width + (max_ind - (cnt % width));
-      biti := lsb (rt lsr pos);
+      biti := lsb (rt >> pos);
       cnt := cnt + one;
     ];
   ]

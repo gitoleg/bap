@@ -99,7 +99,7 @@ let lui cpu ops =
   let rt = unsigned cpu.reg ops.(0) in
   let im = signed imm ops.(1) in
   RTL.[
-    rt := im lsl unsigned const byte 16;
+    rt := im << unsigned const byte 16;
   ]
 
 (* ALUIPC rs, imm
@@ -112,7 +112,7 @@ let aluipc cpu ops =
   let mask = unsigned var word in
   RTL.[
     mask := unsigned const word 0xFFFF;
-    x := cpu.cia + (im lsl unsigned const byte 16);
+    x := cpu.cia + (im << unsigned const byte 16);
     rs := (lnot mask) land x;
   ]
 
@@ -125,7 +125,7 @@ let lsa cpu ops =
   let rt = unsigned cpu.reg ops.(2) in
   let sa = unsigned imm ops.(3) in
   RTL.[
-    rd := (rs lsl (sa + unsigned const byte 1)) + rt;
+    rd := (rs << (sa + unsigned const byte 1)) + rt;
   ]
 
 (* DLSA rd, rs, rt, sa
@@ -137,7 +137,7 @@ let dlsa cpu ops =
   let rt = unsigned cpu.reg ops.(2) in
   let sa = unsigned imm ops.(3) in
   RTL.[
-    rd := (rs lsl (sa + unsigned const byte 1)) + rt;
+    rd := (rs << (sa + unsigned const byte 1)) + rt;
   ]
 
 (* MOVE rd, rs  - WTF nonexistent!? *)

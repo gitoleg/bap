@@ -1,25 +1,19 @@
 open Core_kernel.Std
 open Bap.Std
-open Mips_rtl
+open Bap_rtl.Std
 
 module type Model = sig
   type t
-  val gpr : t String.Map.t
-  val gpri : t Int.Map.t
-  val fpr : t String.Map.t
-  val fpri : t Int.Map.t
+
   val hi : t
   val lo : t
 end
 
-module type Model_exp = sig
-  include Model with type t := exp
-end
-
 module type MIPS = sig
-  module E : Model_exp
+  module E : Model with type t := exp
   include Model with type t := var
 
+  val model : reg_model
   val mem : var
   val gpr_bitwidth : int
   val fpr_bitwidth : int

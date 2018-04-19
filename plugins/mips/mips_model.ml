@@ -1,88 +1,30 @@
 open Core_kernel.Std
 open Bap.Std
-open Mips_rtl
+open Bap_rtl.Std
 
 module type Model = sig
   type t
-  val gpr : t String.Map.t
-  val gpri : t Int.Map.t
-  val fpr : t String.Map.t
-  val fpri : t Int.Map.t
   val hi : t
   val lo : t
 end
 
-module type Model_exp = sig
-  include Model with type t := exp
-end
-
 module type MIPS = sig
-  module E : Model_exp
+  module E : Model with type t := exp
   include Model with type t := var
+  val model : reg_model
   val mem : var
   val gpr_bitwidth : int
   val fpr_bitwidth : int
 end
 
-let range x = List.range 0 x
 let range32 = List.range 0 32
-let range64 = List.range 0 64
 
-let make_name prefix i = sprintf "%s%d" prefix i
-
-let make_var_i typ prefix i = Var.create (make_name prefix i) typ
-
-let make_regs_list typ prefix size =
-  Array.init ~f:(fun i -> make_var_i typ prefix i) size
-
-let reglist_to_map regs =
-  List.fold ~init:String.Map.empty ~f:(fun regs var ->
-      String.Map.add regs (Var.name var) var) regs
-
-let make_regs typ ?alias prefix range =
-  List.fold ~init:String.Map.empty ~f:(fun regs i ->
-      let var = make_var_i typ prefix i in
-      let name = Var.name var in
-      let regs = String.Map.add regs name var in
-      match alias with
-      | None -> regs
-      | Some a ->
-        let name = make_name a i in
-        String.Map.add regs name var) range
-
-let make_regs_i typ prefix range =
-  List.fold ~init:Int.Map.empty ~f:(fun regs i ->
-      Int.Map.add regs i (make_var_i typ prefix i)) range
-
-let make_reg typ name = Var.create name typ
-let flag name = Var.create name (Type.imm 1)
+let make_reg width name = Var.create name (Type.imm width)
 
 module Bitwidth = struct
-  let gpr_bitwidth = 32
   let fpr_bitwidth = 64
   let cr_bitwidth = 32
   let lr_bitwidth = 32
-end
-
-module Vars = struct
-  open Bitwidth
-
-  let fpr = make_regs (Type.imm fpr_bitwidth) "f" range32
-  let fpri = make_regs_i (Type.imm fpr_bitwidth) "f" range32
-end
-
-let of_vars vars =
-  String.Map.map vars ~f:(fun v -> Exp.of_var v)
-
-let of_vars_i vars =
-  Int.Map.map vars ~f:(fun v -> Exp.of_var v)
-
-module Exps = struct
-  open Vars
-
-  let fpri = of_vars_i fpri
-  let fpr = of_vars fpr
-
 end
 
 module type Spec = sig
@@ -94,9 +36,9 @@ module Make_MIPS(S: Spec) : MIPS = struct
   include Bitwidth
   let gpr_bitwidth = S.gpr_bitwidth
 
-  include Vars
+  let make_gpr = make_reg gpr_bitwidth
 
-  let make_gpr = make_reg (Type.imm gpr_bitwidth)
+  let model = Reg_model.create ()
 
   let gprs = [
     make_gpr "ZERO", "R0";
@@ -133,25 +75,22 @@ module Make_MIPS(S: Spec) : MIPS = struct
     make_gpr "RA", "R31";
   ]
 
-  let gpr =
-    List.fold gprs ~init:String.Map.empty ~f:(fun init (reg, alias) ->
-        let name = Var.name reg in
-        let names = [name; alias] in
-        let names =
-          if gpr_bitwidth = 64 then (name ^ "_64") :: names
-          else names in
-        List.fold names ~init ~f:(fun regs name -> Map.add regs name reg))
+  let () = List.iteri gprs ~f:(fun ind (reg,alias) ->
+      let aliases = [`Name alias; `Index ind] in
+      let aliases = match S.addr_size with
+        | `r32 -> aliases
+        | `r64 ->
+          `Name (Var.name reg ^ "_64") :: aliases in
+      Reg_model.add model ~aliases Cls.gpr reg)
 
-  let gpri = List.foldi ~init:Int.Map.empty ~f:(fun n regs (reg,_) ->
-      Map.add regs n reg) gprs
+  let () = List.iter range32 (fun i ->
+      let reg = make_reg fpr_bitwidth (sprintf "f%d" i) in
+      Reg_model.add model ~aliases:[`Index i] Cls.fpr reg)
 
-  let hi = make_reg (Type.imm gpr_bitwidth) "HI"
-  let lo = make_reg (Type.imm gpr_bitwidth) "LO"
+  let hi = make_reg gpr_bitwidth "HI"
+  let lo = make_reg gpr_bitwidth "LO"
 
   module E = struct
-    include Exps
-    let gpri = of_vars_i gpri
-    let gpr = of_vars gpr
     let hi = Exp.of_var hi
     let lo = Exp.of_var lo
   end
@@ -177,10 +116,7 @@ module Make_cpu(M : MIPS) : CPU = struct
 
   let mem = M.mem
 
-  let gpr =
-    let data = Map.data gpr in
-    List.fold data ~init:Var.Set.empty
-      ~f:(fun regs v -> Var.Set.add regs v)
+  let gpr = Reg_model.all model Cls.gpr |> Var.Set.of_list
 
   let sp = Var.Set.find_exn gpr ~f:(fun v -> String.is_prefix ~prefix:"SP" (Var.name v))
   let fp = Var.Set.find_exn gpr ~f:(fun v -> String.is_prefix ~prefix:"FP" (Var.name v))

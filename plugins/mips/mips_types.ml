@@ -1,8 +1,6 @@
 open Core_kernel.Std
 open Bap.Std
-
-open Mips_rtl
-open Mips_dsl
+open Bap_rtl.Std
 open Mips_utils
 open Mips_model
 
@@ -19,4 +17,3 @@ type cpu = {
   hi : exp;
   lo : exp;
 }
-

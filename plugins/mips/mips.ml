@@ -1,5 +1,6 @@
 open Core_kernel.Std
 open Bap.Std
+open Bap_rtl.Std
 
 (* This CPU model and instruction set is based on the
  * "MIPS Architecture For Programmers
@@ -10,56 +11,32 @@ open Bap.Std
 module Model = Mips_model
 
 module Std = struct
-  open Mips_rtl
   include Mips_utils
   include Mips_types
   include Mips_cpu
-  include Mips_dsl
 
-  module Array = Mips_rtl.Op_array
+  include Ec
+  include Bitwidth
 
-  module RTL = struct
-    include Mips_rtl
-    include Infix
-    let foreach = foreach ~inverse:false
-  end
+  module RTL = RTL
 
-  type rtl = RTL.rtl [@@deriving bin_io, compare, sexp]
-  type exp = RTL.exp [@@deriving bin_io, compare, sexp]
   type lift = cpu -> op array -> rtl list
 
-  let bil_of_rtl = RTL.bil_of_t
+  module Cpu = struct
+    type t = cpu
 
-  let concat f g = fun cpu ops -> f cpu ops @ g cpu ops
+    let update c addr =
+      let cia = Exp.(signed (of_word addr)) in
+      {c with cia}
+  end
 
-  let (^) = concat
-
-  let lifters = String.Table.create ()
-
-  let register name lifter =
-    String.Table.change lifters name ~f:(fun _ -> Some lifter)
+  include Lifter_model.Make(Cpu)
 
   let (>>) = register
 
   let lift addr_size endian mem insn =
-    let insn = Insn.of_basic insn in
-    let insn_name = Insn.name insn in
-    let cpu = make_cpu addr_size endian mem in
-    let lift lifter =
-      try
-        lifter cpu (Insn.ops insn) |>
-        bil_of_rtl |>
-        Result.return
-      with
-      | Failure str -> Error (Error.of_string str)
-      | Array.Invalid_operand_index n ->
-        let str =
-          sprintf "instruction %s doesn't have an operand with index %d"
-            insn_name n in
-        Error (Error.of_string str) in
-    match String.Table.find lifters (Insn.name insn) with
-    | None -> Or_error.errorf "unknown instruction %s" insn_name
-    | Some lifter -> lift lifter
+    init (make_cpu addr_size endian mem);
+    lifter mem insn
 
   module M32BE = struct
     module CPU = Model.MIPS_32_cpu

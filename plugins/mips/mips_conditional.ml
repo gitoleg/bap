@@ -8,7 +8,7 @@ let slt cpu ops =
   let rs = signed cpu.reg ops.(1) in
   let rt = unsigned cpu.reg ops.(2) in
   RTL.[
-    if_ (rs <$ rt) [
+    if_ (rs < rt) [
       rd := one;
     ] [
       rd := zero;
@@ -97,4 +97,3 @@ let () =
   "SLTiu" >> sltiu;
   "SELEQZ" >> seleqz;
   "SELNEQ" >> selnez;
-

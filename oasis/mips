@@ -7,7 +7,7 @@ Library mips_plugin
   Path:                 plugins/mips
   FindlibName:          bap-plugin-mips
   Build$:               flag(everything) || flag (mips)
-  BuildDepends:         bap, bap-abi, bap-c
+  BuildDepends:         bap, bap-abi, bap-c, bap-rtl
   InternalModules:
                         Mips,
                         Mips_main,
@@ -17,8 +17,6 @@ Library mips_plugin
                         Mips_load,
                         Mips_model,
                         Mips_abi,
-                        Mips_dsl,
-                        Mips_rtl,
                         Mips_arithmetic,
                         Mips_branch,
                         Mips_conditional,
