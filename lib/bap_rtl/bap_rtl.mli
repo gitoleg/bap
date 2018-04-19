@@ -17,6 +17,15 @@
     abstractions that adds brevity and therefore simplicity to user
     code.
 
+    Bap_rtl is a foundations, where one can build a lifter.
+    It consists from the next modules:
+    - RTL
+    - Bitwidth
+    - Ec
+    - Reg_model
+    - Mem_model
+    - Lifter_model
+
     So proposed usage is just to open at the very beginning of your
     module:
 
@@ -26,9 +35,13 @@
 
     or accomplish it with your own definitions:
    {[
+     open Bap_rtl.Std
+
      module My_target_lib = struct
-       include Bap_rtl.Std
-                 ...
+       module RTL : module type of RTL
+       include module type of Bitwidth
+       include module type of Ec
+       ...
    ]}
 
     {2 RTL}
