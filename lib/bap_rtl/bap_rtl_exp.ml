@@ -9,6 +9,7 @@ let rec bil_exp = function
   | Vars (v, []) -> Bil.var v
   | Vars (v, vars) ->
     List.fold vars ~init:(Bil.var v) ~f:(fun e v -> Bil.(e ^ var v))
+  | Pattern w
   | Word w -> Bil.int w
   | Load (mem, addr, endian, size) ->
     Bil.(load (var mem) (bil_exp addr) endian size)
@@ -24,6 +25,15 @@ let var_of_exp e = match e.body with
   | _ -> failwith "variable expected"
 
 let cast x width sign =
+  let x = match x.body with
+    | Pattern w when Word.bitwidth w < width ->
+      let times = width / x.width in
+      let ws = List.init times ~f:(fun _ -> w) in
+      let word = List.fold ws ~init:w
+          ~f:(fun w w' -> Word.concat w' w) in
+      let body = Word (Word.extract_exn ~hi:(width - 1) ~lo:0 word) in
+      {x with body; width}
+    | _ -> x in
   let nothing_to_cast =
     (x.sign = sign && x.width = width) ||
     (x.width = width && width = 1) in
@@ -133,6 +143,10 @@ module Exp = struct
   let tmp width =
     let var = Var.create ~is_virtual:true ~fresh:true "tmp" (Type.imm width) in
     of_var var
+
+  let pattern w =
+    let width = Word.bitwidth w in
+    {sign = Unsigned; width; body = Pattern w }
 
   let load mem addr endian size =
     let width = Size.in_bits size in

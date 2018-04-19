@@ -379,7 +379,59 @@ module Std : sig
   (** rtl statement  *)
   type rtl [@@deriving bin_io, compare, sexp]
 
+  (** [bil_of_rtl rtl] returns a bil code *)
+  val bil_of_rtl : rtl list -> bil
+
+  (** Operands and registers bitwidth.  *)
+  type bitwidth
+
+  module Bitwidth : sig
+    val bit  : bitwidth
+    val byte : bitwidth
+    val word : bitwidth
+    val halfword   : bitwidth
+    val doubleword : bitwidth
+    val quadword   : bitwidth
+    val bitwidth_of_int : int -> bitwidth
+    val int_of_bitwidth : bitwidth -> int
+  end
+
   module RTL : sig
+
+    (** [zero] is a one bit length expression set to zero *)
+    val zero : exp
+
+    (** [one] is a one bit length expression set to one *)
+    val one  : exp
+
+    (** [ones] is an expression with all bits set to one *)
+    val ones  : exp
+
+    (** [low width e] extracts low [width] bits from [e]  *)
+    val low : bitwidth -> exp -> exp
+
+    (** [high width e] extracts high [width] bits from [e]  *)
+    val high : bitwidth -> exp -> exp
+
+    (** [first e n] extracts first [n] bits from [e], starting from
+        the least significant bit *)
+    val first : exp -> int -> exp
+
+    (** [last e n] extracts last [n] bits from [e], where the
+        last bit is the most significant bit *)
+    val last : exp -> int -> exp
+
+    (** [nth width e n] extracts a portion of [e] of width [width] at
+        index [n], where each index points to a portion of width [width].
+        Indexes are zero based and started from the least significant portion.
+        E.g. [nth halfword e 1] extracts a second halfword from [e] *)
+    val nth : bitwidth -> exp -> int -> exp
+
+    (** [msb e] extracts the most significant bit from [e] *)
+    val msb : exp -> exp
+
+    (** [lsb e] extracts the least significant bit from [e] *)
+    val lsb : exp -> exp
 
     (** [if_ cond then_ else_] *)
     val if_ : exp -> rtl list -> rtl list -> rtl
@@ -527,93 +579,47 @@ module Std : sig
 
   end
 
-  (** Operands and registers bitwidth.  *)
-  type bitwidth
-
-  val bit  : bitwidth
-  val byte : bitwidth
-  val word : bitwidth
-  val halfword   : bitwidth
-  val doubleword : bitwidth
-  val quadword   : bitwidth
-  val bitwidth_of_int : int -> bitwidth
-  val int_of_bitwidth : bitwidth -> int
-
   (** expression constructor  *)
   type 'a ec
 
-  (** [signed ec] returnst a signed expression from given [ec] *)
-  val signed : 'a ec -> 'a
+  module Ec : sig
 
-  (** [unsigned ec] returns an unsigned expression from given [ec] *)
-  val unsigned : 'a ec -> 'a
+    (** [signed ec] returnst a signed expression from given [ec] *)
+    val signed : 'a ec -> 'a
 
-  (** [imm] immediate constructor, constructs an immediate from operand *)
-  val imm : (op -> exp) ec
+    (** [unsigned ec] returns an unsigned expression from given [ec] *)
+    val unsigned : 'a ec -> 'a
 
-  (** [fixed_imm] immediate constructor, construct an immediate of
-      [bitwidth] from operand *)
-  val fixed_imm : (bitwidth -> op -> exp) ec
+    (** [imm] immediate constructor, constructs an immediate from operand *)
+    val imm : (op -> exp) ec
 
-  (** [var] variable constructor, constructs a variable of [bitwidth] *)
-  val var : (bitwidth -> exp) ec
+    (** [fixed_imm] immediate constructor, construct an immediate of
+        [bitwidth] from operand *)
+    val fixed_imm : (bitwidth -> op -> exp) ec
 
-  (** [const] constant constructor, constructs a constant of [bitwidth] and integer *)
-  val const : (bitwidth -> int -> exp) ec
+    (** [var] variable constructor, constructs a variable of [bitwidth] *)
+    val var : (bitwidth -> exp) ec
 
-  (** [reg search] register constructor, construct a register expression from
-      a search function and operand *)
-  val reg : (reg -> exp) -> (op -> exp) ec
+    (** [const] constant constructor, constructs a constant of [bitwidth] and integer *)
+    val const : (bitwidth -> int -> exp) ec
 
-  (** [of_string] constructs an expression from string.
-      String must be either in a decimal, binary, octal or hexadecimal format.
-      Bitwidth of an expression is defined as following:
-      if format is decimal then bitwidth equals to a number of significant bits
-      else bitwidth equals to a number of all listed bits in a string.
-      Examples:
-       - bitwidth of [unsigned of_string "0b00"] is eqauls to 2
-       - bitwidth of [unsigned of_string "0o474"] is eqauls to 9;
-       - bitwidth of [unsigned of_string "0b03FA"] is eqauls to 16;
-       - bitwidth of [unsigned of_string "42"] is eqauls to 6; *)
-  val of_string : (string -> exp) ec
+    (** [reg search] register constructor, construct a register expression from
+        a search function and operand *)
+    val reg : (reg -> exp) -> (op -> exp) ec
 
-  (** [zero] is a one bit length expression set to zero *)
-  val zero : exp
+    (** [of_string] constructs an expression from string.
+        String must be either in a decimal, binary, octal or hexadecimal format.
+        Bitwidth of an expression is defined as following:
+        if format is decimal then bitwidth equals to a number of significant bits
+        else bitwidth equals to a number of all listed bits in a string.
+        Examples:
+         - bitwidth of [unsigned of_string "0b00"] is eqauls to 2
+         - bitwidth of [unsigned of_string "0o474"] is eqauls to 9;
+         - bitwidth of [unsigned of_string "0b03FA"] is eqauls to 16;
+         - bitwidth of [unsigned of_string "42"] is eqauls to 6; *)
+    val of_string : (string -> exp) ec
+  end
 
-  (** [one] is a one bit length expression set to one *)
-  val one  : exp
-
-  (** [ones width] returns an expression of [width] with all bits set to one *)
-  val ones  : bitwidth -> exp
-
-  (** [low width e] extracts low [width] bits from [e]  *)
-  val low : bitwidth -> exp -> exp
-
-  (** [high width e] extracts high [width] bits from [e]  *)
-  val high : bitwidth -> exp -> exp
-
-  (** [first e n] extracts first [n] bits from [e], starting from
-      the least significant bit *)
-  val first : exp -> int -> exp
-
-  (** [last e n] extracts last [n] bits from [e], where the
-      last bit is the most significant bit *)
-  val last : exp -> int -> exp
-
-  (** [nth width e n] extracts a portion of [e] of width [width] at
-      index [n], where each index points to a portion of width [width].
-      Indexes are zero based and started from the least significant portion.
-      E.g. [nth halfword e 1] extracts a second halfword from [e] *)
-  val nth : bitwidth -> exp -> int -> exp
-
-  (** [msb e] extracts the most significant bit from [e] *)
-  val msb : exp -> exp
-
-  (** [lsb e] extracts the least significant bit from [e] *)
-  val lsb : exp -> exp
-
-  (** [bil_of_rtl rtl] returns a bil code *)
-  val bil_of_rtl : rtl list -> bil
 
   (** Module provides few primitives to construct expressions.
       Functions from this module are not supposed to appear in
@@ -744,30 +750,32 @@ module Std : sig
           [reg] could be reached by its name or [aliases] *)
       val add  : t -> cls -> ?aliases:name list -> var -> unit
 
-      (** [add' model cls ~aliases name exp] adds [exp] to a model.
-          [exp] is a representation of some register of class [cls]  (or it's part)
-          and could be reached by [name] or [aliases] *)
-      val add' : t -> cls -> ?aliases:name list -> name -> exp -> unit
-
       (** [find model name] returns [Some reg] associated with [name].
           Returns None if no register found. *)
       val find  : t -> ?cls:cls -> name -> var option
 
-      (** [find' model name] returns [Some exp] associated with [name].
-          Returns None if no expression found. *)
-      val find'  : t -> ?cls:cls -> name -> exp option
-
       (** same functions as above, but raises Failure instead of
           returning None *)
       val find_exn  : t -> ?cls:cls -> name -> var
-      val find_exn' : t -> ?cls:cls -> name -> exp
+
+      (** [all model cls] - returns all registers of a given [cls] *)
+      val all  : t -> cls -> var list
 
       (** [ec model] returns a register expression constructor
           that constructs a register expression from operand *)
       val ec : t -> (op -> exp) ec
 
-      (** [all model cls] - returns all registers of a given [cls] *)
-      val all  : t -> cls -> var list
+      (** [add' model cls ~aliases name exp] adds [exp] to a model.
+          [exp] is a representation of some register of class [cls]  (or it's part)
+          and could be reached by [name] or [aliases] *)
+      val add' : t -> cls -> ?aliases:name list -> name -> exp -> unit
+
+      (** [find' model name] returns [Some exp] associated with [name].
+          Returns None if no expression found. *)
+      val find'  : t -> ?cls:cls -> name -> exp option
+
+      val find_exn' : t -> ?cls:cls -> name -> exp
+
       val all' : t -> cls -> exp list
 
     end

@@ -7,6 +7,7 @@ module Exp : sig
   val of_vars : var list -> exp
   val of_word : word -> exp
   val tmp : int -> exp
+  val pattern : word -> exp
 
   val load : var -> exp -> endian -> size -> exp
   val extract : int -> int -> exp -> exp
