@@ -10,9 +10,7 @@ Library powerpc_plugin
   FindlibName:      bap-plugin-powerpc
   InternalModules:  Powerpc,
                     Powerpc_cpu,
-                    Powerpc_dsl,
                     Powerpc_model,
-                    Powerpc_rtl,
                     Powerpc_types,
                     Powerpc_utils,
                     Powerpc_abi,
