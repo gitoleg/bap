@@ -1,6 +1,5 @@
 open Core_kernel.Std
 open Bap.Std
-
 open Bap_rtl.Std
 
 module type Model = sig
@@ -122,6 +121,7 @@ module type Spec = sig
 end
 
 module Make_ppc(S : Spec) : PowerPC = struct
+  let mem = Var.create "mem" (Type.mem S.addr_size `r8)
 
   module Bitwidth = struct
     let gpr_bitwidth = S.gpr_bitwidth
@@ -133,9 +133,8 @@ module Make_ppc(S : Spec) : PowerPC = struct
     let vr_bitwidth  = 128
   end
 
-  let mem = Var.create "mem" (Type.mem S.addr_size `r8)
-
   module Vars = Vars(Bitwidth)
+
   module E = struct
     type t = exp
 
@@ -159,27 +158,22 @@ module Make_ppc(S : Spec) : PowerPC = struct
 
   include Vars
   include Bitwidth
-
 end
 
-module Spec32 = struct
-  let gpr_bitwidth = 32
-  let addr_size = `r32
-end
+module PowerPC_32 = Make_ppc(struct
+    let gpr_bitwidth = 32
+    let addr_size = `r32
+  end)
 
-module Spec64 = struct
-  let gpr_bitwidth = 64
-  let addr_size = `r64
-end
-
-module PowerPC_32 = Make_ppc(Spec32)
-module PowerPC_64 = Make_ppc(Spec64)
+module PowerPC_64 = Make_ppc(struct
+    let gpr_bitwidth = 64
+    let addr_size = `r64
+  end)
 
 module Make_cpu(P : PowerPC) : CPU = struct
   open P
-
-  let mem = P.mem
-  let gpr = Reg_model.all P.model Cls.gpr |> Var.Set.of_list
+  let mem = mem
+  let gpr = Reg_model.all model Cls.gpr |> Var.Set.of_list
   let sp = Var.Set.find_exn gpr ~f:(fun v -> Var.name v = "R1")
   let vf = ov
   let cf = ca
