@@ -5,11 +5,12 @@ open Bap_rtl.Std
 (** Powerpc standart library
 
     Contains some definitions from Bap_rtl to achieve
-    a weird PowerPc arch bits numering and other stuff
+    a weird PowerPC bits numering and other stuff
     like PowerPC models. So the main idea is still the
-    same: all one needs to complement the lifter is just
+    same:
     [ open Powerpc.Std ]
-*)
+    in the very beginnig of any file with liftted
+    instructions *)
 
 module Std : sig
 
@@ -74,8 +75,10 @@ module Std : sig
 
   val width : exp -> exp
 
-
+  (** class of condition register bit   *)
   val cr_bit   : cls
+
+  (** class of condition register field *)
   val cr_field : cls
 
 
@@ -122,9 +125,6 @@ module Std : sig
 
   module PowerPC_32 : PowerPC
   module PowerPC_64 : PowerPC
-
-  module PowerPC_32_cpu : CPU
-  module PowerPC_64_cpu : CPU
 
   module T32 : Target
   module T64 : Target
