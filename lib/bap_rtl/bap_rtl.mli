@@ -827,4 +827,11 @@ module Std : sig
     end
   end
 
+  module Array : sig
+    type 'a t = 'a Array.t
+    exception Invalid_operand_index of int
+    val get : 'a t -> int -> 'a
+    val unsafe_get : 'a t -> int -> 'a
+  end
+
 end
