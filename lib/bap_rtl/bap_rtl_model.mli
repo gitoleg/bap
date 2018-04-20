@@ -34,15 +34,15 @@ module Reg : sig
     | `Name of string
   ]
 
-  val create  : unit -> t
-  val add  : t -> cls -> ?aliases:name list -> var -> unit
+  val empty : t
+  val add   : cls -> ?aliases:name list -> var -> t -> t
   val find  : t -> ?cls:cls -> name -> var option
   val find_exn  : t -> ?cls:cls -> name -> var
   val ec : t -> (op -> exp) ec
   val all  : t -> cls -> var list
 
   module Exp : sig
-    val add : t -> cls -> ?aliases:name list -> name -> exp -> unit
+    val add : cls -> ?aliases:name list -> name -> exp -> t -> t
     val find  : t -> ?cls:cls -> name -> exp option
     val find_exn : t -> ?cls:cls -> name -> exp
     val all : t -> cls -> exp list

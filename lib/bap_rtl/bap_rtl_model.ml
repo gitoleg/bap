@@ -66,6 +66,7 @@ end
 
 type cls = Cls.t [@@deriving bin_io,compare,sexp]
 
+(* register id  *)
 type rid = {
   cls : Cls.t;
   name : Name.t;
@@ -94,23 +95,22 @@ module Reg = struct
     var : var option;
   }
 
-  type t = data Rid.Table.t
+  type t = data Rid.Map.t
 
-  let create () = Rid.Table.create ()
-  let update t key data = Hashtbl.update t key (fun _ -> data)
+  let empty = Rid.Map.empty
 
-  let add t cls ?(aliases=[]) var =
+  let add cls ?(aliases=[]) var t =
     let names = `Name (Var.name var) :: aliases in
     let data = {var = Some var; exp = Exp.of_var var;} in
-    List.iter names
-      ~f:(fun name ->
+    List.fold names ~init:t
+      ~f:(fun t name ->
           let rid = {cls; name} in
-          Hashtbl.update t rid (fun _ -> data))
+          Map.add t rid data)
 
   let search t cls n = match cls with
-    | Some cls -> Hashtbl.find t {cls; name=n}
+    | Some cls -> Map.find t {cls; name=n}
     | None ->
-      List.find_map (Hashtbl.to_alist t)
+      List.find_map (Map.to_alist t)
         ~f:(fun ({name}, data) ->
             Option.some_if (Name.equal name n) data)
 
@@ -156,31 +156,27 @@ module Reg = struct
     Constructor.reg find
 
   let all (t : t) cls =
-    Hashtbl.filter_mapi t ~f:(fun ~key ~data ->
+    Map.filter_mapi t ~f:(fun ~key ~data ->
         if Cls.equal key.cls cls then data.var
-        else None) |> Hashtbl.data
+        else None) |> Map.data
 
   module Exp = struct
 
-    let add t cls ?(aliases=[]) name exp =
-      List.iter (name :: aliases)
-        ~f:(fun name ->
-            let rid = {cls; name} in
-            Hashtbl.update t rid (function
+    let add cls ?(aliases=[]) name exp t =
+      List.fold (name :: aliases) ~init:t
+        ~f:(fun t name ->
+            Map.update t {cls; name} ~f:(function
                 | None -> {var=None; exp}
                 | Some d -> {d with exp}))
-
 
     let find t ?cls n = search t cls n |> get_exp
 
     let all (t : t) cls =
-      Hashtbl.filter_mapi t ~f:(fun ~key ~data ->
+      Map.filter_mapi t ~f:(fun ~key ~data ->
           Option.some_if (Cls.equal key.cls cls) data.exp) |>
-      Hashtbl.data
+      Map.data
 
     let find_exn = Exn.exp
 
   end
-
-
 end
