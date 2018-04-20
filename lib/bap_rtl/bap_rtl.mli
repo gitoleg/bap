@@ -754,12 +754,12 @@ module Std : sig
       | `Name of string
     ]
 
-    (** [create ()] creates an empty model   *)
-    val create   : unit -> t
+    (** [empty] is an empty model   *)
+    val empty  : t
 
-    (** [add model cls ~aliases reg] adds [reg] of class [cls] to a [model],
+    (** [add cls ~aliases reg model] adds [reg] of class [cls] to a [model],
         [reg] could be reached by its name or [aliases] *)
-    val add  : t -> cls -> ?aliases:name list -> var -> unit
+    val add  : cls -> ?aliases:name list -> var -> t -> t
 
     (** [find model name] returns [Some reg] associated with [name].
         Returns None if no register found. *)
@@ -778,10 +778,10 @@ module Std : sig
 
     module Exp : sig
 
-      (** [add model cls ~aliases name exp] adds [exp] to a model.
+      (** [add cls ~aliases name exp model] adds [exp] to a model.
           [exp] is a representation of some register of class [cls]  (or it's part)
           and could be reached by [name] or [aliases] *)
-      val add : t -> cls -> ?aliases:name list -> name -> exp -> unit
+      val add : cls -> ?aliases:name list -> name -> exp -> t -> t
 
       (** [find model name] returns [Some exp] associated with [name].
           Returns None if no expression found. *)
