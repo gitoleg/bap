@@ -21,7 +21,7 @@ let make_cpu addr_size endian memory =
     | `r32 -> RTL.(jmp (low word e))
     | `r64 -> RTL.jmp e in
   let find cls n =
-    match Reg_model.Exp.find M.model (`Index n) with
+    match Reg_model.Exp.find M.model (`Index n) ~cls with
     | None ->
       mips_fail "%s with number %d not found"
         (Sexp.to_string (sexp_of_cls cls)) n

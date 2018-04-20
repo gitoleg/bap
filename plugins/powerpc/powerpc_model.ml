@@ -39,11 +39,35 @@ end
 let cr_bit = Cls.of_string "CRbit"
 let cr_field = Cls.of_string "CRfield"
 
+
+module type RM = sig
+  type t
+
+  type name = [
+    | `Index of int
+    | `Name of string
+  ]
+
+  val empty : t
+  val add  : cls -> ?aliases:name list -> var -> t -> t
+  val find  : t -> ?cls:cls -> name -> var option
+  val find_exn  : t -> ?cls:cls -> name -> var
+  val ec : t -> (op -> exp) ec
+  val all  : t -> cls -> var list
+
+  module Exp : sig
+    val add : cls -> ?aliases:name list -> name -> exp -> t -> t
+    val find  : t -> ?cls:cls -> name -> exp option
+    val find_exn : t -> ?cls:cls -> name -> exp
+    val all : t -> cls -> exp list
+  end
+end
+
 module Vars (B : Bitwidth) = struct
   open B
 
   let range32 = List.range 0 32
-  let model = Reg_model.create ()
+  let model = Reg_model.empty
 
   let reg n w = Var.create n (Type.imm w)
   let bit n = Var.create n (Type.imm 1)
@@ -80,10 +104,11 @@ module Vars (B : Bitwidth) = struct
 
   let regs = List.concat [gprs; fprs; vr;]
 
-  let () = List.iter regs
-      ~f:(fun (cls, reg, aliases) -> Reg_model.add model cls ~aliases reg)
+  let model = List.fold regs ~init:model
+      ~f:(fun m (cls, reg, aliases) -> Reg_model.add cls ~aliases reg m)
 
-  let () = List.iter ~f:(Reg_model.add model Cls.flag)
+  let model = List.fold ~init:model
+      ~f:(fun m f -> Reg_model.add Cls.flag f m)
       [so; ca; ov; ca32; ov32; fc; fl; fe; fg; fu]
 
   let cr_fields = [
@@ -97,21 +122,20 @@ module Vars (B : Bitwidth) = struct
     "CR7", 7, ("CR7UN", "CR7EQ", "CR7GT", "CR7LT");
   ]
 
-  (** check alias indexes here  *)
-  let () =
-    List.iter cr_fields
-      ~f:(fun (field, ind, (bit0,bit1,bit2,bit3)) ->
+  let model =
+    List.fold cr_fields ~init:model
+      ~f:(fun m (field, ind, (bit0,bit1,bit2,bit3)) ->
         let bit0 = bit bit0 in
         let bit1 = bit bit1 in
         let bit2 = bit bit2 in
         let bit3 = bit bit3 in
         let bit_index = 31 - ind * 4 in (** reverse indexes  *)
-        Reg_model.add model cr_bit ~aliases:[`Index (bit_index - 0)] bit0;
-        Reg_model.add model cr_bit ~aliases:[`Index (bit_index - 1)] bit1;
-        Reg_model.add model cr_bit ~aliases:[`Index (bit_index - 2)] bit2;
-        Reg_model.add model cr_bit ~aliases:[`Index (bit_index - 3)] bit3;
         let e = Exp.of_vars [bit3;bit2;bit1;bit0] in
-        Reg_model.Exp.add model cr_field ~aliases:[`Index ind] (`Name field) e)
+        Reg_model.add cr_bit ~aliases:[`Index (bit_index - 0)] bit0 m |>
+        Reg_model.add cr_bit ~aliases:[`Index (bit_index - 1)] bit1 |>
+        Reg_model.add cr_bit ~aliases:[`Index (bit_index - 2)] bit2 |>
+        Reg_model.add cr_bit ~aliases:[`Index (bit_index - 3)] bit3 |>
+        Reg_model.Exp.add cr_field ~aliases:[`Index ind] (`Name field) e)
 
 end
 

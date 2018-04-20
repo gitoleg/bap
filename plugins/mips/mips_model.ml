@@ -38,7 +38,7 @@ module Make_MIPS(S: Spec) : MIPS = struct
 
   let make_gpr = make_reg gpr_bitwidth
 
-  let model = Reg_model.create ()
+  let model = Reg_model.empty
 
   let gprs = [
     make_gpr "ZERO", "R0";
@@ -75,20 +75,23 @@ module Make_MIPS(S: Spec) : MIPS = struct
     make_gpr "RA", "R31";
   ]
 
-  let () = List.iteri gprs ~f:(fun ind (reg,alias) ->
+  let model = List.foldi gprs ~init:model ~f:(fun ind model (reg,alias) ->
       let aliases = [`Name alias; `Index ind] in
       let aliases = match S.addr_size with
         | `r32 -> aliases
         | `r64 ->
           `Name (Var.name reg ^ "_64") :: aliases in
-      Reg_model.add model ~aliases Cls.gpr reg)
+      Reg_model.add ~aliases Cls.gpr reg model)
 
-  let () = List.iter range32 (fun i ->
+  let model = List.fold range32 ~init:model ~f:(fun model i ->
       let reg = make_reg fpr_bitwidth (sprintf "f%d" i) in
-      Reg_model.add model ~aliases:[`Index i] Cls.fpr reg)
+      Reg_model.add ~aliases:[`Index i] Cls.fpr reg model)
 
   let hi = make_reg gpr_bitwidth "HI"
   let lo = make_reg gpr_bitwidth "LO"
+
+  let model = List.fold [hi; lo] ~init:model
+      ~f:(fun m x -> Reg_model.add Cls.system x m)
 
   module E = struct
     let hi = Exp.of_var hi
@@ -128,11 +131,7 @@ module Make_cpu(M : MIPS) : CPU = struct
   let cf = flag "CF"
   let vf = flag "VF"
   let nf = flag "NF"
-
-  let flags = Var.Set.of_list [
-      vf; cf; nf; zf;
-    ]
-
+  let flags = Var.Set.of_list [ vf; cf; nf; zf; ]
   let is = Var.same
   let is_reg r = Set.mem gpr (Var.base r)
   let is_mem = is mem
