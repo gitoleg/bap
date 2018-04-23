@@ -31,53 +31,76 @@ module Array = struct
   let unsafe_get a n = get a n
 end
 
-let propagate_consts bil =
-  let mapper known = object
+
+
+(** [remove_forward_defs bil defs]
+
+    for every [x := exp] in [bil], where [exp] depends on some
+    [y1 .. yN] redefined later then [x],
+    removes both [x] and [y1 .. yN] from defs *)
+let remove_forward_defs bil defs =
+  (object
+    inherit [exp Var.Map.t] Stmt.visitor
+    method! enter_move var e defs =
+      let redefined = Set.filter (Exp.free_vars e)
+          ~f:(fun v -> Bil.is_assigned v succs) in
+      if Set.is_empty redefined then defs
+      else
+        Set.fold ~init:(Map.remove defs var) redefined
+          ~f:(fun defs v ->
+              if Bil.is_assigned v succs then Map.remove defs v
+              else defs)
+  end)#run bil defs
+
+let substitute defs e =
+  let mapper defs = object
     inherit Stmt.mapper as super
-    method! map_var v = match Map.find known v with
+    method! map_var v = match Map.find defs v with
       | Some e -> e
       | None -> Bil.var v
   end in
-  let subst known e =
-    Exp.fold_consts @@ (mapper known)#map_exp e in
-  let diff known known' =
-    let diff  = Map.symmetric_diff known known' ~data_equal:Exp.equal in
-    Seq.fold diff ~init:known ~f:(fun known (v,diff) -> match diff with
-        | `Unequal _ -> Map.remove known v
-        | _ -> known) in
-  let rec run acc known = function
-    | [] -> List.rev acc,known
-    | Bil.Move (v,e) :: bil ->
-      let e = subst known e in
-      let known = Map.add known v e in
-      run (Bil.move v e :: acc) known bil
-    | Bil.If (cond,yes,no) :: bil ->
-      let yes,known_yes = run [] known yes in
-      let no,known_no  = run [] known no in
-      let cond, known' = match subst known cond with
-        | Bil.Int w as e when Word.(equal w b1) -> e, known_yes
-        | Bil.Int w as e when Word.(equal w b0) -> e, known_no
-        | e ->
-          let known = diff known known_yes in
-          let known = diff known known_no in
-          e, known in
-      run (Bil.if_ cond yes no :: acc) known' bil
-    | Bil.While (cond,body) :: bil ->
-      let body,known' = run [] known body in
-      let cond, known' = match subst known cond with
-        | Bil.Int w as e when Word.(equal w b1) -> e, known'
-        | cond -> cond, diff known known' in
-      run (Bil.while_ cond body :: acc) known' bil
-    | Bil.Jmp dst :: bil ->
-      let dst = subst known dst in
-      run (Bil.jmp dst :: acc) known bil
-    | s :: bil -> run (s :: acc) known bil in
-  let bil',_ = run [] Var.Map.empty bil in
-  bil'
+  Exp.fold_consts @@ (mapper defs)#map_exp e
 
-let bil_of_rtl rtl=
-  Translate.run rtl |>
-  propagate_consts
+let propagate_consts bil =
+  let remove_unequal defs defs' =
+    let diff = Map.symmetric_diff defs defs' ~data_equal:Exp.equal in
+    Seq.fold diff ~init:defs ~f:(fun defs (v,diff) -> match diff with
+        | `Unequal _ -> Map.remove defs v
+        | _ -> defs) in
+  let rec run ss defs = function
+    | [] -> List.rev ss, defs
+    | Bil.Move (v,e) :: bil ->
+      let defs, e = match substitute defs e with
+        | Bil.Int _ as e -> Map.add defs v e, e
+        | e -> defs, e in
+      run (Bil.move v e :: ss) defs bil
+    | Bil.If (cond,yes,no) :: bil ->
+      let yes,defs_yes = run [] defs yes in
+      let no, defs_no  = run [] defs no  in
+      let cond = substitute defs cond in
+      let defs' = match cond with
+        | Bil.Int w when Word.is_one  w -> defs_yes
+        | Bil.Int w when Word.is_zero w -> defs_no
+        | _ ->
+          let defs = remove_unequal defs defs_yes in
+          remove_unequal defs defs_no in
+      run (Bil.if_ cond yes no :: ss) defs' bil
+    | Bil.While (cond,body) :: bil ->
+      let defs = remove_forward_defs body defs in
+      let body, defs' = run [] defs body in
+      let cond = substitute defs cond in
+      let defs' = match cond with
+        | Bil.Int w when Word.is_one w -> defs'
+        | _ -> remove_unequal defs defs' in
+      run (Bil.while_ cond body :: ss) defs' bil
+    | Bil.Jmp dst :: bil ->
+      let dst = substitute defs dst in
+      run (Bil.jmp dst :: ss) defs bil
+    | s :: bil -> run (s :: ss) defs bil in
+  fst @@ run [] Var.Map.empty bil
+
+
+let bil_of_rtl rtl = Translate.run rtl |> propagate_consts
 
 module Lifter_model = struct
 
