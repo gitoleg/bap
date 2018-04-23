@@ -19,7 +19,6 @@ module RTL = struct
   include Helpers
 end
 
-
 module Array = struct
   type 'a t = 'a Array.t
 
@@ -32,7 +31,53 @@ module Array = struct
   let unsafe_get a n = get a n
 end
 
-let bil_of_rtl rtl = Helpers.norm_jumps (Translate.run rtl)
+let propagate_consts bil =
+  let mapper known = object
+    inherit Stmt.mapper as super
+    method! map_var v = match Map.find known v with
+      | Some e -> e
+      | None -> Bil.var v
+  end in
+  let subst known e =
+    Exp.fold_consts @@ (mapper known)#map_exp e in
+  let diff known known' =
+    let diff  = Map.symmetric_diff known known' ~data_equal:Exp.equal in
+    Seq.fold diff ~init:known ~f:(fun known (v,diff) -> match diff with
+        | `Unequal _ -> Map.remove known v
+        | _ -> known) in
+  let rec run acc known = function
+    | [] -> List.rev acc,known
+    | Bil.Move (v,e) :: bil ->
+      let e = subst known e in
+      let known = Map.add known v e in
+      run (Bil.move v e :: acc) known bil
+    | Bil.If (cond,yes,no) :: bil ->
+      let yes,known_yes = run [] known yes in
+      let no,known_no  = run [] known no in
+      let cond, known' = match subst known cond with
+        | Bil.Int w as e when Word.(equal w b1) -> e, known_yes
+        | Bil.Int w as e when Word.(equal w b0) -> e, known_no
+        | e ->
+          let known = diff known known_yes in
+          let known = diff known known_no in
+          e, known in
+      run (Bil.if_ cond yes no :: acc) known' bil
+    | Bil.While (cond,body) :: bil ->
+      let body,known' = run [] known body in
+      let cond, known' = match subst known cond with
+        | Bil.Int w as e when Word.(equal w b1) -> e, known'
+        | cond -> cond, diff known known' in
+      run (Bil.while_ cond body :: acc) known' bil
+    | Bil.Jmp dst :: bil ->
+      let dst = subst known dst in
+      run (Bil.jmp dst :: acc) known bil
+    | s :: bil -> run (s :: acc) known bil in
+  let bil',_ = run [] Var.Map.empty bil in
+  bil'
+
+let bil_of_rtl rtl=
+  Translate.run rtl |>
+  propagate_consts
 
 module Lifter_model = struct
 

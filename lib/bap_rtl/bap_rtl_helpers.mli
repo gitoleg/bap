@@ -32,7 +32,3 @@ val msb : exp -> exp
 
 (** [lsb e] - extracts the least significant bit from [e] *)
 val lsb : exp -> exp
-
-(** [norm_jumps bil] - evaluates as best as it possible all jumps
-    destinations in bil *)
-val norm_jumps : bil -> bil
