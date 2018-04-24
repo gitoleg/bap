@@ -72,7 +72,7 @@ let propagate_consts bil =
     | Bil.Move (v,e) :: bil ->
       let defs, e = match substitute defs e with
         | Bil.Int _ as e -> Map.add defs v e, e
-        | e -> defs, e in
+        | e -> Map.remove defs v, e in
       run (Bil.move v e :: ss) defs bil
     | Bil.If (cond,yes,no) :: bil ->
       let yes,defs_yes = run [] defs yes in
