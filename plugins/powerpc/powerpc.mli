@@ -20,36 +20,36 @@ module Std : sig
   module Array : module type of Array
 
   type cpu = {
-    load       : exp -> bitwidth -> exp;
-    store      : exp -> exp -> bitwidth -> rtl;
-    jmp        : exp -> rtl;
-    pc         : exp;
+    load       : 'a. 'a exp -> bitwidth -> rhs exp;
+    store      : 'a 'b. 'a exp -> 'b exp -> bitwidth -> rtl;
+    jmp        : 'a. 'a exp -> rtl;
+    pc         : rhs exp;
     word_width : bitwidth;
 
     (** registers  *)
-    reg       : (op -> exp) ec; (** construct exp from register *)
-    gpr       : int -> exp; (** general purpose registers 0..31 *)
-    fpr       : int -> exp; (** floating-point registers 0..31  *)
-    vr        : int -> exp; (** vector register 0..31           *)
-    ctr       : exp;       (** count register      *)
-    lr        : exp;       (** link register       *)
-    tar       : exp;       (** target register     *)
-    cr        : exp;       (** condition register  *)
-    cr0       : exp;       (** condition register field 0 *)
-    cr1       : exp;       (** condition register field 1 *)
-    cr2       : exp;       (** condition register field 2 *)
-    cr3       : exp;       (** condition register field 3 *)
-    cr4       : exp;       (** condition register field 4 *)
-    cr5       : exp;       (** condition register field 5 *)
-    cr6       : exp;       (** condition register field 6 *)
-    cr7       : exp;       (** condition register field 7 *)
+    reg       : (op -> lhs exp) ec; (** construct exp from register *)
+    gpr       : int -> lhs exp; (** general purpose registers 0..31 *)
+    fpr       : int -> lhs exp; (** floating-point registers 0..31  *)
+    vr        : int -> lhs exp; (** vector register 0..31           *)
+    ctr       : lhs exp;       (** count register      *)
+    lr        : lhs exp;       (** link register       *)
+    tar       : lhs exp;       (** target register     *)
+    cr        : lhs exp;       (** condition register  *)
+    cr0       : lhs exp;       (** condition register field 0 *)
+    cr1       : lhs exp;       (** condition register field 1 *)
+    cr2       : lhs exp;       (** condition register field 2 *)
+    cr3       : lhs exp;       (** condition register field 3 *)
+    cr4       : lhs exp;       (** condition register field 4 *)
+    cr5       : lhs exp;       (** condition register field 5 *)
+    cr6       : lhs exp;       (** condition register field 6 *)
+    cr7       : lhs exp;       (** condition register field 7 *)
 
     (** fixed precision flags *)
-    so        : exp; (** summary overflow        *)
-    ca        : exp; (** carry flag              *)
-    ov        : exp; (** overflow flag           *)
-    ca32      : exp; (** carry out of 32 bits    *)
-    ov32      : exp; (** overflow of 32 bits     *)
+    so        : lhs exp; (** summary overflow        *)
+    ca        : lhs exp; (** carry flag              *)
+    ov        : lhs exp; (** overflow flag           *)
+    ca32      : lhs exp; (** carry out of 32 bits    *)
+    ov32      : lhs exp; (** overflow of 32 bits     *)
   }
 
 
@@ -75,7 +75,7 @@ module Std : sig
   val (>.) : string -> lift -> unit
 
   (** [width e] returns a width of [e] as an expression *)
-  val width : exp -> exp
+  val width : 'a exp -> rhs exp
 
   (** class of condition register bit   *)
   val cr_bit   : cls
@@ -104,6 +104,8 @@ module Std : sig
     val ov32 : t (** overflow of 32 bits     *)
   end
 
+  type lexp = lhs exp
+
   module type PowerPC = sig
     val model : reg_model
     val mem : var
@@ -118,10 +120,10 @@ module Std : sig
     include Model with type t := var
 
     module E  : sig
-      include Model with type t := exp
+      include Model with type t := lexp
 
       (** condition register  *)
-      val cr  : exp
+      val cr  : lhs exp
     end
   end
 

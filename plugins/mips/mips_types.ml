@@ -5,15 +5,15 @@ open Mips_utils
 open Mips_model
 
 type cpu = {
-  load : exp -> bitwidth -> exp;
-  store : exp -> exp -> bitwidth -> rtl;
-  jmp : exp -> rtl;
-  cia : exp;
-  word_width : exp;
+  load : 'a. 'a exp -> bitwidth -> rhs exp;
+  store : 'a 'b. 'a exp -> 'b exp -> bitwidth -> rtl;
+  jmp : 'a. 'a exp -> rtl;
+  cia : rhs exp;
+  word_width : rhs exp;
   word_bitwidth : bitwidth;
-  reg : (op -> exp) ec;
-  gpr : int -> exp;
-  fpr : int -> exp;
-  hi : exp;
-  lo : exp;
+  reg : (op -> lhs exp) ec;
+  gpr : int -> lhs exp;
+  fpr : int -> lhs exp;
+  hi : lhs exp;
+  lo : lhs exp;
 }

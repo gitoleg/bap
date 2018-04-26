@@ -24,6 +24,8 @@ module type Bitwidth = sig
   val vr_bitwidth  : int
 end
 
+type lexp = lhs exp
+
 module type PowerPC = sig
   val model : reg_model
   val mem : var
@@ -31,37 +33,13 @@ module type PowerPC = sig
   include Model with type t := var
 
   module E  : sig
-    include Model with type t := exp
-    val cr  : exp
+    include Model with type t := lexp
+    val cr  : lhs exp
   end
 end
 
 let cr_bit = Cls.of_string "CRbit"
 let cr_field = Cls.of_string "CRfield"
-
-
-module type RM = sig
-  type t
-
-  type name = [
-    | `Index of int
-    | `Name of string
-  ]
-
-  val empty : t
-  val add  : cls -> ?aliases:name list -> var -> t -> t
-  val find  : t -> ?cls:cls -> name -> var option
-  val find_exn  : t -> ?cls:cls -> name -> var
-  val ec : t -> (op -> exp) ec
-  val all  : t -> cls -> var list
-
-  module Exp : sig
-    val add : cls -> ?aliases:name list -> name -> exp -> t -> t
-    val find  : t -> ?cls:cls -> name -> exp option
-    val find_exn : t -> ?cls:cls -> name -> exp
-    val all : t -> cls -> exp list
-  end
-end
 
 module Vars (B : Bitwidth) = struct
   open B
@@ -160,7 +138,7 @@ module Make_ppc(S : Spec) : PowerPC = struct
   module Vars = Vars(Bitwidth)
 
   module E = struct
-    type t = exp
+    type t = lhs exp
 
     open Vars
 

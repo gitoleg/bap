@@ -8,8 +8,10 @@ module type Model = sig
   val lo : t
 end
 
+type lexp = lhs exp
+
 module type MIPS = sig
-  module E : Model with type t := exp
+  module E : Model with type t := lexp
   include Model with type t := var
   val model : reg_model
   val mem : var

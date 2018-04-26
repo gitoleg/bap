@@ -26,6 +26,8 @@ module type Model = sig
   val ov32 : t (** overflow of 32 bits     *)
 end
 
+type lexp = lhs exp
+
 module type PowerPC = sig
   val model : reg_model
   val mem : var
@@ -40,10 +42,10 @@ module type PowerPC = sig
   include Model with type t := var
 
   module E  : sig
-    include Model with type t := exp
+    include Model with type t := lexp
 
     (** condition register  *)
-    val cr  : exp
+    val cr  : lhs exp
   end
 end
 

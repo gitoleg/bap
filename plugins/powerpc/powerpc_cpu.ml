@@ -14,8 +14,8 @@ let make_cpu addr_size endian memory =
     | `r64 -> (module PowerPC_64) in
   let open M.E in
   let reg = Reg_model.ec M.model in
-  let load = Mem_model.load M.mem endian in
-  let store = Mem_model.store M.mem endian in
+  let load x y = Mem_model.load M.mem endian x y in
+  let store x y z = Mem_model.store M.mem endian x y z in
   let pc = Memory.min_addr memory |>
            Exp.of_word |>
            Exp.signed in

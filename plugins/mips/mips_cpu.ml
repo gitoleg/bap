@@ -12,8 +12,8 @@ let make_cpu addr_size endian memory =
     | `r64 -> (module MIPS_64) in
   let open M.E in
   let reg = Reg_model.ec M.model in
-  let load = Mem_model.load M.mem endian in
-  let store = Mem_model.store M.mem endian in
+  let load e b = Mem_model.load M.mem endian e b in
+  let store a d w = Mem_model.store M.mem endian a d w in
   let cia = Memory.min_addr memory |>
             Exp.of_word |>
             Exp.signed in
