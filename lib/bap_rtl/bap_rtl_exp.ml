@@ -199,6 +199,8 @@ module Exp = struct
 
   let cast = cast
   let concat = concat
+
+  let ignore : 'a exp -> uexp = ident
 end
 
 module Infix = struct

@@ -386,8 +386,11 @@ open Bap.Std
 
 module Std : sig
 
+  type lhs [@@deriving bin_io, compare, sexp]
+  type rhs [@@deriving bin_io, compare, sexp]
+
   (** rtl expression  *)
-  type exp [@@deriving bin_io, compare, sexp]
+  type 'a exp [@@deriving bin_io, compare, sexp]
 
   (** rtl statement  *)
   type rtl [@@deriving bin_io, compare, sexp]
@@ -412,45 +415,45 @@ module Std : sig
   module RTL : sig
 
     (** [zero] is a one bit length expression set to zero *)
-    val zero : exp
+    val zero : rhs exp
 
     (** [one] is a one bit length expression set to one *)
-    val one  : exp
+    val one  : rhs exp
 
     (** [ones] is an expression with all bits set to one *)
-    val ones  : exp
+    val ones  : rhs exp
 
     (** [low width e] extracts low [width] bits from [e]  *)
-    val low : bitwidth -> exp -> exp
+    val low : bitwidth -> 'a exp -> 'a exp
 
     (** [high width e] extracts high [width] bits from [e]  *)
-    val high : bitwidth -> exp -> exp
+    val high : bitwidth -> 'a exp -> 'a exp
 
     (** [first e n] extracts first [n] bits from [e], starting from
         the least significant bit *)
-    val first : exp -> int -> exp
+    val first : 'a exp -> int -> 'a exp
 
     (** [last e n] extracts last [n] bits from [e], where the
         last bit is the most significant bit *)
-    val last : exp -> int -> exp
+    val last : 'a exp -> int -> 'a exp
 
     (** [nth width e n] extracts a portion of [e] of width [width] at
         index [n], where each index points to a portion of width [width].
         Indexes are zero based and started from the least significant portion.
         E.g. [nth halfword e 1] extracts a second halfword from [e] *)
-    val nth : bitwidth -> exp -> int -> exp
+    val nth : bitwidth -> 'a exp -> int -> 'a exp
 
     (** [msb e] extracts the most significant bit from [e] *)
-    val msb : exp -> exp
+    val msb : 'a exp -> 'a exp
 
     (** [lsb e] extracts the least significant bit from [e] *)
-    val lsb : exp -> exp
+    val lsb : 'a exp -> 'a exp
 
     (** [if_ cond then_ else_] *)
-    val if_ : exp -> rtl list -> rtl list -> rtl
+    val if_ : 'a exp -> rtl list -> rtl list -> rtl
 
     (** [jmp addr] jump to an address [addr] *)
-    val jmp : exp -> rtl
+    val jmp : 'a exp -> rtl
 
     (** [foreach step e rtl] repeat [rtl] for each [step] of [e].
         One must create an iteration variable to iterate over some
@@ -482,17 +485,17 @@ module Std : sig
         ]
         ...
         will set a most significant byte of [reg] to zero *)
-    val foreach : exp -> exp -> rtl list -> rtl
+    val foreach : lhs exp -> lhs exp -> rtl list -> rtl
 
     (** [foreach' step e rtl] the same as [foreach] above, but starts
         iteration from the most significant [step] *)
-    val foreach' : exp -> exp -> rtl list -> rtl
+    val foreach' : lhs exp -> lhs exp -> rtl list -> rtl
 
     (** [when_ cond rtl] = if_ cond rtl [] *)
-    val when_ : exp -> rtl list -> rtl
+    val when_ : 'a exp -> rtl list -> rtl
 
     (** [ifnot cond rtl] = if_ cond [] rtl *)
-    val ifnot : exp -> rtl list -> rtl
+    val ifnot : 'a exp -> rtl list -> rtl
 
     (** switch clause  *)
     type clause
@@ -508,10 +511,10 @@ module Std : sig
           default [rs := zero];
         ]
         ...  *)
-    val switch  : exp -> clause list -> rtl
+    val switch  : 'a exp -> clause list -> rtl
 
     (** [case exp code] creates a switch case *)
-    val case : exp -> rtl list -> clause
+    val case : 'a exp -> rtl list -> clause
 
     (** [default code] creates a switch default *)
     val default : rtl list -> clause
@@ -522,11 +525,11 @@ module Std : sig
     (** [extract hi lo e] extracts portion of [e] starting
         from bit [lo] to bit [hi], all bounds are inclusive.
         Bits indexes start from the least significant bit. *)
-    val extract : int -> int -> exp -> exp
+    val extract : int -> int -> 'a exp -> 'a exp
 
     (** [store mem addr data endian size] stores a [data]
         of [size] at [addr] from [mem] with [endian]. *)
-    val store : var -> exp -> exp -> endian -> size -> rtl
+    val store : var -> 'a exp -> 'a exp -> endian -> size -> rtl
 
     (** Set of operators. Briefly it contains next operators:
         - assignment
@@ -534,61 +537,61 @@ module Std : sig
         - logical operators: lnot, land, lor, lxor  *)
 
     (** [x := y] assignment *)
-    val ( := ) : exp -> exp -> rtl
+    val ( := ) : lhs exp -> 'a exp -> rtl
 
     (** [x + y] sum *)
-    val ( + ) : exp -> exp -> exp
+    val ( + ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x - y] substraction *)
-    val ( - ) : exp -> exp -> exp
+    val ( - ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x * y] multiplication *)
-    val ( * ) : exp -> exp -> exp
+    val ( * ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x / y] division *)
-    val ( / ) : exp -> exp -> exp
+    val ( / ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x ^ y] concatenation *)
-    val ( ^ ) : exp -> exp -> exp
+    val ( ^ ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x % y] modulo *)
-    val ( % ) : exp -> exp -> exp
+    val ( % ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x < y] less than *)
-    val ( < ) : exp -> exp -> exp
+    val ( < ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x > y] greater than *)
-    val ( > ) : exp -> exp -> exp
+    val ( > ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x <= y] less than or equal *)
-    val ( <= ) : exp -> exp -> exp
+    val ( <= ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x >= y] greater than or equal *)
-    val ( >= ) : exp -> exp -> exp
+    val ( >= ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x = y] equal *)
-    val ( = ) : exp -> exp -> exp
+    val ( = ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x <> y] not equal *)
-    val ( <> ) : exp -> exp -> exp
+    val ( <> ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x << y] shift left *)
-    val ( << )  : exp -> exp -> exp
+    val ( << )  : 'a exp -> 'b exp -> rhs exp
 
     (** [x >> y] shift right *)
-    val ( >> )  : exp -> exp -> exp
+    val ( >> )  : 'a exp -> 'b exp -> rhs exp
 
     (** [x lor y] logical or *)
-    val ( lor )  : exp -> exp -> exp
+    val ( lor )  : 'a exp -> 'b exp -> rhs exp
 
     (** [x land y] logical and *)
-    val ( land ) : exp -> exp -> exp
+    val ( land ) : 'a exp -> 'b exp -> rhs exp
 
     (** [x lxor y] lofical xor *)
-    val ( lxor ) : exp -> exp -> exp
+    val ( lxor ) : 'a exp -> 'b exp -> rhs exp
 
     (** [lnot x] logical not *)
-    val lnot : exp -> exp
+    val lnot : 'a exp -> rhs exp
 
   end
 
@@ -604,21 +607,21 @@ module Std : sig
     val unsigned : 'a ec -> 'a
 
     (** [imm] immediate constructor, constructs an immediate from operand *)
-    val imm : (op -> exp) ec
+    val imm : (op -> rhs exp) ec
 
     (** [fixed_imm] immediate constructor, construct an immediate of
         [bitwidth] from operand *)
-    val fixed_imm : (bitwidth -> op -> exp) ec
+    val fixed_imm : (bitwidth -> op -> rhs exp) ec
 
     (** [var] variable constructor, constructs a variable of [bitwidth] *)
-    val var : (bitwidth -> exp) ec
+    val var : (bitwidth -> lhs exp) ec
 
     (** [const] constant constructor, constructs a constant of [bitwidth] and integer *)
-    val const : (bitwidth -> int -> exp) ec
+    val const : (bitwidth -> int -> rhs exp) ec
 
     (** [reg search] register constructor, construct a register expression from
         a search function and operand *)
-    val reg : (reg -> exp) -> (op -> exp) ec
+    val reg : (reg -> lhs exp) -> (op -> lhs exp) ec
 
     (** [of_string] constructs an expression from string.
         String must be either in a decimal, binary, octal or hexadecimal format.
@@ -630,7 +633,7 @@ module Std : sig
          - bitwidth of [unsigned of_string "0o474"] is eqauls to 9;
          - bitwidth of [unsigned of_string "0b03FA"] is eqauls to 16;
          - bitwidth of [unsigned of_string "42"] is eqauls to 6; *)
-    val of_string : (string -> exp) ec
+    val of_string : (string -> rhs exp) ec
   end
 
 
@@ -640,29 +643,29 @@ module Std : sig
   module Exp : sig
 
     (** [of_var v] creates an expression from variable [v] *)
-    val of_var  : var -> exp
+    val of_var  : var -> lhs exp
 
     (** [of_vars vs] creates an expression as a concatination of [vs] *)
-    val of_vars : var list -> exp
-
-    (** [of_word w] creates an expression from word [w]   *)
-    val of_word : word -> exp
+    val of_vars : var list -> lhs exp
 
     (** [tmp width] creates an expression of temporary variable of [width] *)
-    val tmp : int -> exp
+    val tmp : int -> lhs exp
+
+    (** [of_word w] creates an expression from word [w]   *)
+    val of_word : word -> rhs exp
 
     (** [width e] returns a bitwidth of an [e] *)
-    val width  : exp -> int
+    val width  : 'a exp -> int
 
     (** [signed e] treats [e] as signed *)
-    val signed : exp -> exp
+    val signed : 'a exp -> 'a exp
 
     (** [unsigned e] treats [e] as unsigned *)
-    val unsigned : exp -> exp
+    val unsigned : 'a exp -> 'a exp
 
     (** [load mem addr endian size] loads a data of [size]
         at [addr] from [mem] with [endian]. *)
-    val load : var -> exp -> endian -> size -> exp
+    val load : var -> 'a exp -> endian -> size -> rhs exp
 
   end
 
@@ -685,17 +688,17 @@ module Std : sig
 
     (** [load addr size] returns an exp, that describes a loading
         of a chunk of [size] from memory at [addr] *)
-    type load = exp -> bitwidth -> exp
+    type 'a load = 'a exp -> bitwidth -> rhs exp
 
     (** [store addr data size] returns a statement, that
         describes a storing [data] of [size] to a memory at [addr] *)
-    type store = exp -> exp -> bitwidth -> rtl
+    type ('a, 'b) store = 'a exp -> 'b exp -> bitwidth -> rtl
 
     (** [load mem endian]  *)
-    val load  : var -> endian -> load
+    val load  : var -> endian -> 'a load
 
     (** [store mem endian]  *)
-    val store : var -> endian -> store
+    val store : var -> endian -> ('a, 'b) store
   end
 
   (** Register representation.
@@ -774,22 +777,22 @@ module Std : sig
 
     (** [ec model] returns a register expression constructor
         that constructs a register expression from operand *)
-    val ec : t -> (op -> exp) ec
+    val ec : t -> (op -> lhs exp) ec
 
     module Exp : sig
 
       (** [add cls ~aliases name exp model] adds [exp] to a model.
           [exp] is a representation of some register of class [cls]  (or it's part)
           and could be reached by [name] or [aliases] *)
-      val add : cls -> ?aliases:name list -> name -> exp -> t -> t
+      val add : cls -> ?aliases:name list -> name -> lhs exp -> t -> t
 
       (** [find model name] returns [Some exp] associated with [name].
           Returns None if no expression found. *)
-      val find  : t -> ?cls:cls -> name -> exp option
+      val find  : t -> ?cls:cls -> name -> lhs exp option
 
-      val find_exn : t -> ?cls:cls -> name -> exp
+      val find_exn : t -> ?cls:cls -> name -> lhs exp
 
-      val all : t -> cls -> exp list
+      val all : t -> cls -> lhs exp list
     end
   end
 
