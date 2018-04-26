@@ -18,18 +18,23 @@ type body =
   | Pattern of word
 [@@deriving bin_io, compare, sexp]
 
-type exp = {
+type uexp = {
   body : body;
   sign : sign;
   width : int;
 } [@@deriving bin_io, compare, sexp]
 
+type lhs [@@deriving bin_io, compare, sexp]
+type rhs [@@deriving bin_io, compare, sexp]
+
+type 'a exp = uexp [@@deriving bin_io, compare, sexp]
+
 type rtl =
-  | Move of exp * exp
-  | Jmp of exp
-  | Store of var * exp * exp * endian * size
-  | If of exp * rtl list * rtl list
-  | Foreach of bool * exp * exp * rtl list
+  | Move of uexp * uexp
+  | Jmp of uexp
+  | Store of var * uexp * uexp * endian * size
+  | If of uexp * rtl list * rtl list
+  | Foreach of bool * uexp * uexp * rtl list
   | Message of string
 [@@deriving bin_io, compare, sexp]
 

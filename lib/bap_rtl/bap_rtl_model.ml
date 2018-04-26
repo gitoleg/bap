@@ -15,8 +15,8 @@ let size_of_width x =
 
 module Mem = struct
 
-  type load = exp -> bitwidth -> exp
-  type store = exp -> exp -> bitwidth -> rtl
+  type 'a load = 'a exp -> bitwidth -> rhs exp
+  type ('a, 'b) store = 'a exp -> 'b exp -> bitwidth -> rtl
 
   let load mem endian =
     fun addr width ->
@@ -91,7 +91,7 @@ module Reg = struct
   type name = Name.t [@@deriving bin_io,compare,sexp]
 
   type data = {
-    exp : exp;
+    exp : lhs exp;
     var : var option;
   }
 
