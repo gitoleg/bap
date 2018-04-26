@@ -8,13 +8,13 @@ module Rtl : sig
   val if_ : 'a exp -> rtl list -> rtl list -> rtl
   val jmp : 'a exp -> rtl
 
-  (** [foreach step e code] - repeats [code] for each
-      [step] of [e]. *)
-  val foreach : lhs exp -> lhs exp -> rtl list -> rtl
 
-  (** [foreach' step e code] - the same as above, but starts iteration
-      from the most significant bits of [e]. *)
+  val foreach : lhs exp -> 'a exp -> rtl list -> rtl
+  val foreach_rev : lhs exp -> 'a exp -> rtl list -> rtl
+
   val foreach' : lhs exp -> lhs exp -> rtl list -> rtl
+  val foreach_rev' : lhs exp -> lhs exp -> rtl list -> rtl
+
 
   val message : string -> rtl
 

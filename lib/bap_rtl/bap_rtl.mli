@@ -64,6 +64,13 @@
 
     {3 Expressions}
 
+    RTL distinguishes left hand side expressions (lhs) and right hand
+    side expressions (rhs). The only purpose is to be sure that every
+    assignment has the following form:
+    {v
+       lhs := rhs;
+    v}
+
     There are many ways to construct expressions, but only few of
     them are designed for using in lifter functions. Usualy, one needs
     to deal with instructions operands, constants and have some
@@ -83,11 +90,11 @@
    {v
      let ra = unsigned   imm   op.(0)
               -------- ------- ------
-                 ^         ^      ^
-                 |         |      |
-      content is |         |      |
-      unsigned __|         |      |
-                           |      |
+                  ^       ^       ^
+                  |       |       |
+      content is  |       |       |
+      unsigned __ |       |       |
+                          |       |
                  claim immediate from operands array at index 0
     v}
 
@@ -468,11 +475,15 @@ module Std : sig
            foreach byte_i reg [
                cnt := cnt + one;
            ]
-        ]
-        ...
+        ] *)
+    val foreach : lhs exp -> 'a exp -> rtl list -> rtl
 
-        One can use iteration variable to change content of register,
-        e.g. :
+    (** [foreach_rev step e rtl] the same as [foreach] above, but starts
+        iteration from the most significant [step] *)
+    val foreach_rev : lhs exp -> 'a exp -> rtl list -> rtl
+
+    (** [foreach' step e rtl] same as [foreach] above, but also
+        allows to changed an [e], e.g.
         ...
         RTL.[
            cnt := zero;
@@ -485,11 +496,11 @@ module Std : sig
         ]
         ...
         will set a most significant byte of [reg] to zero *)
-    val foreach : lhs exp -> lhs exp -> rtl list -> rtl
+    val foreach' : lhs exp -> 'a exp -> rtl list -> rtl
 
-    (** [foreach' step e rtl] the same as [foreach] above, but starts
+    (** [foreach_rev' step e rtl] the same as [foreach'] above, but starts
         iteration from the most significant [step] *)
-    val foreach' : lhs exp -> lhs exp -> rtl list -> rtl
+    val foreach_rev' : lhs exp -> lhs exp -> rtl list -> rtl
 
     (** [when_ cond rtl] = if_ cond rtl [] *)
     val when_ : 'a exp -> rtl list -> rtl
