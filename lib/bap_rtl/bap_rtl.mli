@@ -1,9 +1,5 @@
 
 (**
-    TODO:
-      - documentation
-      - modularization
-
     {2 Intro}
 
     The main idea of [Bap_rtl] library is to make a life of
@@ -224,7 +220,7 @@
     The most compicated (and powerful!) thing in assignment is it's
     left part. Basicly, a valid expression in a left side of
     assignment is either of:
-     - constructed with var/reg constructors;
+     - constructed with var/reg constructors, [Exp.of_var], [Exp.of_vars], [Exp.tmp]
      - extraction from above.
     Assignments could be done only on lhs expressions.
 
