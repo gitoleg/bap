@@ -17,7 +17,11 @@ module Rtl = struct
   let move x y = Move (x,y)
   let if_ cond then_ else_ = If (cond, then_, else_)
   let foreach  step exp code = Foreach (false,step,exp,code)
-  let foreach' step exp code = Foreach (true,step,exp,code)
+  let foreach_rev step exp code = Foreach (true,step,exp,code)
+
+  let foreach' = foreach
+  let foreach_rev' = foreach_rev
+
   let message m = Message m
 
   let when_ cond then_ = if_ cond then_ []
