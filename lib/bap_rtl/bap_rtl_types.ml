@@ -34,7 +34,7 @@ type rtl =
   | Jmp of uexp
   | Store of var * uexp * uexp * endian * size
   | If of uexp * rtl list * rtl list
-  | Foreach of bool * uexp * uexp * rtl list
+  | Block of rtl list
   | Message of string
 [@@deriving bin_io, compare, sexp]
 

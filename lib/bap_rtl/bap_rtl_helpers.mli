@@ -32,3 +32,9 @@ val msb : 'a exp -> 'a exp
 
 (** [lsb e] - extracts the least significant bit from [e] *)
 val lsb : 'a exp -> 'a exp
+
+val foreach : lhs exp -> 'a exp -> rtl list -> rtl
+val foreach_rev : lhs exp -> 'a exp -> rtl list -> rtl
+
+val foreach' : lhs exp -> lhs exp -> rtl list -> rtl
+val foreach_rev' : lhs exp -> lhs exp -> rtl list -> rtl
