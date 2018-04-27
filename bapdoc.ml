@@ -48,6 +48,7 @@ let libraries = [
     "bap-dwarf", "Bap_dwarf.Std", "native DWARF parser";
     "bap-ida", "Bap_ida.Std", "call IDA from OCaml";
     "bap-llvm", "Bap_llvm.Std", "setup LLVM backend";
+    "bap-rtl", "Bap_rtl.Std", "provides primitives for lifters developers";
     "bap-traces", "Bap_traces.Std", "loading execution traces";
     "bap-strings", "Bap_strings.Std", "text and string processing utilities";
     "text-tags", "Text_tags", "Use semantics tags to format your texts";
