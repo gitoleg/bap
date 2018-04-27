@@ -225,8 +225,10 @@
     left part. Basicly, a valid expression in a left side of
     assignment is either of:
      - constructed with var/reg constructors;
-     - extraction or concatenation of above.
-    So there are few examples of correct assignment:
+     - extraction from above.
+    Assignments could be done only on lhs expressions.
+
+    So there are few examples:
 
    {[
      let rt = unsigned cpu.reg op.(0) in
@@ -234,8 +236,8 @@
      let tmp1 = unsigned var word in
      let tmp2 = unsigned var word in
      RTL.[
+       rt := zero;
        low byte tmp1 := im;
-       tmp1 ^ tmp2 := rt;
        nbit rt 2 := one;
      ]
    ]}
