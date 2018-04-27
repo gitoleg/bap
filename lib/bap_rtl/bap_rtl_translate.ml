@@ -97,48 +97,19 @@ let rec move lhs rhs =
 
 let jmp exp = Bil.[ jmp (bil_exp exp)]
 
-class move_finder var =
-  object inherit [unit] Stmt.finder
-    method! enter_move v _ r =
-      if Var.equal var v then r.return (Some ())
-      else r
-  end
-
-let var_of_exp e = match e.body with
-  | Vars (v,_) -> v
-  | _ -> failwith "variable expected"
-
 let rec stmt_to_bil = function
   | Move (x,y) -> move x y
   | Jmp a -> jmp a
   | If (cond, then_, else_) -> if_ cond (to_bil then_) (to_bil else_)
   | Message m -> [Bil.special m]
+  | Block rtl -> to_bil rtl
   | Store (mem, addr, data, endian, size) ->
     let bits = Size.in_bits size in
     let data =
       if bits = Exp.width data then data
       else Exp.extract (bits - 1) 0 data in
     store mem addr data endian size
-  | Foreach (inverse,step_e, e, code) ->
-    let iters = Exp.width e / Exp.width step_e in
-    let stepw = Exp.width step_e in
-    let has_assignments = has_assignments (var_of_exp step_e) code in
-    to_bil @@ List.concat
-      (List.init iters
-         ~f:(fun i ->
-             let i = if inverse then iters - i - 1 else i in
-             let hi = (i + 1) * stepw - 1 in
-             let lo = i * stepw in
-             if has_assignments then
-               let last = Infix.(Exp.extract hi lo e := step_e) in
-               Infix.(step_e := Exp.extract hi lo e) :: code @ [last]
-             else
-               Infix.(step_e := Exp.extract hi lo e) :: code))
 and to_bil ts =
   List.concat (List.map ~f:stmt_to_bil ts)
-and has_assignments var rtl =
-  let bil = to_bil rtl in
-  Option.is_some ((new move_finder var)#find bil)
-
 
 let run = to_bil

@@ -8,14 +8,6 @@ module Rtl : sig
   val if_ : 'a exp -> rtl list -> rtl list -> rtl
   val jmp : 'a exp -> rtl
 
-
-  val foreach : lhs exp -> 'a exp -> rtl list -> rtl
-  val foreach_rev : lhs exp -> 'a exp -> rtl list -> rtl
-
-  val foreach' : lhs exp -> lhs exp -> rtl list -> rtl
-  val foreach_rev' : lhs exp -> lhs exp -> rtl list -> rtl
-
-
   val message : string -> rtl
 
   val when_ : 'a exp -> rtl list -> rtl

@@ -471,6 +471,7 @@ module Std : sig
         expression. So, in example below, assuming the first operand
         is a 64-bit imm, [cnt] will be equal to 8 and [my_byte]
         will be equal to the second byte of the imm.
+        {v
         ...
         let imm = unsigned imm ops.(0) in
         let cnt = unsigned const byte in
@@ -484,7 +485,8 @@ module Std : sig
                ];
                cnt := cnt + one;
            ]
-        ] *)
+        ]
+        v} *)
     val foreach : lhs exp -> 'a exp -> rtl list -> rtl
 
     (** [foreach_rev step e rtl] the same as [foreach] above, but starts
@@ -492,8 +494,8 @@ module Std : sig
     val foreach_rev : lhs exp -> 'a exp -> rtl list -> rtl
 
     (** [foreach' step e rtl] same as [foreach] above, but also
-        allows to changed an [e], e.g.
-        ...
+        allows to change the expression [e] itself, e.g.
+        {v
         let reg = unsigned reg ops.(0) in
         let cnt = unsigned const byte in
         let byte_i = unsigned var byte in
@@ -506,8 +508,8 @@ module Std : sig
                cnt := cnt + one;
            ]
         ]
-        ...
-        will set a least significant byte of [reg] to zero *)
+        v}
+        will set the least significant byte of [reg] to zero *)
     val foreach' : lhs exp -> lhs exp -> rtl list -> rtl
 
     (** [foreach_rev' step e rtl] the same as [foreach'] above, but starts
