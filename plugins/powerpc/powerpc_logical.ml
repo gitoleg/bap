@@ -75,7 +75,7 @@ let ori cpu ops =
   RTL.[ ra := rs lor im; ]
 
 (** 60 00 00 00    nop   (equivalen to ori 0,0,0 *)
-let nop cpu ops = []
+let nop _cpu _ops = []
 
 (** Fixed-point OR Immediate Shifted
     Pages 92-98 of IBM Power ISATM Version 3.0 B
@@ -311,7 +311,7 @@ let cmpb cpu ops =
   RTL.[
     ind := zero;
     tmp := zero;
-    foreach byte_k tmp [
+    foreach' byte_k tmp [
       byte_i := nth byte (rs << (ind * sh)) 0;
       byte_j := nth byte (rb << (ind * sh)) 0;
       when_ (byte_i = byte_j) [
@@ -341,7 +341,7 @@ let popcntw cpu ops =
   RTL.[
     res := zero;
     ind := zero;
-    foreach word_j res [
+    foreach' word_j res [
       cnt := zero;
       word_i := nth word (rs << ind * x) 0;
       foreach bit_i word_i [

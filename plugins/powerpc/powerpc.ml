@@ -6,7 +6,9 @@ open Powerpc_types
 
 module Shadow_rtl = struct
   open Bitwidth
-  let foreach = RTL.foreach'
+
+  let foreach = RTL.foreach_rev
+  let foreach' = RTL.foreach_rev'
 
   let first e bits =
     let w = Exp.width e in

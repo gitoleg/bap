@@ -143,7 +143,7 @@ let bitswap cpu ops =
   let byte_ind = unsigned var byte in
   RTL.[
     cnt := zero;
-    foreach biti rd [
+    foreach' biti rd [
       byte_ind := cnt / width;
       pos := byte_ind * width + (max_ind - (cnt % width));
       biti := lsb (rt >> pos);
@@ -165,7 +165,7 @@ let dbitswap cpu ops =
   let byte_ind = unsigned var byte in
   RTL.[
     cnt := zero;
-    foreach biti rd [
+    foreach' biti rd [
       byte_ind := cnt / width;
       pos := byte_ind * width + (max_ind - (cnt % width));
       biti := lsb (rt >> pos);
