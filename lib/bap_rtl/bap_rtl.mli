@@ -1,5 +1,9 @@
 
 (**
+    TODO:
+      - documentation
+      - modularization
+
     {2 Intro}
 
     The main idea of [Bap_rtl] library is to make a life of
@@ -18,14 +22,6 @@
     code.
 
     Bap_rtl is a foundation, where one can build a lifter.
-    It consists from the next modules:
-    - RTL
-    - Bitwidth
-    - Ec
-    - Reg_model
-    - Mem_model
-    - Lifter_model
-
     So proposed usage is just to open at the very beginning of your
     module:
 
@@ -193,10 +189,10 @@
     false (0) and [<] will be unsigned comparison.
 
     The same is true for shift operators: [>>] and [<<].
-    There is not such thing as logical shift operator, i.e. such one
-    that does shift without sign taking in account.
-    But shift is a logical one if operand is unsigned. And otherwise,
-    shift is an arithmetical one if operand is signed.
+    Any shift is a logical one if operand is unsigned. And otherwise,
+    shift is an arithmetical one if operand is signed, that could be
+    usefule in case of right shift, that behaves like arithmetical
+    shift (asr) if oparand is signed:
 
    {[
      let x = signed const halfword 0xFAAA in
@@ -206,9 +202,9 @@
        y := x >> s;
      ]
    ]}
-    If [x] is signed, like in example above, then shift is
-    arithmetical, and result is 0xFFAA. If [x] is unsigned, then shift
-    is logical and result is Ox0FAA.
+    The result is 0xFFAA since [x] is signed.
+    If [x] woulbe be is unsigned, then shift is logical and result is
+    Ox0FAA.
 
     {4 Assignment}
 
@@ -282,17 +278,40 @@
 
     {2 Target architecture model}
 
-    It's a most tricky part, because it requires a deep
-    understanding how architecture looks like, what registers
-    and flags are defined, what operands are used
-    by instructions, etc. And etc.
-    E.g. register with name "A" could be aliased as "a", and model
+    Usually, one needs to describe a target architecture
+    somehow before starting to lift instructions. Also,
+    one needs to create a sort of table for instructions
+    lifters, invent a mechanism to add and to extract
+    those lifters when necessary. It's a most tricky part,
+    because it requires a deep understanding of architecture
+    internals, what registers  and flags are defined, what operands
+    are used by instructions, etc. And etc.
+    And though it's a user responsibility to describe model, there is
+    something that could come in handy, But neither of the following
+    models is mandatory.
+
+    {3 Registers and expressions}
+
+    RTL does not allow to use instructions operands directly:
+    one should convert them to expressoins instead.
+    It's quite obvious what to do with immediate operands,
+    beacuse there is a special expression constructor for them.
+
+    But it's a bit different story in case of registers,
+    an architecture details required here. That is why
+    [reg] expression constructor differs from other constructors and
+    takes a function that converts register operand to an
+    expression. So, it's enough to write such function, that will
+    return an expression for any register operand and [reg]
+    expression constructor is ready.
+
+    Also often registers have aliases, or even indexes, e.g.
+    register with name "A" could be aliased as "a", and model
     should be ready to handle both names.
     Also, certain instructions could encode this register just like
     an immediate "42", and a model should be ready for this too.
 
-    It's a user responsibility to describe model. But there is
-    something that could come in handy.
+    [Reg_model] partly simplify a process of model creation.
 
     {3 Memory model}
 
@@ -304,33 +323,15 @@
     this knowledge and don't mention it in lifter, because it
     leads to duplicated, more verbose and less readable code.
     So, we can create a memory model and reduce user code for
-    load/store instructions. See [Model.Mem] for details.
+    load/store instructions. See [Mem_model] for details.
 
-    {3 Registers and expressions}
+    {3 Lifter}
 
-    RTL does not allow to use instructions operands directly:
-    one should convert them to expressoins instead.
-    It's quite obvious what to do with immediate operands,
-    beacuse there is a special expression constructor for them.
-
-    But it's a bit different story in case of registers,
-    an architecture details required here. That is why
-    [reg] expression constructor takes a function that converts
-    register operand to an expression. So, it's enough
-    to write a find function, that will return
-    an expression for any register operand and [reg]
-    expression constructor is ready.
-
-    There is [Model.Reg], that partly simplify a process
-    of model creation: it allows to create model, add
-    registers (of any representation), supports aliases,
-    provides searching functions.
-
-
-    {2 Misc}
-
-    There are few useful constructions that either a part of RTL
-    ([if_], [foreach]) or simplify code ([when_], [ifnot], [switch]).
+    Finally, lifter model simplifies registration of lifted
+    instructions and translating RTL to BIL, i.e. build a
+    general bap lifter, so a user doesn't need to care
+    about how to store lifted instructions, how to perform a
+    search when instruction is needed.
 
     {2 Complete example}
 
@@ -345,10 +346,12 @@
      7   let xv = unsigned const word 42 in
      8   let sh = unsinged const byte 2 in
      9   RTL.[
-         10     rt := ra + im;
-         11     tm = cpu.load rt halfword + xv;
-         12     rc := (tm << sh) + cpu.ca;
-         13   ]
+    10     rt := ra + im;
+    11     tm = cpu.load rt halfword + xv;
+    12     rc := (tm << sh) + cpu.ca;
+    13   ]
+    14
+    15 let () = register "SomeSortOfAdd" sort_of_add
    ]}
 
     There is a lifter for instruction [SomeSortOfAdd]. It has two
@@ -365,10 +368,11 @@
     written to [rc] register.
 
     How did author implement lifter for this instruction:
-    - [line 1] - defined a function with two arguments
-    - [lines 2-5] - parsed instruction operands
-    - [lines 6-8] - defined useful constants
+    - [line 1]     - defined a function with two arguments
+    - [lines 2-5]  - parsed instruction operands
+    - [lines 6-8]  - defined useful constants
     - [lines 9-13] - wrote RTL code for this instruction.
+    - [lines 15]   - registered lifter for this instruction.
 
     What happens on each line of RTL code:
     - [line 10]: sum of signed [ra] and unsigned imm is a signed expression,
@@ -402,7 +406,7 @@ module Std : sig
   (** rtl statement  *)
   type rtl [@@deriving bin_io, compare, sexp]
 
-  (** [bil_of_rtl rtl] returns a bil code *)
+  (** [bil_of_rtl rtl] converts rtl to a classic bap BIL code *)
   val bil_of_rtl : rtl list -> bil
 
   (** Operands and registers bitwidth.  *)
@@ -465,14 +469,19 @@ module Std : sig
     (** [foreach step e rtl] repeat [rtl] for each [step] of [e].
         One must create an iteration variable to iterate over some
         expression. So, in example below, assuming the first operand
-        is a 64-bit register, [cnt] will be equal to 8:
+        is a 64-bit imm, [cnt] will be equal to 8 and [my_byte]
+        will be equal to the second byte of the imm.
         ...
-        let reg = unsigned reg ops.(0) in
+        let imm = unsigned imm ops.(0) in
         let cnt = unsigned const byte in
         let byte_i = unsigned var byte in
+        let my_byte = unsigned var byte in
         RTL.[
            cnt := zero;
-           foreach byte_i reg [
+           foreach byte_i imm [
+               when_ (cnt = one) [
+                   my_byte := byte_i;
+               ];
                cnt := cnt + one;
            ]
         ] *)
@@ -485,6 +494,9 @@ module Std : sig
     (** [foreach' step e rtl] same as [foreach] above, but also
         allows to changed an [e], e.g.
         ...
+        let reg = unsigned reg ops.(0) in
+        let cnt = unsigned const byte in
+        let byte_i = unsigned var byte in
         RTL.[
            cnt := zero;
            foreach byte_i reg [
@@ -495,8 +507,8 @@ module Std : sig
            ]
         ]
         ...
-        will set a most significant byte of [reg] to zero *)
-    val foreach' : lhs exp -> 'a exp -> rtl list -> rtl
+        will set a least significant byte of [reg] to zero *)
+    val foreach' : lhs exp -> lhs exp -> rtl list -> rtl
 
     (** [foreach_rev' step e rtl] the same as [foreach'] above, but starts
         iteration from the most significant [step] *)
@@ -630,8 +642,11 @@ module Std : sig
     (** [const] constant constructor, constructs a constant of [bitwidth] and integer *)
     val const : (bitwidth -> int -> rhs exp) ec
 
-    (** [reg search] register constructor, construct a register expression from
-        a search function and operand *)
+    (** [reg f] register constructor, construct a register expression.
+        where [f] defines maping from instructions operand to a paticular
+        register of a target architecture. E.g. if one has registers
+        representation like a map [m] of [name -> exp], then
+        [f = Map.find m (Reg.name op)] *)
     val reg : (reg -> lhs exp) -> (op -> lhs exp) ec
 
     (** [of_string] constructs an expression from string.
@@ -680,9 +695,10 @@ module Std : sig
 
   end
 
-  (** The following modules helps to describe a memory and a register
-      models of a target and a lifter model.
+  (** The following modules helps to describe models of
+      memory,registers and the whole lifter.
       It's not a mandatory approach, but just possible. *)
+
 
   (** Module helps to describe a memory model of a target.
       It's not a mandatory approach, but just possible.
@@ -837,15 +853,21 @@ module Std : sig
 
       (** [lifter] is a classical bap lifter *)
       val lifter : lifter
-
     end
-  end
 
-  module Array : sig
-    type 'a t = 'a Array.t
-    exception Invalid_operand_index of int
-    val get : 'a t -> int -> 'a
-    val unsafe_get : 'a t -> int -> 'a
+    (** Module Array susbstitute a basic array module just to
+        make more readable exceptions from inproper operands
+        claiming: instead of [Index_out_of_bounds],
+        one will get more readable [Invalid_operand_index 42].
+        So one needs to place it to the scope in order to take an
+        advantage. *)
+    module Array : sig
+      type 'a t = 'a Array.t
+      exception Invalid_operand_index of int
+      val get : 'a t -> int -> 'a
+      val unsafe_get : 'a t -> int -> 'a
+    end
+
   end
 
 end

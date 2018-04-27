@@ -19,20 +19,6 @@ module RTL = struct
   include Helpers
 end
 
-module Array = struct
-  type 'a t = 'a Array.t
-
-  exception Invalid_operand_index of int
-
-  let get a n =
-    if n >= Array.length a then raise (Invalid_operand_index n)
-    else Array.get a n
-
-  let unsafe_get a n = get a n
-end
-
-
-
 (** [remove_forward_defs bil defs]
 
     for every [x := exp] in [bil], where [exp] depends on some
@@ -107,6 +93,18 @@ module Lifter_model = struct
   module type Cpu = sig
     type t
     val update : t -> addr -> t
+  end
+
+  module Array = struct
+    type 'a t = 'a Array.t
+
+    exception Invalid_operand_index of int
+
+    let get a n =
+      if n >= Array.length a then raise (Invalid_operand_index n)
+      else Array.get a n
+
+    let unsafe_get a n = get a n
   end
 
   module Make (T : Cpu) = struct
