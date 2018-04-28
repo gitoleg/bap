@@ -660,6 +660,10 @@ module Std : sig
          - bitwidth of [unsigned of_string "0b03FA"] is eqauls to 16;
          - bitwidth of [unsigned of_string "42"] is eqauls to 6; *)
     val of_string : (string -> rhs exp) ec
+
+    (** [create f] makes an expression constructor from [f]  *)
+    val create: (op -> 'a exp) -> (op -> 'a exp) ec
+
   end
 
 
@@ -692,6 +696,9 @@ module Std : sig
     (** [load mem addr endian size] loads a data of [size]
         at [addr] from [mem] with [endian]. *)
     val load : var -> 'a exp -> endian -> size -> rhs exp
+
+    (** [as_rhs e] upcasts [e] to rhs expression *)
+    val as_rhs : 'a exp -> rhs exp
 
   end
 

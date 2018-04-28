@@ -201,6 +201,9 @@ module Exp = struct
   let concat = concat
 
   let ignore : 'a exp -> uexp = ident
+
+  let as_rhs : 'a exp -> rhs exp = fun x -> x
+
 end
 
 module Infix = struct
@@ -278,5 +281,11 @@ module Constructor = struct
     let suf = if signed then "s" else "u" in
     let w = Word.of_string (sprintf "%s:%d%s" s width suf) in
     apply_signess signed (Exp.of_word w)
+
+  let custom f signed op =
+    apply_signess signed (f op)
+
+  let create : (op -> 'a exp) -> (op -> 'a exp) ec = fun f ->
+    custom f
 
 end
