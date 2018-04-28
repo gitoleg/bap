@@ -1,15 +1,17 @@
 open Core_kernel.Std
 open Bap.Std
 open X86_target
+open X86_rtl_lifter
 include Self()
 
-type kind = Legacy | Modern | Merge
+type kind = Legacy | Modern | Merge | Rtl
 
 let main kind x32 x64 =
   let ia32, amd64 = match kind with
     | Legacy -> (module IA32L : Target), (module AMD64L : Target)
     | Modern -> (module IA32 : Target), (module AMD64 : Target)
-    | Merge -> (module IA32M : Target), (module AMD64M : Target) in
+    | Merge -> (module IA32M : Target), (module AMD64M : Target)
+    | Rtl -> (module IA32R : Target), (module AMD64R : Target) in
   register_target `x86 ia32;
   register_target `x86_64 amd64;
   X86_abi.setup ~abi:(function
@@ -49,7 +51,8 @@ let () =
   let kind =
     let kinds = ["legacy", Legacy;
                  "modern", Modern;
-                 "merge", Merge] in
+                 "merge", Merge;
+                 "rtl", Rtl] in
     let default = Merge in
     let doc =
       sprintf "Debug purpose only. The $(docv) must be %s. Default: $(docv) = %s."
