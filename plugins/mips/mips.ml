@@ -25,10 +25,6 @@ module Std = struct
 
   module Cpu = struct
     type t = cpu
-
-    let update c addr =
-      let cia = Exp.(signed (of_word addr)) in
-      {c with cia}
   end
 
   include Lifter_model.Make(Cpu)
@@ -36,8 +32,7 @@ module Std = struct
   let (>>) = register
 
   let lift addr_size endian mem insn =
-    init (make_cpu addr_size endian mem);
-    lifter mem insn
+    lift (make_cpu addr_size endian mem) mem insn
 
   module M32BE = struct
     module CPU = Model.MIPS_32_cpu

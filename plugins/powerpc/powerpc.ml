@@ -99,8 +99,7 @@ module Std = struct
   let (>.) = register_dot
 
   let lift addr_size endian mem insn =
-    init (make_cpu addr_size endian mem);
-    lifter mem insn
+    lift (make_cpu addr_size endian mem) mem insn
 
   include Powerpc_model
 
