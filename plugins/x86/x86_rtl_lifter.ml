@@ -125,10 +125,7 @@ module IA32R = struct
     let insn = Insn.of_basic insn in
     printf "asm : %s\n" (Insn.asm insn)
 
-
   let lift mem insn =
-    printf "rtl lifter\n";
-    print_insn insn;
     init @@ L.make_cpu mem;
     let r = lifter mem insn in
     if Result.is_ok r then r
@@ -138,6 +135,9 @@ module IA32R = struct
       r
 
   let pr () =
+    let () =
+      if Hashtbl.length fails <> 0 then
+           printf "fails:\n" in
     Hashtbl.iteri ~f:(fun ~key:n ~data:asm -> printf "%s %s\n" n asm) fails
 
   let () = at_exit pr
@@ -365,6 +365,24 @@ let jmp _cpu ops =
   let dst = unsigned imm ops.(0) in
   RTL.[jmp dst]
 
+let jmp32m cpu ops =
+  let base  = unsigned cpu.reg_or_nil ops.(0) in
+  let index = unsigned imm ops.(1) in
+  let scale = unsigned cpu.reg_or_nil ops.(2) in
+  let disp = unsigned imm ops.(3) in
+  RTL.[
+    jmp (base + scale * index + disp)
+  ]
+
+(* 77, 0a *)
+let ja cpu ops =
+  let imm = signed imm ops.(0) in
+  RTL.[
+    when_ (lnot (sf lor oF)) [
+      jmp (cpu.next + imm);
+    ]
+  ]
+
 (* e8 0a 0a 0a 0a *)
 let call_pcrel32 cpu ops =
   let disp = signed imm ops.(0) in
@@ -394,15 +412,28 @@ let retl cpu _ops =
     jmp tmp;
   ]
 
+let call32r cpu ops =
+  let src = unsigned cpu.reg ops.(0) in
+  let tmp = unsigned var word in
+  let eight = unsigned const word 8 in
+  RTL.[
+    tmp := src;
+    cpu.sp := cpu.sp - cpu.word_width' / eight;
+    cpu.store cpu.sp cpu.next word;
+    jmp tmp;
+  ]
 
 let () = register "CALLpcrel32" call_pcrel32
+let () = register "JA_1" ja
 let () = register "JNE_1" jne
 let () = register "JL_1" jl
 let () = register "JL_4" jl
 let () = register "JMP_1" jmp
 let () = register "JMP_4" jmp
 let () = register "JE_1" je
+let () = register "JMP32m" jmp32m
 let () = register "CALL32m" call32m
+let () = register "CALL32r" call32r
 let () = register "LEAVE" leave
 let () = register "RETL" retl
 
@@ -548,8 +579,41 @@ let cmp32rr cpu ops =
     oF := (src1 lxor src2) land (src1 lxor tmp);
   ]
 
+(* 0x80,0x3d,0x80,0xa0,0x04,0x08,0x00 *)
+let cmp8mi cpu ops =
+  let base  = unsigned cpu.reg_or_nil ops.(0) in
+  let index = unsigned imm ops.(1) in
+  let scale = unsigned cpu.reg_or_nil ops.(2) in
+  let disp = unsigned imm ops.(3) in
+  let imm = unsigned fixed_imm byte ops.(5) in
+  let src = unsigned var byte in
+  let tmp = unsigned var byte in
+  RTL.[
+    src := cpu.load (base + scale * index + disp) byte;
+    tmp := src - imm;
+    cf := src < imm;
+    oF := msb (src lxor imm) land (src lxor tmp);
+    sf := msb tmp;
+    zf := tmp = zero;
+  ]
+
+(* 0x83,0xf8,0x06 *)
+let cmp32ri8 cpu ops =
+  let src1 = unsigned cpu.reg ops.(0) in
+  let src2 = unsigned fixed_imm byte ops.(1) in
+  let tmp = unsigned var word in
+  RTL.[
+    tmp := src1 - src2;
+    cf := src1 < src2;
+    sf := msb tmp;
+    zf := tmp = zero;
+    oF := (src1 lxor src2) land (src1 lxor tmp);
+  ]
+
 let () = register "CMP32rm" cmp32rm
 let () = register "CMP32rr" cmp32rr
+let () = register "CMP8mi" cmp8mi
+let () = register "CMP32ri8" cmp32ri8
 
 (* f4 *)
 let hlt _cpu _ops = []
@@ -603,64 +667,145 @@ let imul32rri8 cpu ops =
 
 (* 0x8d,0x83,0x08,0xff,0xff,0xff *)
 let lea32r cpu ops =
-  let _src1 = unsigned cpu.reg ops.(0) in
-  let _base  = unsigned cpu.reg_or_nil ops.(1) in
-  let _index = unsigned imm ops.(2) in
-  let _scale = unsigned cpu.reg_or_nil ops.(3) in
-  let _disp = unsigned imm ops.(4) in
-  RTL.[]
+  let dst = unsigned cpu.reg ops.(0) in
+  let base  = unsigned cpu.reg_or_nil ops.(1) in
+  let index = unsigned imm ops.(2) in
+  let scale = unsigned cpu.reg_or_nil ops.(3) in
+  let disp = unsigned imm ops.(4) in
+  RTL.[
+    dst := base + scale * index + disp;
+  ]
 
 (* 0xc1,0xfe,0x02 *)
+(* todo: check cf here *)
 let sar32ri cpu ops =
-  let _dst = unsigned cpu.reg ops.(0) in
-  let _src = unsigned cpu.reg ops.(1) in
-  let _imm = unsigned imm ops.(2) in
-  RTL.[]
+  let dst = unsigned cpu.reg ops.(0) in
+  let src = signed cpu.reg ops.(1) in
+  let imm = unsigned imm ops.(2) in
+  let tmp = unsigned var cpu.word_width in
+  RTL.[
+    tmp := dst;
+    dst := src >> imm;
+    cf := lsb (tmp >> (imm - one)) ;
+    zf := dst = zero;
+    sf := msb dst;
+  ]
+
+(* d1,f8  *)
+let sar32r1 cpu ops =
+  let dst = unsigned cpu.reg ops.(0) in
+  let src = signed cpu.reg ops.(1) in
+  let tmp = unsigned var word in
+  RTL.[
+    tmp := src;
+    dst := src >> one;
+    cf := lsb tmp ;
+    zf := dst = zero;
+    sf := msb dst;
+  ]
 
 (* 0xc1,0xe0,0x02 *)
+(* todo: check cf here *)
 let shl32ri cpu ops =
-  let _dst = unsigned cpu.reg ops.(0) in
-  let _src = unsigned cpu.reg ops.(1) in
-  let _imm = unsigned imm ops.(2) in
-  RTL.[]
+  let dst = unsigned cpu.reg ops.(0) in
+  let src = unsigned cpu.reg ops.(1) in
+  let imm = unsigned imm ops.(2) in
+  let tmp = unsigned var cpu.word_width in
+  RTL.[
+    tmp := dst;
+    dst := src << imm;
+    cf := msb (tmp << (imm - one)) ;
+    zf := dst = zero;
+    sf := msb dst;
+  ]
 
 (* 0xc1,0xe8,0x02 *)
+(* todo: check cf here *)
 let shr32ri cpu ops =
-  let _dst = unsigned cpu.reg ops.(0) in
-  let _src = unsigned cpu.reg ops.(1) in
-  let _imm = unsigned imm ops.(2) in
-  RTL.[]
+  let dst = unsigned cpu.reg ops.(0) in
+  let src = unsigned cpu.reg ops.(1) in
+  let imm = unsigned imm ops.(2) in
+  let tmp = unsigned var cpu.word_width in
+  RTL.[
+    tmp := dst;
+    dst := src >> imm;
+    cf := lsb (tmp >> (imm - one)) ;
+    zf := dst = zero;
+    sf := msb dst;
+  ]
 
 (* 0x83,0xec,0x1c *)
 let sub32ri8 cpu ops =
-  let _dst = unsigned cpu.reg ops.(0) in
-  let _src = unsigned cpu.reg ops.(1) in
-  let _imm = unsigned imm ops.(2) in
-  RTL.[]
+  let dst = unsigned cpu.reg ops.(0) in
+  let src = unsigned cpu.reg ops.(1) in
+  let imm = unsigned imm ops.(2) in
+  let tmp = unsigned var cpu.word_width in
+  RTL.[
+    tmp := src;
+    dst := src - imm;
+    cf := tmp < imm;
+    zf := dst = zero;
+    sf := msb dst;
+    oF := (tmp lxor imm) land (tmp lxor dst);
+  ]
 
 (* 0x29,0xc6 *)
 let sub32rr cpu ops =
-  let _dst = unsigned cpu.reg ops.(0) in
-  let _src1 = unsigned cpu.reg ops.(1) in
-  let _src2 = unsigned cpu.reg ops.(2) in
-  RTL.[]
+  let dst = unsigned cpu.reg ops.(0) in
+  let src1 = unsigned cpu.reg ops.(1) in
+  let src2 = unsigned cpu.reg ops.(2) in
+  let tmp1 = unsigned var cpu.word_width in
+  let tmp2 = unsigned var cpu.word_width in
+  RTL.[
+    tmp1 := src1;
+    tmp2 := src2;
+    dst := src1 - src2;
+    cf := tmp1 < tmp2;
+    zf := dst = zero;
+    sf := msb dst;
+    oF := (tmp1 lxor tmp2) land (tmp1 lxor dst);
+  ]
 
+(* 0x2b,0x05,0A,0A,0A,0A *)
+let sub32rm cpu ops =
+  let dst = unsigned cpu.reg ops.(0) in
+  let src1 = unsigned cpu.reg ops.(1) in
+  let base  = unsigned cpu.reg_or_nil ops.(2) in
+  let index = unsigned imm ops.(3) in
+  let scale = unsigned cpu.reg_or_nil ops.(4) in
+  let disp = unsigned imm ops.(5) in
+  let tmp1 = unsigned var cpu.word_width in
+  let tmp2 = unsigned var cpu.word_width in
+  RTL.[
+    tmp1 := src1;
+    tmp2 := cpu.load (base + scale * index + disp) word;
+    dst := tmp1 - tmp2;
+    cf := tmp1 < tmp2;
+    zf := dst = zero;
+    sf := msb dst;
+    oF := (tmp1 lxor tmp2) land (tmp1 lxor dst);
+  ]
+
+(* 0x2d,0x80,0xa0,0x04,0x08 *)
+let sub32i32 cpu ops =
+  let imm = unsigned imm ops.(0) in
+  let tmp = unsigned var word in
+  RTL.[
+    tmp := cpu.rax;
+    cpu.rax := cpu.rax - imm;
+    cf := tmp < imm;
+    zf := cpu.rax = zero;
+    sf := msb cpu.rax;
+    oF := (tmp lxor imm) land (tmp lxor cpu.rax);
+  ]
 
 let () = register "IMUL32rri8" imul32rri8
 let () = register "LEA32r" lea32r
 let () = register "SAR32ri" sar32ri
+let () = register "SAR32r1" sar32r1
 let () = register "SHL32ri" shl32ri
 let () = register "SHR32ri" shr32ri
 let () = register "SUB32ri8" sub32ri8
 let () = register "SUB32rr" sub32rr
-
-(**
-DIV32r divl %esi
-IMUL32rri8 imull $0x10, %eax, %eax
-LEA32r leal -0xf8(%ebx), %eax
-SAR32ri sarl $0x2, %esi
-SHL32ri shll $0x2, %eax
-SHR32ri shrl $0x2, %eax
-SUB32ri8 subl $0x1c, %esp
-SUB32rr subl %eax, %esi
-*)
+let () = register "SUB32rm" sub32rm
+let () = register "SUB32i32" sub32i32
