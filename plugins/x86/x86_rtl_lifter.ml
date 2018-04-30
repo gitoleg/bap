@@ -552,6 +552,7 @@ let () = register "AND32ri8" and32ri8
 let () = register "XOR32rr" xor32rr
 
 (* 0x3b,0x45,0xcc  *)
+(* todo: check of flag *)
 let cmp32rm cpu ops =
   let src1 = unsigned cpu.reg ops.(0) in
   let base  = unsigned cpu.reg_or_nil ops.(1) in
@@ -566,7 +567,7 @@ let cmp32rm cpu ops =
     cf := src1 < src2;
     sf := msb tmp;
     zf := tmp = zero;
-    oF := (src1 lxor src2) land (src1 lxor tmp);
+    oF := msb ((src1 lxor src2) land (src1 lxor tmp));
   ]
 
 (* 0x39,0xf7 *)
