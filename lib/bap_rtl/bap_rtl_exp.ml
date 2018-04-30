@@ -113,6 +113,7 @@ let eq x y  = bit_result (binop_with_cast Bil.eq x y)
 let neq x y = bit_result (binop_with_cast Bil.neq x y)
 
 let lshift = binop_with_cast Bil.lshift
+
 let rshift x y =
   let op =
     if x.sign = Signed then Bil.arshift
@@ -237,17 +238,6 @@ module Constructor = struct
       | Some x -> x
       | None -> failwith "failed to convert imm operand to int"
 
-  let imm signed op =
-    let w = Word.of_int ~width:32 (int_of_imm op) in
-    if signed then Exp.(signed @@ of_word w)
-    else Exp.(unsigned @@ of_word w)
-
-  let fixed_imm signed width op =
-    let width = int_of_bitwidth width in
-    let w = Word.of_int ~width (int_of_imm op) in
-    if signed then Exp.(signed @@ of_word w)
-    else Exp.(unsigned @@ of_word w)
-
   let signed f = f true
   let unsigned f = f false
 
@@ -255,9 +245,19 @@ module Constructor = struct
     if signed then Exp.signed e
     else Exp.unsigned e
 
+  let create : (op -> 'a exp) -> (op -> 'a exp) ec = fun to_exp signed op ->
+    apply_signess signed (to_exp op)
+
+  let exp_of_int ~width x = Exp.of_word (Word.of_int ~width x)
+
+  let imm : (op -> rhs exp) ec =
+    create (fun op -> exp_of_int ~width:32 (int_of_imm op))
+
+  let fixed_imm signed width op =
+    apply_signess signed @@ exp_of_int ~width (int_of_imm op)
+
   let var signed width =
-    Exp.tmp (int_of_bitwidth width) |>
-    apply_signess signed
+    apply_signess signed @@ Exp.tmp (int_of_bitwidth width)
 
   let reg find signed op = match op with
     | Op.Imm _ | Op.Fmm _ -> failwith "reg operand expected"

@@ -440,11 +440,11 @@ module Std : sig
 
     (** [first e n] extracts first [n] bits from [e], starting from
         the least significant bit *)
-    val first : 'a exp -> bitwidth -> 'a exp
+    val first : 'a exp -> int -> 'a exp
 
     (** [last e n] extracts last [n] bits from [e], where the
         last bit is the most significant bit *)
-    val last : 'a exp -> bitwidth -> 'a exp
+    val last : 'a exp -> int -> 'a exp
 
     (** [nth width e n] extracts a portion of [e] of width [width] at
         index [n], where each index points to a portion of width [width].
@@ -661,7 +661,7 @@ module Std : sig
          - bitwidth of [unsigned of_string "42"] is eqauls to 6; *)
     val of_string : (string -> rhs exp) ec
 
-    (** [create f] makes an expression constructor from [f]  *)
+    (** [create f] makes an expression constructor from custom [f] *)
     val create: (op -> 'a exp) -> (op -> 'a exp) ec
 
   end
@@ -843,23 +843,16 @@ module Std : sig
 
     module type Cpu = sig
       type t
-
-      (** [update m pc]  updates a model with an address of a
-          current instruction *)
-      val update : t -> addr -> t
     end
 
-    module Make(T : Cpu) : sig
-
-      (** [init m] adds a model [m] to a lifter *)
-      val init : T.t -> unit
+    module Make(Cpu : Cpu) : sig
 
       (** [register insn_name lift] registers a [lift]
           function for instruction with name [insn_name] *)
-      val register : string -> (T.t -> op array -> rtl list) -> unit
+      val register : string -> (Cpu.t -> op array -> rtl list) -> unit
 
-      (** [lifter] is a classical bap lifter *)
-      val lifter : lifter
+      (** [lift cpu] creates a classical bap lifter from modeled [cpu] *)
+      val lift : Cpu.t -> lifter
     end
 
     (** Module Array susbstitute a basic array module just to

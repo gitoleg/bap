@@ -92,7 +92,6 @@ module Lifter_model = struct
 
   module type Cpu = sig
     type t
-    val update : t -> addr -> t
   end
 
   module Array = struct
@@ -108,16 +107,9 @@ module Lifter_model = struct
   end
 
   module Make (T : Cpu) = struct
-    let lifts = String.Table.create ()
-    let model : T.t option ref  = ref None
+    open Bap_rtl_types
 
-    let update_model mem =
-      match !model with
-      | None -> ()
-      | Some m ->
-        model := Some (T.update m (Memory.min_addr mem))
-
-    let init m = model := Some m
+    let lifts : (T.t -> op array -> rtl list) String.Table.t = String.Table.create ()
 
     let register name lift =
       match Hashtbl.add lifts name lift with
@@ -127,29 +119,25 @@ module Lifter_model = struct
           "trying to register a %s instruction, that already exists"
           name
 
-    let lifter mem insn =
-      match !model with
-      | None -> failwith "trying to use uninitialized lifter"
-      | Some model ->
-        update_model mem;
-        let insn = Insn.of_basic insn in
-        let insn_name = Insn.name insn in
-        match Hashtbl.find lifts insn_name with
-        | None ->  Or_error.errorf "unknown instruction %s" insn_name
-        | Some lift ->
-          try
-            lift model (Insn.ops insn) |>
-            bil_of_rtl |>
-            Result.return
-          with
-          | Array.Invalid_operand_index n ->
-            let str =
-              sprintf "instruction %s doesn't have an operand with index %d"
-                insn_name n in
-            Error (Error.of_string str)
-          | exn ->
-            let str = Exn.to_string exn in
-            Error (Error.of_string str)
+    let lift model _mem insn =
+      let insn = Insn.of_basic insn in
+      let insn_name = Insn.name insn in
+      match Hashtbl.find lifts insn_name with
+      | None ->  Or_error.errorf "unknown instruction %s" insn_name
+      | Some lift ->
+        try
+          lift model (Insn.ops insn) |>
+          bil_of_rtl |>
+          Result.return
+        with
+        | Array.Invalid_operand_index n ->
+          let str =
+            sprintf "instruction %s doesn't have an operand with index %d"
+              insn_name n in
+          Error (Error.of_string str)
+        | exn ->
+          let str = Exn.to_string exn in
+          Error (Error.of_string str)
   end
 end
 
