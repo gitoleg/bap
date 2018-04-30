@@ -843,23 +843,16 @@ module Std : sig
 
     module type Cpu = sig
       type t
-
-      (** [update m pc]  updates a model with an address of a
-          current instruction *)
-      val update : t -> addr -> t
     end
 
-    module Make(T : Cpu) : sig
-
-      (** [init m] adds a model [m] to a lifter *)
-      val init : T.t -> unit
+    module Make(Cpu : Cpu) : sig
 
       (** [register insn_name lift] registers a [lift]
           function for instruction with name [insn_name] *)
-      val register : string -> (T.t -> op array -> rtl list) -> unit
+      val register : string -> (Cpu.t -> op array -> rtl list) -> unit
 
-      (** [lifter] is a classical bap lifter *)
-      val lifter : lifter
+      (** [lift cpu] creates a classical bap lifter from modeled [cpu] *)
+      val lift : Cpu.t -> lifter
     end
 
     (** Module Array susbstitute a basic array module just to
