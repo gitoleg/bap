@@ -18,6 +18,7 @@ module Exp : sig
   val width : 'a exp -> int
   val bil_exp : 'a exp -> Bap.Std.exp
   val ignore : 'a exp -> uexp
+  val as_rhs : 'a exp -> rhs exp
 end
 
 module Infix : sig
@@ -33,8 +34,8 @@ module Infix : sig
   val ( >= )  : 'a exp -> 'b exp -> rhs exp
   val ( = )  : 'a exp -> 'b exp -> rhs exp
   val ( <> )  : 'a exp -> 'b exp -> rhs exp
-  val ( << )  : 'a exp -> 'b exp -> rhs exp
-  val ( >> )  : 'a exp -> 'b exp -> rhs exp
+  val ( << ) : 'a exp -> 'b exp -> rhs exp
+  val ( >> ) : 'a exp -> 'b exp -> rhs exp
   val ( lor )  : 'a exp -> 'b exp -> rhs exp
   val ( land ) : 'a exp -> 'b exp -> rhs exp
   val ( lxor ) : 'a exp -> 'b exp -> rhs exp
@@ -55,4 +56,5 @@ module Constructor : sig
   val signed : 'a ec -> 'a
   val unsigned : 'a ec -> 'a
 
+  val create : (op -> 'a exp) -> (op -> 'a exp) ec
 end
