@@ -584,6 +584,68 @@ let div32r cpu ops =
     first cpu.rdx word := rem;
   ]
 
+let () = register "DIV32r" div32r
+
+(* 0x6b,0xc0,0x10 *)
+let imul32rri8 cpu ops =
+  let _dst = unsigned cpu.reg ops.(0) in
+  let _src = unsigned cpu.reg ops.(1) in
+  let _imm = unsigned imm ops.(2) in
+  RTL.[]
+
+(* 0x8d,0x83,0x08,0xff,0xff,0xff *)
+let lea32r cpu ops =
+  let _src1 = unsigned cpu.reg ops.(0) in
+  let _base  = unsigned cpu.reg_or_nil ops.(1) in
+  let _index = unsigned imm ops.(2) in
+  let _scale = unsigned cpu.reg_or_nil ops.(3) in
+  let _disp = unsigned imm ops.(4) in
+  RTL.[]
+
+(* 0xc1,0xfe,0x02 *)
+let sar32ri cpu ops =
+  let _dst = unsigned cpu.reg ops.(0) in
+  let _src = unsigned cpu.reg ops.(1) in
+  let _imm = unsigned imm ops.(2) in
+  RTL.[]
+
+(* 0xc1,0xe0,0x02 *)
+let shl32ri cpu ops =
+  let _dst = unsigned cpu.reg ops.(0) in
+  let _src = unsigned cpu.reg ops.(1) in
+  let _imm = unsigned imm ops.(2) in
+  RTL.[]
+
+(* 0xc1,0xe8,0x02 *)
+let shr32ri cpu ops =
+  let _dst = unsigned cpu.reg ops.(0) in
+  let _src = unsigned cpu.reg ops.(1) in
+  let _imm = unsigned imm ops.(2) in
+  RTL.[]
+
+(* 0x83,0xec,0x1c *)
+let sub32ri8 cpu ops =
+  let _dst = unsigned cpu.reg ops.(0) in
+  let _src = unsigned cpu.reg ops.(1) in
+  let _imm = unsigned imm ops.(2) in
+  RTL.[]
+
+(* 0x29,0xc6 *)
+let sub32rr cpu ops =
+  let _dst = unsigned cpu.reg ops.(0) in
+  let _src1 = unsigned cpu.reg ops.(1) in
+  let _src2 = unsigned cpu.reg ops.(2) in
+  RTL.[]
+
+
+let () = register "IMUL32rri8" imul32rri8
+let () = register "LEA32r" lea32r
+let () = register "SAR32ri" sar32ri
+let () = register "SHL32ri" shl32ri
+let () = register "SHR32ri" shr32ri
+let () = register "SUB32ri8" sub32ri8
+let () = register "SUB32rr" sub32rr
+
 (**
 DIV32r divl %esi
 IMUL32rri8 imull $0x10, %eax, %eax
