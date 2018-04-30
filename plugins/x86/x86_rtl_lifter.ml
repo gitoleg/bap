@@ -588,10 +588,18 @@ let () = register "DIV32r" div32r
 
 (* 0x6b,0xc0,0x10 *)
 let imul32rri8 cpu ops =
-  let _dst = unsigned cpu.reg ops.(0) in
-  let _src = unsigned cpu.reg ops.(1) in
-  let _imm = unsigned imm ops.(2) in
-  RTL.[]
+  let dst = unsigned cpu.reg ops.(0) in
+  let src = unsigned cpu.reg ops.(1) in
+  let imm = unsigned imm ops.(2) in
+  let tmp1 = unsigned var doubleword in
+  let tmp2 = unsigned var doubleword in
+  RTL.[
+    tmp1 := src;
+    tmp2 := tmp1 * imm;
+    dst := first tmp2 word;
+    oF := tmp2 <> dst;
+    cf := oF;
+  ]
 
 (* 0x8d,0x83,0x08,0xff,0xff,0xff *)
 let lea32r cpu ops =
