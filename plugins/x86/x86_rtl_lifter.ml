@@ -119,28 +119,7 @@ module IA32R = struct
 
   module L = Make(R32)
 
-  let fails = String.Table.create ()
-
-  let print_insn insn =
-    let insn = Insn.of_basic insn in
-    printf "asm : %s\n" (Insn.asm insn)
-
-  let lift mem insn =
-    init @@ L.make_cpu mem;
-    let r = lifter mem insn in
-    if Result.is_ok r then r
-    else
-      let n = Insn.name @@ Insn.of_basic insn in
-      Hashtbl.set fails n (Insn.asm @@ Insn.of_basic insn);
-      r
-
-  let pr () =
-    let () =
-      if Hashtbl.length fails <> 0 then
-           printf "fails:\n" in
-    Hashtbl.iteri ~f:(fun ~key:n ~data:asm -> printf "%s %s\n" n asm) fails
-
-  let () = at_exit pr
+  let lift mem insn = lift (L.make_cpu mem) mem insn
 
   module CPU = IA32
 end
@@ -153,9 +132,8 @@ module AMD64R = struct
   end
 
   module L = Make(R64)
-  let lift mem insn =
-    init @@ L.make_cpu mem;
-    lifter mem insn
+
+  let lift mem insn = lift (L.make_cpu mem) mem insn
 
   module CPU = AMD64
 end
@@ -646,10 +624,10 @@ let div32r cpu ops =
   let div = unsigned var word in
   let rem = unsigned var word in
   RTL.[
-    div := (first cpu.rdx word ^ first cpu.rax word) / reg;
-    rem := (first cpu.rdx word ^ first cpu.rax word) % reg;
-    first cpu.rax word := div;
-    first cpu.rdx word := rem;
+    div := (first cpu.rdx 8 ^ first cpu.rax 8) / reg;
+    rem := (first cpu.rdx 8 ^ first cpu.rax 8) % reg;
+    first cpu.rax 8 := div;
+    first cpu.rdx 8 := rem;
   ]
 
 let () = register "DIV32r" div32r
@@ -664,7 +642,7 @@ let imul32rri8 cpu ops =
   RTL.[
     tmp1 := src;
     tmp2 := tmp1 * imm;
-    dst := first tmp2 word;
+    dst := first tmp2 8;
     oF := tmp2 <> dst;
     cf := oF;
   ]
