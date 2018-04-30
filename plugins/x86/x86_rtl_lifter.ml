@@ -15,6 +15,8 @@ type cpu = {
   word_width' : rhs exp;
   sp          : lhs exp;
   rax         : lhs exp;
+  rdx         : lhs exp;
+  rbp         : lhs exp;
   pc          : rhs exp;
   next        : rhs exp;
 }
@@ -94,6 +96,8 @@ module Make(R : Mode) = struct
       word_width' = Exp.of_word (Word.of_int ~width:addr_bits addr_bits);
       sp = Exp.of_var rsp;
       rax = Exp.of_var rax;
+      rdx = Exp.of_var rdx;
+      rbp = Exp.of_var rbp;
       pc = Exp.signed @@ Exp.of_word pc;
       next = Exp.signed @@ Exp.of_word next;
     }
@@ -117,7 +121,14 @@ module IA32R = struct
 
   let fails = String.Table.create ()
 
+  let print_insn insn =
+    let insn = Insn.of_basic insn in
+    printf "asm : %s\n" (Insn.asm insn)
+
+
   let lift mem insn =
+    printf "rtl lifter\n";
+    print_insn insn;
     init @@ L.make_cpu mem;
     let r = lifter mem insn in
     if Result.is_ok r then r
@@ -152,7 +163,6 @@ end
 open Ec
 open Bitwidth
 open Common
-open R32
 
 let push32_r cpu ops =
   let src = unsigned cpu.reg ops.(0) in
@@ -177,7 +187,7 @@ let push32_i cpu ops =
 let push32_rmm cpu ops =
   let base  = unsigned cpu.reg_or_nil ops.(0) in
   let index = unsigned imm ops.(1) in
-  let scale = unsigned cpu.reg ops.(2) in
+  let scale = unsigned cpu.reg_or_nil ops.(2) in
   let disp  = unsigned imm ops.(3) in
   let tmp = unsigned var cpu.word_width in
   let bytes = unsigned const word 8 in
@@ -317,7 +327,84 @@ let je cpu ops =
     ];
   ]
 
+(* 0xff,0x94,0xbb,0x08,0xff,0xff,0xff *)
+let call32m cpu ops =
+  let base  = unsigned cpu.reg_or_nil ops.(0) in
+  let index = unsigned imm ops.(1) in
+  let scale = unsigned cpu.reg_or_nil ops.(2) in
+  let disp = unsigned imm ops.(3) in
+  let _xz = unsigned cpu.reg_or_nil ops.(4) in
+  let tmp = unsigned var cpu.word_width in
+  let eight = unsigned const word 8 in
+  RTL.[
+    tmp := cpu.load (base + scale * index + disp) cpu.word_width;
+    cpu.sp := cpu.sp - cpu.word_width' / eight;
+    cpu.store cpu.next cpu.sp cpu.word_width;
+    jmp tmp;
+  ]
+(* 75 0a *)
+let jne cpu ops =
+  let disp = signed imm ops.(0) in
+  RTL.[
+    when_ (zf = zero) [
+      jmp (cpu.next + disp);
+    ]
+  ]
+
+(* 0x7c,A *)
+let jl cpu ops =
+  let imm = signed imm ops.(0) in
+  RTL.[
+    when_ (sf land oF) [
+      jmp (cpu.next + imm);
+    ]
+  ]
+
+(* eb,0a  *)
+let jmp _cpu ops =
+  let dst = unsigned imm ops.(0) in
+  RTL.[jmp dst]
+
+(* e8 0a 0a 0a 0a *)
+let call_pcrel32 cpu ops =
+  let disp = signed imm ops.(0) in
+  let eight = unsigned const word 8 in
+  RTL.[
+    cpu.sp := cpu.sp - cpu.word_width'/eight;
+    cpu.store cpu.sp cpu.next cpu.word_width;
+    jmp (cpu.next + disp)
+  ]
+
+(* c9  *)
+let leave cpu _ops =
+  let eight = unsigned const word 8 in
+  RTL.[
+    cpu.sp := cpu.rbp;
+    cpu.rbp := cpu.load cpu.sp cpu.word_width;
+    cpu.sp := cpu.sp + cpu.word_width'/eight;
+  ]
+
+(* c3 *)
+let retl cpu _ops =
+  let eight = unsigned const word 8 in
+  let tmp = unsigned var cpu.word_width in
+  RTL.[
+    tmp := cpu.load cpu.sp cpu.word_width;
+    cpu.sp := cpu.sp + cpu.word_width' / eight;
+    jmp tmp;
+  ]
+
+
+let () = register "CALLpcrel32" call_pcrel32
+let () = register "JNE_1" jne
+let () = register "JL_1" jl
+let () = register "JL_4" jl
+let () = register "JMP_1" jmp
+let () = register "JMP_4" jmp
 let () = register "JE_1" je
+let () = register "CALL32m" call32m
+let () = register "LEAVE" leave
+let () = register "RETL" retl
 
 (* 0x83,0x45,0xc0,0x01 *)
 let add32mi8 cpu ops =
@@ -326,55 +413,184 @@ let add32mi8 cpu ops =
   let index = unsigned cpu.reg_or_nil ops.(2) in
   let disp = unsigned imm ops.(3) in
   let _xz = unsigned cpu.reg_or_nil ops.(4) in
-  let imm = unsigned imm ops.(5) in
+  let imm = unsigned fixed_imm byte ops.(5) in
   let addr = unsigned var cpu.word_width in
-  let tmp1 = unsigned var word in
-  let tmp2 = unsigned var word in
+  let tmp1 = signed var word in
+  let tmp2 = signed var word in
+  let resl = unsigned var word in
   RTL.[
     addr := base + scale * index + disp;
     tmp1 := cpu.load addr word;
     tmp2 := imm;
-    cpu.store addr (tmp1 + tmp2) word
+    resl := tmp1 + tmp2;
+    cpu.store addr resl word;
+    zf := resl = zero;
+    sf := msb resl;
+    cf := resl < tmp1;
+    oF := (msb tmp1 = msb tmp2) land (msb tmp1 lxor msb resl);
   ]
 
+(* 0x81,0xc3,0x21,0x04,0x00,0x00 *)
+let add32ri cpu ops =
+  let dst = unsigned cpu.reg ops.(0) in
+  let src = unsigned cpu.reg ops.(1) in
+  let imm = unsigned imm ops.(2) in
+  let tmp = signed var word in
+  RTL.[
+    tmp := src;
+    dst := src + imm;
+    zf := dst = zero;
+    sf := msb dst;
+    cf := dst < tmp;
+    oF := (msb tmp = msb imm) land (msb tmp lxor msb dst);
+  ]
+
+(* 0x83,0xc3,0x42 *)
+let add32ri8 cpu ops =
+  let dst = unsigned cpu.reg ops.(0) in
+  let src = unsigned cpu.reg ops.(1) in
+  let imm = unsigned fixed_imm byte ops.(2) in
+  let tmp1 = unsigned var word in
+  let tmp2 = unsigned var word in
+  RTL.[
+    tmp1 := src;
+    tmp2 := imm;
+    dst := src + imm;
+    zf := dst = zero;
+    sf := msb dst;
+    cf := dst < tmp1;
+    oF := (msb tmp1 = msb tmp2) land (msb tmp1 lxor msb dst);
+  ]
+
+(* 0x01,0xc3 *)
+let add32rr cpu ops =
+  let dst = unsigned cpu.reg ops.(0) in
+  let src1 = unsigned cpu.reg ops.(1) in
+  let src2 = unsigned cpu.reg ops.(2) in
+  let tmp1 = signed var word in
+  let tmp2 = signed var word in
+  RTL.[
+    tmp1 := src1;
+    tmp2 := src2;
+    dst := src1 + src2;
+    zf := dst = zero;
+    sf := msb dst;
+    cf := dst < tmp1;
+    oF := (msb tmp1 = msb tmp2) land (msb tmp1 lxor msb dst);
+  ]
 
 let stub _cpu _ops = []
 
 let () = register "ADD32mi8" add32mi8
-let () = register "ADD32ri" stub
-let () = register "ADD32ri8" stub
-let () = register "ADD32rr" stub
+let () = register "ADD32ri"  add32ri
+let () = register "ADD32ri8" add32ri8
+let () = register "ADD32rr"  add32rr
 
+(* 83 e4 f0 *)
+let and32ri8 cpu ops =
+  let dst = unsigned cpu.reg ops.(0) in
+  let src = unsigned cpu.reg ops.(1) in
+  let imm = unsigned fixed_imm byte ops.(2) in
+  let tmp = signed var word in
+  RTL.[
+    tmp := imm;
+    dst := src land tmp;
+    sf := msb dst;
+    zf := dst = zero;
+    oF := zero;
+    cf := zero;
+  ]
+
+(* 0x31,0xf8 *)
+let xor32rr cpu ops =
+  let dst = unsigned cpu.reg ops.(0) in
+  let src1 = unsigned cpu.reg ops.(1) in
+  let src2 = unsigned cpu.reg ops.(2) in
+  RTL.[
+    dst := src1 lxor src2;
+    oF := zero;
+    cf := zero;
+    zf := dst = zero;
+    sf := msb dst;
+  ]
+
+let () = register "AND32ri8" and32ri8
+let () = register "XOR32rr" xor32rr
+
+(* 0x3b,0x45,0xcc  *)
+let cmp32rm cpu ops =
+  let src1 = unsigned cpu.reg ops.(0) in
+  let base  = unsigned cpu.reg_or_nil ops.(1) in
+  let index = unsigned imm ops.(2) in
+  let scale = unsigned cpu.reg_or_nil ops.(3) in
+  let disp = unsigned imm ops.(4) in
+  let src2 = unsigned var cpu.word_width in
+  let tmp = unsigned var cpu.word_width in
+  RTL.[
+    src2 := cpu.load (base + scale * index + disp) cpu.word_width;
+    tmp := src1 - src2;
+    cf := src1 < src2;
+    sf := msb tmp;
+    zf := tmp = zero;
+    oF := (src1 lxor src2) land (src1 lxor tmp);
+  ]
+
+(* 0x39,0xf7 *)
+let cmp32rr cpu ops =
+  let src1 = unsigned cpu.reg ops.(0) in
+  let src2 = unsigned cpu.reg ops.(1) in
+  let tmp = unsigned var cpu.word_width in
+  RTL.[
+    tmp := src1 - src2;
+    cf := src1 < src2;
+    sf := msb tmp;
+    zf := tmp = zero;
+    oF := (src1 lxor src2) land (src1 lxor tmp);
+  ]
+
+let () = register "CMP32rm" cmp32rm
+let () = register "CMP32rr" cmp32rr
+
+(* f4 *)
+let hlt _cpu _ops = []
+
+(* 90 *)
+let noop _cpu _ops = []
+
+let () = register "HLT" hlt
+let () = register "NOOP" noop
+
+(* 5d *)
+let pop32r cpu ops =
+  let reg = unsigned cpu.reg ops.(0) in
+  let eight = unsigned const cpu.word_width 8 in
+  RTL.[
+    reg := cpu.load cpu.sp cpu.word_width;
+    cpu.sp := cpu.sp + cpu.word_width' / eight;
+  ]
+
+let () = register "POP32r" pop32r
+
+(* f7 f6 *)
+(* todo: some cpu exn here  *)
+let div32r cpu ops =
+  let reg = unsigned cpu.reg ops.(0) in
+  let div = unsigned var word in
+  let rem = unsigned var word in
+  RTL.[
+    div := (first cpu.rdx word ^ first cpu.rax word) / reg;
+    rem := (first cpu.rdx word ^ first cpu.rax word) % reg;
+    first cpu.rax word := div;
+    first cpu.rdx word := rem;
+  ]
 
 (**
-
-ADD32mi8 addl $0x1, -0x40(%ebp)
-ADD32ri addl $0x1885, %ebx
-ADD32ri8 addl $0x1, %eax
-ADD32rr addl %edx, %eax
-AND32ri8 andl $-0x10, %esp
-CALL32m calll *-0xf8(%ebx,%edi,4)
-CALLpcrel32 calll -0x41b
-CMP32rm cmpl -0x34(%ebp), %eax
-CMP32rr cmpl %esi, %edi
 DIV32r divl %esi
-HLT hlt
 IMUL32rri8 imull $0x10, %eax, %eax
-JL_1 jl -0x1d
-JL_4 jl -0x9b
-JMP_1 jmp 0x11
-JMP_4 jmp 0x8f
-JNE_1 jne -0x21
 LEA32r leal -0xf8(%ebx), %eax
-LEAVE leave
-NOOP nop
-POP32r popl %ebp
-PUSH32rmm pushl -0x4(%ecx)
-RETL retl
 SAR32ri sarl $0x2, %esi
 SHL32ri shll $0x2, %eax
 SHR32ri shrl $0x2, %eax
 SUB32ri8 subl $0x1c, %esp
 SUB32rr subl %eax, %esi
-XOR32rr xorl %edi, %edi
 *)

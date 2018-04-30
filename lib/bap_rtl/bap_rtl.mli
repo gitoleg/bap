@@ -440,11 +440,11 @@ module Std : sig
 
     (** [first e n] extracts first [n] bits from [e], starting from
         the least significant bit *)
-    val first : 'a exp -> int -> 'a exp
+    val first : 'a exp -> bitwidth -> 'a exp
 
     (** [last e n] extracts last [n] bits from [e], where the
         last bit is the most significant bit *)
-    val last : 'a exp -> int -> 'a exp
+    val last : 'a exp -> bitwidth -> 'a exp
 
     (** [nth width e n] extracts a portion of [e] of width [width] at
         index [n], where each index points to a portion of width [width].
