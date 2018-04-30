@@ -339,9 +339,10 @@ let call32m cpu ops =
   RTL.[
     tmp := cpu.load (base + scale * index + disp) cpu.word_width;
     cpu.sp := cpu.sp - cpu.word_width' / eight;
-    cpu.store cpu.next cpu.sp cpu.word_width;
+    cpu.store cpu.sp cpu.next cpu.word_width;
     jmp tmp;
   ]
+
 (* 75 0a *)
 let jne cpu ops =
   let disp = signed imm ops.(0) in
@@ -351,34 +352,35 @@ let jne cpu ops =
     ]
   ]
 
-(* 0x7c,A *)
+(* 0x7c, 0x0a *)
 let jl cpu ops =
   let imm = signed imm ops.(0) in
   RTL.[
-    when_ (sf land oF) [
+    when_ (sf lxor oF) [
       jmp (cpu.next + imm);
     ]
   ]
 
 (* eb,0a  *)
-let jmp _cpu ops =
-  let dst = unsigned imm ops.(0) in
-  RTL.[jmp dst]
+let jmp cpu ops =
+  let disp = unsigned imm ops.(0) in
+  RTL.[jmp (cpu.next + disp)]
 
+(* 0xff,0x25,0x28,0xa0,0x04,0x08 *)
 let jmp32m cpu ops =
   let base  = unsigned cpu.reg_or_nil ops.(0) in
   let index = unsigned imm ops.(1) in
   let scale = unsigned cpu.reg_or_nil ops.(2) in
   let disp = unsigned imm ops.(3) in
   RTL.[
-    jmp (base + scale * index + disp)
+    jmp (cpu.load (base + scale * index + disp) word)
   ]
 
 (* 77, 0a *)
 let ja cpu ops =
   let imm = signed imm ops.(0) in
   RTL.[
-    when_ (lnot (sf lor oF)) [
+    when_ (lnot (cf lor zf)) [
       jmp (cpu.next + imm);
     ]
   ]
@@ -412,6 +414,7 @@ let retl cpu _ops =
     jmp tmp;
   ]
 
+(* 0xff,0xd2 *)
 let call32r cpu ops =
   let src = unsigned cpu.reg ops.(0) in
   let tmp = unsigned var word in
