@@ -15,6 +15,8 @@ let suite () =
     Test_disasm.suite ();
     Test_ir.suite ();
     Test_project.suite ();
+    Test_reduction.suite ();
+    Test_simpl.suite ();
   ]
 
 let load_plugins () =

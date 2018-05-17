@@ -2196,6 +2196,11 @@ module Std : sig
     (** [fold_consts] evaluates constant expressions and statements. *)
     val fold_consts : stmt list -> stmt list
 
+    (** [reduce_consts p] performs const reduciton in program [p] *)
+    val reduce_consts : stmt list -> stmt list
+
+    val group_like : stmt list -> stmt list
+
     (** [fixpoint f] applies transformation [f] until fixpoint is
         reached. If the transformation orbit contains non-trivial cycles,
         then the transformation will stop at an arbitrary point of a
@@ -3446,6 +3451,8 @@ module Std : sig
 
         See also {!Bil.fold_consts} *)
     val fold_consts : t -> t
+
+    val group_like : t -> t
 
     (** [fixpoint f] applies transformation [f] to [t] until it
         reaches a fixpoint, i.e., such point [x] that
