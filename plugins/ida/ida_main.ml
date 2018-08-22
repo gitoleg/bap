@@ -17,7 +17,6 @@ module Symbols = Data.Make(struct
 module type Target = sig
   type t
   val of_blocks : (string * addr * addr) seq -> t
-  val service : Bap_service.service
   module Factory : Source.Factory.S with type t = t
 end
 
@@ -53,17 +52,12 @@ let extract path arch =
   List.map syms ~f:(fun (n,s,e) -> n, addr s, addr e) |>
   Seq.of_list
 
-let provider service =
-  Bap_service.Provider.declare "ida"
-    ~desc:"Provides inforamation obtained from Ida Pro"
-    service
-
-let make_product name service provider =
-  let open Bap_service in
-  let digest = Data.Cache.Digest.to_string @@
-    Data.Cache.digest ~namespace:"ida" "%s" name in
-  Product.provide ~digest provider;
-  info "%s product issued" name
+let provider service = Bap.Std.Service.(begin
+    provide service "ida" ~desc:"extracts data using IDA Pro" [
+      parameter Config.input;
+      required loader;
+    ]
+  end)
 
 let register_source name (module T : Target) =
   let source =
@@ -71,9 +65,7 @@ let register_source name (module T : Target) =
     let extract file arch = Or_error.try_with ~backtrace:true (fun () ->
         extract file arch |> T.of_blocks) in
     Stream.merge file arch ~f:extract in
-  let p = provider T.service in
-  make_product name T.service p;
-  T.Factory.provide p source
+  T.Factory.register name source
 
 type perm = [`code | `data] [@@deriving sexp]
 type section = string * perm * int * (int64 * int)

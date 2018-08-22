@@ -5,6 +5,7 @@ open Regular.Std
 open Format
 open Option.Monad_infix
 open Objdump_config
+open Bap_service
 include Self()
 
 let objdump_opts = "-rd --no-show-raw-insn"
@@ -62,14 +63,14 @@ let popen cmd =
   match Unix.close_process_full (ic,oc,ec) with
   | Unix.WEXITED 0 -> Some r
   | Unix.WEXITED n ->
-    info "command `%s' terminated abnormally with exit code %d" cmd n;
+    warning "command `%s' terminated abnormally with exit code %d" cmd n;
     None
   | Unix.WSIGNALED _ | Unix.WSTOPPED _ ->
     (* a signal number is internal to OCaml, so don't print it *)
-    info "command `%s' was terminated by a signal" cmd;
+    warning "command `%s' was terminated by a signal" cmd;
     None
 
-let run_objdump arch file =
+let run_objdump arch file _inputs =
   let popen = fun cmd -> popen (cmd ^ " " ^ file) in
   let names = Addr.Table.create () in
   let width = Arch.addr_size arch |> Size.in_bits in
@@ -87,27 +88,34 @@ let run_objdump arch file =
   then warning "failed to obtain symbols";
   Ok (Symbolizer.create (Hashtbl.find names))
 
-let objdump = Bap_service.Provider.declare "objdump"
-    ~desc:"A symbolizer based on parsing objdump's output"
-    Symbolizer.service
 
-let () =
-  let open Bap_service in
-  let digest = Data.Cache.Digest.to_string @@
-    Data.Cache.digest ~namespace:"objdump" "symbolizer"  in
-  Product.provide ~digest objdump;
-  info "product issued"
+
+
+
+let objdump = Service.(begin
+    provide symbolizer "edu.cmu.ece.bap/objdump" [
+      parameter Config.input;
+    ]
+      ~desc:"extracts names from objdump output"
+  end)
+
 
 let main () =
-  Stream.merge Project.Info.arch Project.Info.file ~f:run_objdump |>
-  Symbolizer.Factory.provide objdump
+  let args = Stream.Variadic.(begin
+      args Project.Info.arch
+      $    Project.Info.file
+      $    Service.inputs objdump
+    end) in
+  Stream.Variadic.apply args  ~f:run_objdump |>
+  Symbolizer.Factory.register name
+
 
 let () =
   Config.manpage [
     `S "DESCRIPTION";
     `P "This plugin provides a symbolizer based on objdump. \
         Note that we parse objdump output, thus this symbolizer \
-        is potentially fragile to changes in objdumps output.";
+        is potentially fragile to changes in objdump's output.";
     `S  "EXAMPLES";
     `P  "To view the symbols after running the plugin:";
     `P  "$(b, bap --symbolizer=objdump --dump-symbols) $(i,executable)";
@@ -116,4 +124,5 @@ let () =
     `S  "SEE ALSO";
     `P  "$(b,bap-plugin-ida)(1)"
   ];
+
   Config.when_ready (fun _ -> main ())

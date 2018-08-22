@@ -3,7 +3,6 @@ open Bap.Std
 open Format
 open Bap_future.Std
 open Regular.Std
-open Bap_service
 
 include Self()
 
@@ -13,19 +12,19 @@ module Sigs = Bap_byteweight_signatures
 let create_finder path length threshold arch  =
   match Sigs.load ?path ~mode:"bytes" arch with
   | Error `No_signatures ->
-    info "signature database is not available";
+    info "the signature database is not available";
     info "advice - use `bap-byteweight` to install signatures";
     Or_error.errorf "no signatures"
   | Error (`Corrupted err) ->
     let path = Option.value path ~default:Sigs.default_path in
-    error "signature database is corrupted: %s" err;
+    error "the signature database is corrupted: %s" err;
     info "advice - delete signatures at `%s'" path;
-    info "advice - use `bap-byteweight` to install signatures";
+    info "advice - use `bap-byteweight` to install new signatures";
     Or_error.errorf "corrupted database"
   | Error (`No_entry _err) ->
-    error "no signatures for specified compiler and architecture";
-    info "advice - try to use default compiler entry";
-    info "advice - create new entries with `bap-byteweight' tool";
+    error "no signatures for the specified compiler and architecture";
+    info "advice - try to use the default compiler entry";
+    info "advice - add support for your target using `bap-byteweight' tool";
     Or_error.errorf "no entry"
   | Error (`Sys_error err) ->
     error "signature loading was prevented by a system error: %s" err;
@@ -34,16 +33,13 @@ let create_finder path length threshold arch  =
     let bw = Binable.of_string (module BW) data in
     Ok (BW.find bw ~length ~threshold)
 
-let byteweight =
-  Provider.declare "byteweight"
-    ~desc:"Provides a rooter based on byteweight algorithm"
-    Rooter.service
-
-let () =
-  let digest = Data.Cache.Digest.to_string @@
-    Data.Cache.digest ~namespace:"byteweight" "rooter" in
-  Product.provide ~digest byteweight;
-  info "product issued"
+let byteweight = Service.(begin
+    provide rooter "byteweight"
+      ~desc:"discovers function starts using ML classifier" [
+      required loader;
+      parameter Config.input;
+    ]
+  end)
 
 let main path length threshold =
   let finder arch = create_finder path length threshold arch in
@@ -53,30 +49,31 @@ let main path length threshold =
         Set.union roots @@ Addr.Set.of_list (finder mem)) in
   let find_roots arch mem = match finder arch with
     | Error _ as err ->
-      warning "unable to provide rooter service";
+      warning "unable to provide the rooter service";
       err
     | Ok finder -> match find finder mem with
       | roots when Set.is_empty roots ->
-        info "no roots was found";
+        info "no roots were found";
         info "advice - check your compiler's signatures";
         Ok (Rooter.create Seq.empty)
       | roots -> Ok (roots |> Set.to_sequence |> Rooter.create)  in
   let rooter =
     let open Project.Info in
     Stream.Variadic.(apply (args arch $ code) ~f:find_roots) in
-  Rooter.Factory.provide byteweight rooter
+  Rooter.Factory.register name rooter
 
 let () =
   let () = Config.manpage [
       `S "DESCRIPTION";
 
       `P
-
         "This plugin provides a rooter (function start identification)
-       service using the BYTEWEIGHT algorithm described in [1]. The
-       plugin operates on a byte level. The $(b,SEE ALSO) section
-       contains links for other plugins, that provides rooters";
-
+       service using the BYTEWEIGHT algorithm described in [1].
+       The algorithm uses machin learning techniques to classify bytes
+       that belong to a function preamble from thos that don't.
+       Currently the plugin   plugin operates on a byte level
+       only. The $(b,SEE ALSO) section  contains links for other
+       plugins, that provides rooters";
 
       `P "[1]: Bao, Tiffany, et al. \"Byteweight: Learning to recognize
     functions in binary code.\" 23rd USENIX Security Symposium (USENIX

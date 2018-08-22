@@ -15,11 +15,17 @@ Library bap
                    bap.sema,
                    bap.types,
                    bap-future,
-                   bap-service,
                    cmdliner,
-                   regular
+                   regular,
+                   bap.bundle
   Modules:         Bap
-  InternalModules: Bap_event, Bap_log, Bap_project, Bap_self, Bap_synthetic_symbolizer
+  InternalModules: Bap_event,
+                   Bap_log,
+                   Bap_project,
+                   Bap_self,
+                   Bap_synthetic_symbolizer,
+                   Bap_service,
+                   Bap_services
 
 
 Library types
@@ -80,7 +86,7 @@ Library bap_image
   Build$:          flag(everything) || flag(bap_std)
   FindlibParent: bap
   FindlibName:   image
-  BuildDepends:  bap-service, bap.types, ogre
+  BuildDepends:  bap.types, ogre
   InternalModules:
                  Bap_fileutils,
                  Bap_image,
@@ -101,7 +107,6 @@ Library disasm
   BuildDepends:  bap.image,
                  bap.types,
                  bap-future,
-                 bap-service,
                  camlzip,
                  ocamlgraph,
                  ogre
