@@ -9,7 +9,7 @@ BINARIES="bap bap-mc bapbundle"
 PREFIX=/usr/local
 VERSION=1.4.0
 OCAML=4.05.0
-LLVM_VERSION=5.0
+LLVM_VERSION=3.8
 ARCH=$(dpkg-architecture -qDEB_BUILD_ARCH)
 
 CONFDIR=$PREFIX/etc/bap
@@ -76,12 +76,16 @@ sudo rm -rf bap
 
 mkdir -p bap/bap_$VERSION/DEBIAN
 
+SHARED=bap/bap_$VERSION/$PREFIX/share
 BINDIR=bap/bap_$VERSION/$PREFIX/bin
 LIBDIR=bap/bap_$VERSION/$PREFIX/lib/bap
-SIGDIR=bap/bap_$VERSION/$PREFIX/share/bap
+SIGDIR=$SHARED/bap
 DEBIAN=bap/bap_$VERSION/DEBIAN
+PRIMUS=$SHARED/primus/site-lisp
+BAPAPI=$SHARED/bap-api
 
-mkdir -p $BINDIR $LIBDIR $SIGDIR $DEBIAN
+
+mkdir -p $BINDIR $LIBDIR $SIGDIR $DEBIAN $PRIMUS $BAPAPI
 
 for binary in $BINARIES; do
     cp $PREFIX/bin/$binary bap/bap_$VERSION/$PREFIX/bin
@@ -99,6 +103,13 @@ Priority: optional
 Version: $VERSION
 Description: Binary Analysis Platform
 EOF
+
+LISPSRC="primus_lisp primus_taint primus_test"
+for src in $LISPSRC; do
+    cp bap-repo/plugins/$src/lisp/*.lisp $PRIMUS/
+done;
+
+cp -r bap-repo/plugins/api/api/c $BAPAPI
 
 sudo chown -R root:root bap/bap_$VERSION
 dpkg-deb --build bap/bap_$VERSION
