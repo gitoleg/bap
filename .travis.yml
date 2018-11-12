@@ -38,6 +38,7 @@ cache:
   - rm -rf $HOME/.opam/log
 
 env:
+  - OPAM_VERSION=2.0
   - OCAML_VERSION=4.04.1
   - OCAML_VERSION=4.05 WITH_BUILD_CACHE=true
 
