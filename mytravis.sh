@@ -37,6 +37,8 @@ install_opam() {
     esac
 }
 
+aptget
+
 install_opam
 ocaml -version
 opam --version
