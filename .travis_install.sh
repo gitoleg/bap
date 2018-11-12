@@ -17,4 +17,4 @@ cp -r $HOME/.opam/$OPAM_SWITCH/lib/bap* $HOME/save_opam/lib/
 '
 fi
 
-bash -ex .travis-opam.sh
+bash -ex mytravis.sh
