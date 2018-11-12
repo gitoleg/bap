@@ -28,8 +28,7 @@ install_opam() {
             eval `opam config env` ;;
         2.0)
             install_bubblewrap
-            https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh
-            sudo ./install.sh
+            echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
             opam init --auto-setup --comp=4.05.0 --yes
             eval $(opam env) ;;
         *)
