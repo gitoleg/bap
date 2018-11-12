@@ -43,6 +43,8 @@ ocaml -version
 opam --version
 opam install depext --yes
 
+export OPAMYES=1
+
 opam depext -y conf-m4
 opam pin add travis-opam https://github.com/ocaml/ocaml-ci-scripts.git#master
 cp ~/.opam/$(opam switch show)/bin/ci-opam ~/
