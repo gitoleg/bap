@@ -64,8 +64,13 @@ install_opam() {
 
 aptget_stuff
 install_opam
-ocaml -version
+
+./~/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true
+cat .bash_profile
+
 opam --version
+ocaml -version
+
 opam install depext --yes
 
 export OPAMYES=1
