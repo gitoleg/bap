@@ -50,12 +50,12 @@ install_opam() {
     case "$OPAM_VERSION" in
         1.2)
             sudo apt-get install opam
-            opam init --auto-setup --comp=4.05.0 --yes
+            opam init --auto-setup --comp=$OCAML_VERSION --yes
             eval `opam config env` ;;
         2.0)
             install_bubblewrap
             echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
-            opam init --auto-setup --comp=4.05.0 --yes
+            opam init --auto-setup --comp=$OCAML_VERSION --yes
             eval $(opam env) ;;
         *)
             echo "Unknown opam version $OPAM_VERSION" ;;
