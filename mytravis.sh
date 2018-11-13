@@ -71,6 +71,7 @@ opam install depext --yes
 export OPAMYES=1
 
 if [ "$OPAM_VERSION" == "2.0" ]; then
+    opam install opam-state --yes
     upgrade_opam
 fi
 
