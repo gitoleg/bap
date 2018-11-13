@@ -20,7 +20,33 @@ install_bubblewrap() {
     cd ..
 }
 
+upgrade_opam() {
+    cd opam
+
+    cat > "upgrade.ml" << EOF
+let filename = OpamFilename.of_string "opam"
+let opamfile = OpamFile.OPAM.read (OpamFile.make filename)
+let opamfile = OpamFormatUpgrade.opam_file opamfile
+let () = OpamFile.OPAM.write (OpamFile.make filename) opamfile
+
+let fields = {|
+synopsis: "Binary Analysis Platform"
+description: "Binary Analysis Platform"
+|}
+
+let opam = open_out_gen [Open_wronly; Open_append] 0o666 "opam"
+let () = output_string opam fields
+let () = close_out opam
+EOF
+
+    ocamlbuild -pkg opam-state upgrade.native
+    ./upgrade.native
+    cd ..
+}
+
 install_opam() {
+    ls -l
+
     case "$OPAM_VERSION" in
         1.2)
             sudo apt-get install opam
@@ -37,13 +63,16 @@ install_opam() {
 }
 
 aptget_stuff
-
 install_opam
 ocaml -version
 opam --version
 opam install depext --yes
 
 export OPAMYES=1
+
+if [ "$OPAM_VERSION" == "2.0" ]; then
+    upgrade_opam
+fi
 
 opam depext -y conf-m4
 opam pin add travis-opam https://github.com/ocaml/ocaml-ci-scripts.git#master
@@ -53,5 +82,4 @@ mv ~/ci-opam ~/.opam/$(opam switch show)/bin/ci-opam
 
 echo -en "travis_fold:end:prepare.ci\r"
 
-ls -l
 opam config exec -- ci-opam
