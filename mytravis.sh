@@ -2,7 +2,7 @@
 
 set -uex
 
-aptget() {
+aptget_stuff() {
     sudo apt-get -y update
     sudo apt-get -y install \
          gcc make unzip libcap-dev m4 \
@@ -36,7 +36,7 @@ install_opam() {
     esac
 }
 
-aptget
+aptget_stuff
 
 install_opam
 ocaml -version
@@ -52,4 +52,6 @@ opam remove -a travis-opam
 mv ~/ci-opam ~/.opam/$(opam switch show)/bin/ci-opam
 
 echo -en "travis_fold:end:prepare.ci\r"
+
+ls -l
 opam config exec -- ci-opam
