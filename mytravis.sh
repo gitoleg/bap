@@ -66,7 +66,6 @@ aptget_stuff
 install_opam
 
 ./~/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true
-cat .bash_profile
 
 opam --version
 ocaml -version
