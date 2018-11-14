@@ -47,7 +47,7 @@ EOF
 export OPAMYES=1
 
 install_opam() {
-    ls -la ../
+    ls -la
 
     case "$OPAM_VERSION" in
         1.2)
@@ -68,7 +68,7 @@ aptget_stuff
 install_opam
 opam --version
 ocaml -version
-
+ls -la
 opam install depext --yes
 
 if [ "$OPAM_VERSION" == "2.0" ]; then
