@@ -58,7 +58,19 @@ install_opam() {
             install_bubblewrap
             echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
             yes | opam init --auto-setup --comp=$OCAML_VERSION --yes
-            eval `opam config env` ;;
+#            eval `opam config env`
+
+            export CAML_LD_LIBRARY_PATH="/home/travis/.opam/$OCAML_VERSION/lib/stublibs"
+            export MANPATH="/home/travis/.opam/$OCAML_VERSION/man:$MANPATH"
+            export PERL5LIB="/home/travis/.opam/$OCAML_VERSION/lib/perl5"
+            export OCAML_TOPLEVEL_PATH="/home/travis/.opam/$OCAML_VERSION/lib/toplevel";
+            export PATH="/home/travis/.opam/$OCAML_VERSION/bin:$PATH"
+
+            echo CAML_LD_LIBRARY_PATH
+            echo MANPATH
+            echo PERL5LIB
+            echo OCAML_TOPLEVEL_PATH
+            echo PATH ;;
         *)
             echo "Unknown opam version $OPAM_VERSION" ;;
     esac
