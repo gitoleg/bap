@@ -66,11 +66,10 @@ install_opam() {
             export OCAML_TOPLEVEL_PATH="/home/travis/.opam/$OCAML_VERSION/lib/toplevel";
             export PATH="/home/travis/.opam/$OCAML_VERSION/bin:$PATH"
 
-            echo $CAML_LD_LIBRARY_PATH
-            echo $MANPATH
-            echo $PERL5LIB
-            echo $OCAML_TOPLEVEL_PATH
-            echo $PATH ;;
+            ls -l /home/travis/.opam/$OCAML_VERSION/bin
+
+            ;;
+
         *)
             echo "Unknown opam version $OPAM_VERSION" ;;
     esac
@@ -78,6 +77,9 @@ install_opam() {
 
 aptget_stuff
 install_opam
+
+echo $PATH
+
 opam --version
 ocaml -version
 ls -la
