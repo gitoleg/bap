@@ -44,6 +44,8 @@ EOF
     cd ..
 }
 
+export OPAMYES=1
+
 install_opam() {
     ls -l
 
@@ -55,7 +57,7 @@ install_opam() {
         2.0)
             install_bubblewrap
             echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
-            opam init --auto-setup --comp=$OCAML_VERSION --yes
+            yes | opam init --auto-setup --comp=$OCAML_VERSION --yes
             eval $(opam env) ;;
         *)
             echo "Unknown opam version $OPAM_VERSION" ;;
@@ -64,15 +66,10 @@ install_opam() {
 
 aptget_stuff
 install_opam
-
-./~/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true
-
 opam --version
 ocaml -version
 
 opam install depext --yes
-
-export OPAMYES=1
 
 if [ "$OPAM_VERSION" == "2.0" ]; then
     opam install opam-state --yes
