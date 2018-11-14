@@ -56,7 +56,8 @@ install_opam() {
         2.0)
             install_bubblewrap
             echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
-            opam init -v -v --comp=$OCAML_VERSION --yes
+            yes | opam init -v -v --comp=$OCAML_VERSION --yes > someout
+            cat someout
             eval $(opam env)
 
             ls -l /home/travis/.opam/$OCAML_VERSION/bin
