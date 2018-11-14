@@ -57,7 +57,7 @@ install_opam() {
         2.0)
             install_bubblewrap
             echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
-            yes | opam init -v -v --auto-setup --comp=$OCAML_VERSION --yes
+            yes | opam init -v -v --comp=$OCAML_VERSION --yes
 #            eval `opam config env`
 
             export CAML_LD_LIBRARY_PATH="/home/travis/.opam/$OCAML_VERSION/lib/stublibs"
