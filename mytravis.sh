@@ -47,7 +47,7 @@ EOF
 export OPAMYES=1
 
 install_opam() {
-    ls -l
+    ls -la ../
 
     case "$OPAM_VERSION" in
         1.2)
