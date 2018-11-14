@@ -47,7 +47,6 @@ EOF
 export OPAMYES=1
 
 install_opam() {
-    ls -la
 
     case "$OPAM_VERSION" in
         1.2)
@@ -57,21 +56,15 @@ install_opam() {
         2.0)
             install_bubblewrap
             echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
-            yes | opam init -v -v --comp=$OCAML_VERSION --yes
-#            eval `opam config env`
-
-            export CAML_LD_LIBRARY_PATH="/home/travis/.opam/$OCAML_VERSION/lib/stublibs"
-            export MANPATH="/home/travis/.opam/$OCAML_VERSION/man:$MANPATH"
-            export PERL5LIB="/home/travis/.opam/$OCAML_VERSION/lib/perl5"
-            export OCAML_TOPLEVEL_PATH="/home/travis/.opam/$OCAML_VERSION/lib/toplevel";
-            export PATH="/home/travis/.opam/$OCAML_VERSION/bin:$PATH"
+            opam init -v -v --comp=$OCAML_VERSION --yes
+            eval $(opam env)
 
             ls -l /home/travis/.opam/$OCAML_VERSION/bin
-
             ;;
-
         *)
-            echo "Unknown opam version $OPAM_VERSION" ;;
+            echo "Unknown opam version $OPAM_VERSION"
+            exit 1
+            ;;
     esac
 }
 
