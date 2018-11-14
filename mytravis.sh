@@ -58,7 +58,7 @@ install_opam() {
             install_bubblewrap
             echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
             yes | opam init --auto-setup --comp=$OCAML_VERSION --yes
-            eval $(opam env) ;;
+            eval `opam config env` ;;
         *)
             echo "Unknown opam version $OPAM_VERSION" ;;
     esac
