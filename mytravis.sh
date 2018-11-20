@@ -32,7 +32,7 @@ install_bubblewrap() {
     cd ..
 }
 
-upgrade_opam() {
+upgrade_opam_file() {
     cd opam
 
     cat > "upgrade.ml" << EOF
@@ -72,6 +72,8 @@ install_opam() {
             yes | opam init -v -v --comp=$OCAML_VERSION --yes > someout
             cat someout
             eval $(opam env)
+            echo "what is default???"
+            /home/travis/.opam/default/bin/ocaml --version
 
             find $HOME -name "ocaml"
 
@@ -96,7 +98,7 @@ opam install depext --yes
 
 if [ "$OPAM_VERSION" == "2.0" ]; then
     opam install opam-state --yes
-    upgrade_opam
+    upgrade_opam_file
 fi
 
 opam depext -y conf-m4
