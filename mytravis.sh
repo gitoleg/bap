@@ -66,7 +66,6 @@ install_opam() {
             opam init --auto-setup --comp=$OCAML_VERSION --yes
             eval `opam config env` ;;
         2.0)
-            which ocaml
             install_bubblewrap
             bwrap --version
             echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
