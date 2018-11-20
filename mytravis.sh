@@ -1,5 +1,17 @@
 #!/bin/bash
 
+full_apt_version () {
+  package=$1
+  version=$2
+  case "${version}" in
+      latest) echo -n "${package}" ;;
+      *) echo -n "${package}="
+         apt-cache show "$package" \
+             | sed -n "s/^Version: \(${version}\)/\1/p" \
+             | head -1
+  esac
+}
+
 set -uex
 
 aptget_stuff() {
@@ -60,6 +72,8 @@ install_opam() {
             yes | opam init -v -v --comp=$OCAML_VERSION --yes > someout
             cat someout
             eval $(opam env)
+
+            find $HOME -name "ocaml"
 
             ls -l /home/travis/.opam/$OCAML_VERSION/bin
             ;;
