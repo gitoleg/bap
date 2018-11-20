@@ -66,10 +66,13 @@ install_opam() {
             opam init --auto-setup --comp=$OCAML_VERSION --yes
             eval `opam config env` ;;
         2.0)
+            which ocaml
             install_bubblewrap
             bwrap --version
             echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
             yes | opam init -v -v --compiler=$OCAML_VERSION --yes
+            cat ~/.bash_profile
+
             eval $(opam env)
             which ocaml
             ls -la /home/travis/
