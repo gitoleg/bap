@@ -69,12 +69,15 @@ install_opam() {
             install_bubblewrap
             bwrap --version
             echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+            which opam
+            opam --version
+
             yes | opam init -v -v --compiler=$OCAML_VERSION --yes
             cat ~/.bash_profile
 
             eval $(opam env)
             which ocaml
-            ls -la /home/travis/
+            ls -la /home/travis/.opam/
             ;;
         *)
             echo "Unknown opam version $OPAM_VERSION"
