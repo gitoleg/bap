@@ -72,7 +72,9 @@ install_opam() {
             which opam
             opam --version
 
-            yes | opam init -v -v --compiler=$OCAML_VERSION --yes
+            echo "installing $OCAML_VERSION"
+
+            opam init -v -v --compiler=$OCAML_VERSION --yes
             cat ~/.bash_profile
 
             eval $(opam env)
