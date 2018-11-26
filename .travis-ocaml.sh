@@ -177,3 +177,5 @@ echo OPAM_SWITCH=$OPAM_SWITCH     >> .travis-ocaml.env
 ocaml -version
 opam --version
 opam --git-version
+
+opam remote add my git://github.com/gitoleg/opam-repository#update-pkgs
