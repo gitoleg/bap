@@ -33,6 +33,7 @@ install_bubblewrap() {
 }
 
 upgrade_opam_file() {
+    opam install opam-state --yes
     cd opam
 
     cat > "upgrade.ml" << EOF
@@ -58,38 +59,25 @@ EOF
 
 export OPAMYES=1
 
-install_opam() {
-
-    case "$OPAM_VERSION" in
-        1.2)
-            sudo apt-get install opam
-            opam init --auto-setup --comp=$OCAML_VERSION --yes
-            eval `opam config env` ;;
-        2.0)
-            install_bubblewrap
-            bwrap --version
-            sudo wget https://github.com/ocaml/opam/releases/download/2.0.1/opam-2.0.1-x86_64-linux -O /usr/local/bin/opam
-            sudo chmod +x /usr/local/bin/opam
-            which opam
-            opam --version
-
-            echo "installing $OCAML_VERSION"
-            OPAM_SWITCH="ocaml-base-compiler.$OCAML_VERSION"
-            export OPAMYES=1
-            opam init -a git://github.com/ocaml/opam-repository --comp="$OPAM_SWITCH"
-
-            eval $(opam env)
-            which ocaml
-            ls -la /home/travis/.opam/
-            ;;
-        *)
-            echo "Unknown opam version $OPAM_VERSION"
-            exit 1
-            ;;
-    esac
-}
-
 aptget_stuff
+
+install_bubblewrap
+bwrap --version
+sudo wget https://github.com/ocaml/opam/releases/download/2.0.1/opam-2.0.1-x86_64-linux -O /usr/local/bin/opam
+sudo chmod +x /usr/local/bin/opam
+which opam
+opam --version
+
+echo "installing $OCAML_VERSION"
+OPAM_SWITCH="ocaml-base-compiler.$OCAML_VERSION"
+export OPAMYES=1
+opam init --disable-sandboxing -a git://github.com/ocaml/opam-repository --comp="$OPAM_SWITCH"
+
+eval $(opam env)
+which ocaml
+ls -la /home/travis/.opam/
+
+
 install_opam
 
 echo $PATH
@@ -99,10 +87,7 @@ ocaml -version
 ls -la
 opam install depext --yes
 
-if [ "$OPAM_VERSION" == "2.0" ]; then
-    opam install opam-state --yes
-    upgrade_opam_file
-fi
+upgrade_opam_file
 
 opam depext -y conf-m4
 opam pin add travis-opam https://github.com/ocaml/ocaml-ci-scripts.git#master
