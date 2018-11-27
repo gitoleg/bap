@@ -73,9 +73,7 @@ install_opam() {
             opam --version
 
             echo "installing $OCAML_VERSION"
-            opam init -a "git://github.com/ocaml/opam-repository" -v -v --comp="ocaml-base-compiler.$OCAML_VERSION" --yes
-#            opam init -v -v --compiler=$OCAML_VERSION --yes
-#            cat ~/.bash_profile
+            opam init -a "git://github.com/ocaml/opam-repository" --comp="ocaml-base-compiler.$OCAML_VERSION"
 
             eval $(opam env)
             which ocaml
