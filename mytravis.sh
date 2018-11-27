@@ -72,15 +72,12 @@ which opam
 opam --version
 
 echo "installing $OCAML_VERSION"
-OPAM_SWITCH="$OCAML_VERSION"
 export OPAMYES=1
-opam init -a git://github.com/ocaml/opam-repository --comp="$OPAM_SWITCH"
+opam init --comp="$OCAML_VERSION"
 
 eval $(opam env)
 which ocaml
 ls -la /home/travis/.opam/
-
-echo $PATH
 
 opam --version
 ocaml -version
