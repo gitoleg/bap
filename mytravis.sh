@@ -31,8 +31,8 @@ install_bubblewrap() {
     ./configure
     make
     sudo make install
-    rm -r bwrap
     cd ../../
+    rm -r bwrap
 }
 
 upgrade_opam_file() {
