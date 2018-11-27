@@ -83,7 +83,7 @@ opam --version
 ocaml -version
 ls -la
 opam install depext --yes
-
+opam install ocamlbuild
 upgrade_opam_file
 
 opam depext -y conf-m4
