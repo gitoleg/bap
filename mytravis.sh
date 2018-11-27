@@ -23,12 +23,15 @@ aptget_stuff() {
 }
 
 install_bubblewrap() {
+    mkdir bwrap
+    cd bwrap
     wget https://github.com/projectatomic/bubblewrap/releases/download/v0.3.1/bubblewrap-0.3.1.tar.xz
     tar xvf bubblewrap-0.3.1.tar.xz
     cd bubblewrap-0.3.1
     ./configure
     make
     sudo make install
+    rm -r bwrap
     cd ..
 }
 
