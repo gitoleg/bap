@@ -1,5 +1,7 @@
 TASK=$1
 
+sudo mv $HOME/save_opam/bin/opam /usr/local/bin/
+
 eval `opam config env`
 
 comp=`opam config var switch`
