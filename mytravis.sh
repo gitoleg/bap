@@ -77,9 +77,6 @@ eval $(opam env)
 which ocaml
 ls -la /home/travis/.opam/
 
-
-install_opam
-
 echo $PATH
 
 opam --version
