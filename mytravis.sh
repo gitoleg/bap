@@ -69,8 +69,7 @@ install_opam() {
             install_bubblewrap
             bwrap --version
             sudo wget https://github.com/ocaml/opam/releases/download/2.0.1/opam-2.0.1-x86_64-linux -O /usr/local/bin/opam
-            sudo chmod +x /usr/local/bin/opam ;;
-#            echo "" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+            sudo chmod +x /usr/local/bin/opam
             which opam
             opam --version
 
