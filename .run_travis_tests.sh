@@ -1,5 +1,7 @@
 TASK=$1
 
+ls -l $HOME/
+ls -l $HOME/save_opam/
 ls -l $HOME/save_opam/bin/
 
 sudo mv $HOME/save_opam/bin/opam /usr/local/bin/
