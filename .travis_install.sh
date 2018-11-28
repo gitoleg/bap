@@ -15,6 +15,7 @@ cp -r $HOME/.opam/$OPAM_SWITCH/share $HOME/save_opam/
 opam remove bap-veri -y
 cp -r $HOME/.opam/$OPAM_SWITCH/lib/bap* $HOME/save_opam/lib/
 cp `which opam` $HOME/save_opam/bin
+ls -l $HOME/save_opam/bin
 '
 fi
 
