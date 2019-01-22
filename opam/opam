@@ -219,7 +219,6 @@ depends: [
     "ppx_jane"    {>= "v0.9" & < "v0.10"}
     "core_kernel" {>= "v0.9" & < "v0.10"}
     "ezjsonm"
-    "faillib"
     "fileutils"
     "FrontC"
     "oasis" {build & = "0.4.10"}
