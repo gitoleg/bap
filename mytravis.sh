@@ -1,17 +1,5 @@
 #!/bin/bash
 
-full_apt_version () {
-  package=$1
-  version=$2
-  case "${version}" in
-      latest) echo -n "${package}" ;;
-      *) echo -n "${package}="
-         apt-cache show "$package" \
-             | sed -n "s/^Version: \(${version}\)/\1/p" \
-             | head -1
-  esac
-}
-
 set -uex
 
 aptget_stuff() {
