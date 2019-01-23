@@ -17,7 +17,6 @@ cp -r $HOME/.opam/$OPAM_SWITCH/lib/bap* $HOME/save_opam/lib/
 
 ls -l $HOME
 ls -l $HOME/save_opam/
-ls -l $HOME/save_opam/bin/*
 
 '
 

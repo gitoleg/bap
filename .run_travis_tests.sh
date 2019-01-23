@@ -1,8 +1,8 @@
 TASK=$1
 
-eval `opam config env`
+#eval `opam config env`
 
-comp=`opam config var switch`
+comp=4.05.0
 
 ls -l $HOME
 ls -l $HOME/save_opam/
