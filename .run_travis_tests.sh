@@ -10,9 +10,9 @@ ls -l $HOME
 ls -l $HOME/save_opam/
 ls -l $HOME/save_opam/bin/*
 
-cp -r $HOME/save_opam/bin/* $HOME/.opam/$comp/bin/
-cp -r $HOME/save_opam/share/* $HOME/.opam/$comp/share/
-cp -r $HOME/save_opam/lib/* $HOME/.opam/$comp/lib/
+cp -r $HOME/save_opam/bin/ $HOME/.opam/$comp/
+cp -r $HOME/save_opam/share/ $HOME/.opam/$comp/
+cp -r $HOME/save_opam/lib/ $HOME/.opam/$comp/
 
 bap --version
 
