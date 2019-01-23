@@ -4,6 +4,8 @@ TASK=$1
 
 comp=4.05.0
 
+mdkir -p $HOME/.opam/$comp/
+
 ls -l $HOME
 ls -l $HOME/save_opam/
 ls -l $HOME/save_opam/bin/*
