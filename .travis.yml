@@ -32,7 +32,6 @@ addons:
 
 cache:
   directories:
-  - $HOME/.opam
   - $HOME/save_opam
 
 before_cache:
