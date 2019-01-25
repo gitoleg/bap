@@ -18,6 +18,7 @@ export PATH=$HOME/.opam/$comp/bin:$PATH
 
 
 bap --version
+bap-veri --help
 
 if [ "$TASK" == "checks" ]; then
     bash -exc 'make check'
@@ -28,5 +29,6 @@ if [ "$TASK" == "unit_tests" ]; then
 fi
 
 if [ "$TASK" == "veri" ]; then
-    bash -exc 'make veri'
+    bash 'make veri'
+    cat testsuite/bap-veri.log
 fi
