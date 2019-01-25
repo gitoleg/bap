@@ -17,6 +17,7 @@ cp -r $HOME/save_opam/lib/ $HOME/.opam/$comp/
 export PATH=$HOME/.opam/$comp/bin:$PATH
 
 bap --version
+bap-veri --version
 
 if [ "$TASK" == "checks" ]; then
     bash -exc 'make check'

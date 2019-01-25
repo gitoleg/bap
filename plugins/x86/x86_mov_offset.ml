@@ -194,6 +194,10 @@ module T = Make(Ver_common)
 module Self = Self ()
 
 let () =
+  let strip_patch ver =
+    if String.length ver <> 5 then ver
+    else String.sub ver 0 3 in
+  let llvm_version = strip_patch llvm_version in
   if llvm_version = "3.4" then T_34.register ()
   else
   if List.mem ["3.8";"4.0";"5.0";"6.0";"7.0"] llvm_version ~equal:String.equal
