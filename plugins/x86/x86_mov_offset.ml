@@ -195,7 +195,7 @@ module Self = Self ()
 
 let () =
   let strip_patch ver =
-    if String.length ver <> 5 then ver
+    if String.length ver = 3 then ver
     else String.sub ver 0 3 in
   printf "point 1: llvm_version is %s\n" llvm_version;
   let llvm_version = strip_patch llvm_version in
