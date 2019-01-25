@@ -197,7 +197,9 @@ let () =
   let strip_patch ver =
     if String.length ver <> 5 then ver
     else String.sub ver 0 3 in
+  printf "point 1: llvm_version is %s\n" llvm_version;
   let llvm_version = strip_patch llvm_version in
+  printf "point 2: llvm_version is %s\n" llvm_version;
   if llvm_version = "3.4" then T_34.register ()
   else
   if List.mem ["3.8";"4.0";"5.0";"6.0";"7.0"] llvm_version ~equal:String.equal
