@@ -16,6 +16,7 @@ cp -r $HOME/save_opam/lib/ $HOME/.opam/$comp/
 
 export PATH=$HOME/.opam/$comp/bin:$PATH
 
+
 bap --version
 
 if [ "$TASK" == "checks" ]; then
