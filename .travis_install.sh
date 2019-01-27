@@ -14,12 +14,14 @@ cp -r $HOME/.opam/$OPAM_SWITCH/bin/ $HOME/save_opam/
 cp -r $HOME/.opam/$OPAM_SWITCH/share $HOME/save_opam/
 cp -r $HOME/.opam/$OPAM_SWITCH/lib/bap/*.plugin $HOME/save_opam/lib/bap
 
-opam remove bap-veri -y
-
 ls -l $HOME
 ls -l $HOME/save_opam/
-
+ls -l $HOME/save_opam/lib/bap/
 df -h
+
+bap-veri --help
+
+opam remove bap-veri -y
 
 '
 
