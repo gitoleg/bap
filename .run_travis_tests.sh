@@ -20,7 +20,7 @@ export PATH=$HOME/.opam/$comp/bin:$PATH
 ls -l ~/.opam/$comp/lib/bap
 
 bap --version
-bap-veri --help
+
 
 if [ "$TASK" == "checks" ]; then
     bash -exc 'make check'
