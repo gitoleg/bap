@@ -17,6 +17,8 @@ cp -r $HOME/save_opam/lib/ $HOME/.opam/$comp/
 export PATH=$HOME/.opam/$comp/bin:$PATH
 
 
+ls -l ~/.opam/$comp/lib/bap
+
 bap --version
 bap-veri --help
 
@@ -29,6 +31,6 @@ if [ "$TASK" == "unit_tests" ]; then
 fi
 
 if [ "$TASK" == "veri" ]; then
-    bash 'make veri'
-    cat testsuite/bap-veri.log
+    bash -exc 'make veri'
+    cat bap-veri.log
 fi
