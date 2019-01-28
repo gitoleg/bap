@@ -5,7 +5,10 @@ export TESTS=false
 if [ "$WITH_BUILD_CACHE" == "true" ]; then
     export POST_INSTALL_HOOK='
 rm -rf bap-veri
-git clone https://github.com/BinaryAnalysisPlatform/bap-veri.git
+git clone https://github.com/gitoleg/bap-veri.git
+cd bap-veri
+git checkout travis-problems
+cd ../
 opam pin add bap-veri bap-veri/ -y
 OPAM_SWITCH=`opam config var switch`
 mkdir -p $HOME/save_opam

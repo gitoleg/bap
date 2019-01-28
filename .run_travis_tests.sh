@@ -31,6 +31,6 @@ if [ "$TASK" == "unit_tests" ]; then
 fi
 
 if [ "$TASK" == "veri" ]; then
+    bap-veri --help
     bash -exc 'make veri'
-    cat bap-veri.log
 fi
