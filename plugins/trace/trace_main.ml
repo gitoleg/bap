@@ -1,11 +1,16 @@
+let () = Printf.printf "DEBUG: enter trace plugin\n%!"
 open Core_kernel.Std
 open Bap_plugins.Std
 open Bap_future.Std
+let () = Printf.printf "DEBUG: some point 1\n%!"
 open Bap.Std
+let () = Printf.printf "DEBUG: some point 2\n%!"
 open Bap_traces.Std
+let () = Printf.printf "DEBUG: some point 3\n%!"
 open Format
 open Result.Monad_infix
 include Self()
+let () = Printf.printf "DEBUG: some point 4\n%!"
 
 
 let print_meta trace =
