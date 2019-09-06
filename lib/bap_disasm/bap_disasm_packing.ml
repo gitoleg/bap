@@ -13,48 +13,10 @@ open KB.Syntax
 module Driver = Bap_disasm_driver
 module Insn = Bap_disasm_insn
 
-
-module Parent = struct
-  let none = Word.b0
-  let unknown = Word.b1
-  let equal = Word.equal
-  let is_root p = equal p none
-  let is_known p = not (equal p unknown)
-  let merge x y =
-    if equal x unknown then y else
-    if equal y unknown then x else
-    if equal x y then x else none
-
-  let transfer self parent =
-    if equal parent none then self else parent
-end
-
-module Parents = struct
-  type t = (word,word) Solution.t
-  include Binable.Of_binable(struct
-      type t = (word * word) Seq.t [@@deriving bin_io]
-    end)(struct
-      type t = (word,word) Solution.t
-      let to_binable = Solution.enum
-      let of_binable xs =
-        let init = ok_exn @@
-          Map.of_increasing_sequence
-            (module Word) xs in
-        Solution.create init Parent.unknown
-    end)
-end
-
-type input = Driver.state
-type output = {
-  parents : Parents.t;
-  entries : Addr.Set.t;
-} [@@deriving bin_io]
-
-type t = output [@@deriving bin_io]
+let single = Set.singleton (module Addr)
 
 module Callgraph = struct
   let entry = Word.b0
-  let exit = Word.b1
   let is_entry = Word.equal entry
   include Graphlib.Make(Addr)(Unit)
   let mark_as_root n g =
@@ -63,6 +25,40 @@ module Callgraph = struct
       let e = Edge.create entry n () in
       Edge.insert e g
 end
+
+module Parents = struct
+  let none = single Callgraph.entry
+  let equal = Addr.Set.equal
+  let is_root p = Set.mem p Callgraph.entry
+  let merge = Set.union
+
+  let transfer self parents =
+    if is_root parents then single self
+    else parents
+end
+
+module Find_parents = struct
+  type t = (word,Word.Set.t) Solution.t
+  include Binable.Of_binable(struct
+      type t = (word * Word.Set.t) Seq.t [@@deriving bin_io]
+    end)(struct
+      type t = (word,Word.Set.t) Solution.t
+      let to_binable = Solution.enum
+      let of_binable xs =
+        let init = ok_exn @@
+          Map.of_increasing_sequence
+            (module Word) xs in
+        Solution.create init Parents.none
+    end)
+end
+
+type input = Driver.state
+type output = {
+  parents : Find_parents.t;
+  entries : Addr.Set.t;
+} [@@deriving bin_io]
+
+type t = output [@@deriving bin_io]
 
 let string_of_node n =
   sprintf "%S" @@ if Callgraph.is_entry n
@@ -97,8 +93,8 @@ let of_disasm disasm =
 
 let empty =
   let root =
-    Map.singleton (module Addr) Callgraph.entry Parent.none in {
-    parents = Solution.create root Parent.unknown;
+    Map.singleton (module Addr) Callgraph.entry Parents.none in {
+    parents = Solution.create root Parents.none;
     entries = Set.empty (module Addr);
   }
 
@@ -120,24 +116,19 @@ let callgraph disasm =
   connect_inputs >>|
   connect_unreachable_scc
 
-let parent parents addr =
-  let parent = Solution.get parents addr in
-  if Parent.equal parent Parent.none then addr else parent
-
-let entries graph parents =
-  let init = Set.empty (module Addr) in
-  Callgraph.nodes graph |> Seq.fold ~init ~f:(fun entries n ->
-      if not (Parent.is_root n) && Parent.equal (parent parents n) n
-      then Set.add entries n
-      else entries)
-
+let entries graph =
+  Callgraph.Node.outputs Callgraph.entry graph |>
+    Seq.fold ~init:(Set.empty (module Addr))
+      ~f:(fun entries e -> Set.add entries (Callgraph.Edge.dst e))
 
 let pp_calls ppf (parents,graph) =
+  let is_root addr =
+    Set.is_empty (Solution.get parents addr) in
   Graphlib.to_dot (module Callgraph) graph
     ~formatter:ppf
     ~string_of_node
     ~node_attrs:(fun n ->
-        if parent parents n = n
+        if is_root n
         then [`Shape `Diamond; `Style `Filled]
         else [])
 
@@ -146,25 +137,27 @@ let update {parents} disasm =
   Graphlib.fixpoint (module Callgraph) graph
     ~init:parents
     ~start:Callgraph.entry
-    ~equal:Parent.equal
-    ~merge:Parent.merge
-    ~f:Parent.transfer
+    ~equal:Parents.equal
+    ~merge:Parents.merge
+    ~f:Parents.transfer
   |> fun parents ->
   {
     parents;
-    entries = entries graph parents;
+    entries = entries graph;
   }
 
-let entry {parents} addr = parent parents addr
-
-let common_entry t addr addr' =
-  Addr.equal (entry t addr) (entry t addr')
+let common_entry {parents} a a' =
+  not @@
+  Set.is_empty @@
+  Set.inter
+    (Solution.get parents a)
+    (Solution.get parents a')
 
 let entries {entries} = entries
 
 let equal s1 s2 =
   Set.equal s1.entries s2.entries &&
-  Solution.equal ~equal:Word.equal s1.parents s2.parents
+  Solution.equal ~equal:Parents.equal s1.parents s2.parents
 
 
 let domain = KB.Domain.flat ~empty ~equal "callgraph"

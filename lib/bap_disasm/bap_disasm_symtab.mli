@@ -5,7 +5,7 @@ open Bap_types.Std
 open Image_internal_std
 
 module Disasm = Bap_disasm_driver
-module Callgraph = Bap_disasm_calls
+module Callgraph = Bap_disasm_packing
 
 type block = Bap_disasm_block.t
 type edge =  Bap_disasm_block.edge

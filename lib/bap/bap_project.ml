@@ -20,7 +20,7 @@ let find name = FileUtil.which name
 module Kernel = struct
   open KB.Syntax
   module Driver = Bap_disasm_driver
-  module Calls = Bap_disasm_calls
+  module Calls  = Bap_disasm_packing
   module Disasm = Disasm_expert.Recursive
 
   type t = {

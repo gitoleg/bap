@@ -123,6 +123,7 @@ Library disasm
                  Bap_disasm_block,
                  Bap_disasm_brancher,
                  Bap_disasm_calls,
+                 Bap_disasm_packing,
                  Bap_disasm_driver,
                  Bap_disasm_insn,
                  Bap_disasm_linear_sweep,

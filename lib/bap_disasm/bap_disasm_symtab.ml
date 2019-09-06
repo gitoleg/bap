@@ -13,7 +13,7 @@ module Block = Bap_disasm_block
 module Cfg = Bap_disasm_rec.Cfg
 module Insn = Bap_disasm_insn
 module Disasm = Bap_disasm_driver
-module Callgraph = Bap_disasm_calls
+module Callgraph = Bap_disasm_packing
 module Symbolizer = Bap_disasm_symbolizer
 
 
@@ -130,8 +130,7 @@ let (<--) = fun g f -> match g with
 let build_cfg disasm calls entry =
   Disasm.explore disasm ~entry ~init:None
     ~follow:(fun dst ->
-        let p = Callgraph.entry calls dst in
-        KB.return Addr.(p = entry))
+        KB.return (Callgraph.common_entry calls entry dst))
     ~block:(fun mem insns ->
         Disasm.execution_order insns >>= fun insns ->
         KB.List.filter_map insns ~f:(fun label ->
@@ -178,9 +177,7 @@ let create_inter disasm calls init =
         let src = Memory.min_addr src
         and dst = Memory.min_addr dst
         and next = Addr.succ (Memory.max_addr src) in
-        if Addr.equal
-            (Callgraph.entry calls src)
-            (Callgraph.entry calls dst)
+        if Callgraph.common_entry calls src dst
         then KB.return s
         else
           Symbolizer.get_name dst >>| fun name ->
