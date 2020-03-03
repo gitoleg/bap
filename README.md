@@ -5,6 +5,7 @@
 [![docs](https://img.shields.io/badge/doc-2.0.0-green.svg)][api-2.0]
 [![docs](https://img.shields.io/badge/doc-1.6.0-green.svg)][api-1.6]
 [![Build Status](https://travis-ci.org/BinaryAnalysisPlatform/bap.svg?branch=master)][travis]
+[![Odoc](https://github.com/<OWNER>/<REPOSITORY>/workflows/Documentation/badge.svg)]
 
 ## Table of contents
 *   [Overview](#overview)
@@ -16,7 +17,7 @@
 
 ## Overview
 
-The Carnegie Mellon University Binary Analysis Platform (CMU BAP) is a suite of utilities and libraries that enables analysis of programs in their machine representation. BAP supports x86, x86-64, ARM, MIPS, and PowerPC out of the box and could be easily extended to support new architectures. BAP includes an evergrowing set of ready to use [tools][toolkit] and provides various facilities for building custom tools, starting from various analysis-specific domain languages, such as, Primus Lisp, BML, BARE, Recipes, etc, which do not require sophisticated programming skills, and ending with implementing custom plugins in OCaml or even in Rust or C, via provided bindings.  The following short [demonstration][demo] of BAP capabilities is interactive, you can pause it at any moment and even copy the contents. 
+The Carnegie Mellon University Binary Analysis Platform (CMU BAP) is a suite of utilities and libraries that enables analysis of programs in their machine representation. BAP supports x86, x86-64, ARM, MIPS, and PowerPC out of the box and could be easily extended to support new architectures. BAP includes an evergrowing set of ready to use [tools][toolkit] and provides various facilities for building custom tools, starting from various analysis-specific domain languages, such as, Primus Lisp, BML, BARE, Recipes, etc, which do not require sophisticated programming skills, and ending with implementing custom plugins in OCaml or even in Rust or C, via provided bindings.  The following short [demonstration][demo] of BAP capabilities is interactive, you can pause it at any moment and even copy the contents.
 
 BAP is developed in [CMU, Cylab](https://www.cylab.cmu.edu/) and is sponsored by grants from the United States Department of Defense, Siemens, Boeing, ForAllSecure, and the Korea government, see [sponsors](#Sponsors) for more information. BAP is used in various institutions and serves as a backbone for many interesting projects, some are highlighted below:
 *   [The CGC winner][cgc] [ForAllSecure Mayhem][mayhem]
@@ -56,7 +57,7 @@ If you insist on building BAP manually or just want to tackle with BAP internals
 ```bash
 ./configure --enable-everything
 make
-make install 
+make install
 ```
 
 The `configure` script lets you define a specific set of components that you need. We have nearly a hundred of components and naming them all will be too tedious, that's why we added the `--enable-everything` option. It plays nice with the `--disable-<feature>` component so that you can unselect components that are not relevant to your current task. For more tips and tricks see our [wiki][wiki] and do not hesitate to tip back. We encourage everyone to use our wiki for collaboration and information sharing. And as always, drop by [gitter][gitter] for a friendly chat.
@@ -119,7 +120,7 @@ let main proj =
   let jmps,total = counter#run (Project.program proj) (0,0) in
   printf "ratio = %d/%d = %g\n" jmps total (float jmps /. float total)
 
-let () = Extension.declare @@ fun _ctxt -> 
+let () = Extension.declare @@ fun _ctxt ->
    Project.register_pass' main;
    Ok ()
 ```
@@ -130,7 +131,7 @@ bapbundle install jmp.plugin
 bap /bin/echo --pass=jmp
 ```
 
-Let's briefly go through the code. The `counter` object is a visitor that has the state consisting of a pair of counters. The first counter keeps track of the number of jmp terms, and the second counter is incremented every time we enter any term.  The `main` function just runs the counter and prints the output. We declare our extension use the [Extension.declare][extension-declare] function from the [Bap_main][bap-main] library. An extension is just a function that receives the context (which could be used to obtain configuration parameters). In this function, we register our `main` function as a pass using the `Project.register_pass` function. 
+Let's briefly go through the code. The `counter` object is a visitor that has the state consisting of a pair of counters. The first counter keeps track of the number of jmp terms, and the second counter is incremented every time we enter any term.  The `main` function just runs the counter and prints the output. We declare our extension use the [Extension.declare][extension-declare] function from the [Bap_main][bap-main] library. An extension is just a function that receives the context (which could be used to obtain configuration parameters). In this function, we register our `main` function as a pass using the `Project.register_pass` function.
 
 ### Interactive REPL
 
@@ -149,9 +150,9 @@ We are writing, occasionally, to our [blog][blog] and [wiki][wiki] and are encou
 
 ## Contributing
 
-BAP is built by the community and we're welcome all contributions from authors that are willing to share them under the MIT license. If you don't think that your analysis or tool suits this repository (e.g., it has a limited use, not fully ready, doesn't meet our standards, etc), then you can consider contributing to our [bap-plugins][bap-plugins] repository that is a collection of useful BAP plugins that are not mature enough to be included in the main distribution. Alternatively, you can consider extending our [toolkit][toolkit] with your tool. 
+BAP is built by the community and we're welcome all contributions from authors that are willing to share them under the MIT license. If you don't think that your analysis or tool suits this repository (e.g., it has a limited use, not fully ready, doesn't meet our standards, etc), then you can consider contributing to our [bap-plugins][bap-plugins] repository that is a collection of useful BAP plugins that are not mature enough to be included in the main distribution. Alternatively, you can consider extending our [toolkit][toolkit] with your tool.
 
-Of course, there is no need to submit your work to one of our repositories. BAP is a plugin-based framework and your code could be hosted anywhere and have any license (including proprietary). If you want to make your work available to the community it would be a good idea to release it via [opam][opam-packaging]. 
+Of course, there is no need to submit your work to one of our repositories. BAP is a plugin-based framework and your code could be hosted anywhere and have any license (including proprietary). If you want to make your work available to the community it would be a good idea to release it via [opam][opam-packaging].
 
 ## Sponsors
 *   [ForAllSecure][fas]
@@ -163,9 +164,9 @@ Of course, there is no need to submit your work to one of our repositories. BAP 
 *   [Siemens AG](https://www.siemens.com/us/en/home.html)
 
 *   Institute for Information & communications Technology Promotion(IITP) grant funded by the Korea government(MSIT) (No.2015-0-00565, Development of Vulnerability Discovery Technologies for IoT Software Security)
- 
-Please, [contact us][contact-us] if you would like to become a sponsor or are seeking a deeper collaboration. 
-  
+
+Please, [contact us][contact-us] if you would like to become a sponsor or are seeking a deeper collaboration.
+
 [toolkit]: https://github.com/BinaryAnalysisPlatform/bap-toolkit
 [bap-plugins]: https://github.com/BinaryAnalysisPlatform/bap-plugins
 [demo]: https://binaryanalysisplatform.github.io/assets/playfull.svg
