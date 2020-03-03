@@ -1,0 +1,17 @@
+name: Building documentation
+
+on:
+  push:
+    branches:
+    - add-actions
+#DON'T FORGET TO FIX BRANCH NAME
+
+jobs:
+  my-job-name:
+     name: Test
+     runs-on: self-hosted
+     steps:
+       - name: docker run
+         run: |
+          docker image build docker/docs -t docs
+          docker run --rm -v `pwd`:/drive docs /drive
