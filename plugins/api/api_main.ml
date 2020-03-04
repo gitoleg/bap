@@ -3,8 +3,6 @@ open Result
 open Bap.Std
 include Self()
 
-let x = 43
-
 let try_with f = match try_with f with
   | Ok r -> Ok r
   | Error exn -> Error (`Fail exn)
