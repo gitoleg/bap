@@ -5,7 +5,7 @@
 [![docs](https://img.shields.io/badge/doc-2.0.0-green.svg)][api-2.0]
 [![docs](https://img.shields.io/badge/doc-1.6.0-green.svg)][api-1.6]
 [![Build Status](https://travis-ci.org/BinaryAnalysisPlatform/bap.svg?branch=master)][travis]
-[![Odoc](https://github.com/<OWNER>/<REPOSITORY>/workflows/Documentation/badge.svg)]
+[![Odoc](https://github.com/gitoleg/bap/workflows/Documentation/badge.svg)]
 
 ## Table of contents
 *   [Overview](#overview)
