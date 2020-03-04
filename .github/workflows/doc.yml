@@ -15,4 +15,5 @@ jobs:
          uses: actions/checkout@v2
        - name: building
          uses:  ./.github/actions/update-docs
-         secret: ${{ secrets.MY_SECRET }}
+         with:
+           secret: ${{ secrets.MY_SECRET }}
