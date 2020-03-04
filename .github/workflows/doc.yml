@@ -4,7 +4,7 @@ on:
   push:
     branches:
     - add-actions
-#DON'T FORGET TO FIX BRANCH NAME
+#DON'T FORGET TO FIX BRANCH NAME AND ALSO READMEmd (badge)
 
 jobs:
   my-job-name:
@@ -17,3 +17,4 @@ jobs:
          run: |
           docker image build docker/docs -t docs
           docker run --rm -v `pwd`:/drive docs /drive
+          docker image rm docs 
