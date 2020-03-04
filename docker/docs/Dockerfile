@@ -6,9 +6,7 @@ RUN sudo apk add libxml2-dev emacs \
  && opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing \
  && opam update \
  && opam depext --install bap --yes \
- && opam install odig --yes
-
-RUN eval $(opam env) \
+ && opam install odig --yes \
  && odig odoc \
  && bap /bin/true --primus-lisp-documentation > lisp.org \
  && emacs lisp.org --batch --eval '(org-html-export-to-html)'
