@@ -1,0 +1,11 @@
+
+name: 'update-docs'
+inputs:
+  secret:
+    required: true
+    description: 'a secret for authorisation!'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.secret }}
