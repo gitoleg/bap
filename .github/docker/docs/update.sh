@@ -19,6 +19,7 @@ repo="github.com/gitoleg/gitoleg.github.io"
 # adding documentaion
 git clone https://${repo} bap.io
 cd bap.io
+ls
 mv ../lisp.html bap/api/lisp/index.html
 git add bap/api/lisp/index.html
 
