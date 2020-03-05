@@ -17,6 +17,7 @@ done
 
 repo="github.com/gitoleg/gitoleg.github.io"
 # adding documentaion
+
 git clone https://${repo} bap.io
 cd bap.io
 ls
@@ -26,32 +27,13 @@ git add bap/api/lisp/index.html
 cp -r $(odig cache path)/html/* bap/api/odoc/
 git add bap/api/odoc
 
-# setup and push
+## setup and push
 
-remote_repo="https://${GITHUB_ACTOR}:${INPUT_SECRET}@${repo}.git"
+remote_repo="https://${GITHUB_ACTOR}:${1}@${repo}.git"
 
 git config --global user.name ${GITHUB_ACTOR}
 git config --global user.email ${GITHUB_ACTOR}@users.noreply.github.com
 git remote set-url origin $remote_repo
-
-
-sec1=
-if [ "no$INPUT_SECRET" == "no" ]; then
-    sec1="no input"
-else
-    sec1="has input"
-fi
-
-sec2=
-if [ "no$1" == "no" ]; then
-    sec2="no input"
-else
-    sec2="has input"
-fi
-
-
-echo "inputs: $sec1, $sec2"
-
 
 msg=`bap --version`
 git commit -m "$msg"

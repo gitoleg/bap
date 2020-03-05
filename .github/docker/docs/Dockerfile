@@ -12,6 +12,7 @@ RUN sudo apk add libxml2-dev emacs \
  && opam install odig --yes \
  && eval $(opam env)
 
+COPY intro.mld /home/opam/
 COPY update.sh /home/opam/
 
 ENTRYPOINT ["sh", "/home/opam/update.sh"]
