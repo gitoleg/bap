@@ -3,7 +3,7 @@
 eval $(opam env)
 
 echo "building lisp documentation"
-bap /bin/true --primus-lisp-documentation > lisp.org \
+bap /bin/true --primus-lisp-documentation > lisp.org 
 emacs lisp.org --batch --eval '(org-html-export-to-html)'
 
 echo "building odoc documentaion"
