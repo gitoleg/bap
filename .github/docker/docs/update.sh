@@ -17,7 +17,7 @@ opam install bap-ida
 cp /home/opam/.opam/4.09/share/bap-ida-python/plugin_loader_bap.py /home/opam/fake-ida-7.1/plugins/
 
 echo "building lisp documentation"
-bap /bin/true --primus-lisp-documentation > lisp.org
+bap /bin/true --no-ida --primus-lisp-documentation > lisp.org
 emacs lisp.org --batch --eval '(org-html-export-to-html)'
 
 echo "building odoc documentaion"
