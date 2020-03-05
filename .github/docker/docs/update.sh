@@ -43,7 +43,7 @@ git remote set-url origin $remote_repo
 
 ## git add
 for page in "bap bapbundle"; do
-    man2html $(opam config var prefix)/man/man1/${page}.1 > bap/api/man/${page}.1.html
+    mandoc -T html $(opam config var prefix)/man/man1/${page}.1 > bap/api/man/${page}.1.html
     git add bap/api/man/${1}.1.html
 done
 cp ../lisp.html bap/api/lisp/index.html

@@ -3,7 +3,7 @@ FROM ocaml/opam2:alpine
 
 WORKDIR /home/opam
 
-RUN sudo apk add libxml2-dev emacs \
+RUN sudo apk add libxml2-dev emacs man \
  && opam switch 4.09 \
  && eval $(opam env) \
  && opam update \
