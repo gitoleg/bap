@@ -22,7 +22,8 @@ git clone https://${repo} bap.io
 cd bap.io
 mv ../lisp.html bap/api/lisp/index.html
 git add bap/api/lisp/index.html
-
+git rm -r bap/api/odoc/
+mkdir bap/api/odoc/
 cp -r $(odig cache path)/html/* bap/api/odoc/
 git add bap/api/odoc
 
