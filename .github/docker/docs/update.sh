@@ -8,7 +8,7 @@ emacs lisp.org --batch --eval '(org-html-export-to-html)'
 
 echo "building odoc documentaion"
 odig odoc --index-title='Binary Analysis Platform' \
-     --index-intro=intro.mld --no-tag-index bap bap-api bap-abi bap-arm bap-beagle-prey bap-bml bap-bundle bap-byteweight bap-c bap-demangle bap-dwarf bap-elementary bap-elf bap-llvm bap-main bap-plugins bap-primus bap-recipe bap-strings bap-taint bap-traces bap-x86-cpu bitvec-binprot bitvec-order bitvec-sexp graphlib monads ogre regular text-tags
+     --index-intro=/home/opam/intro.mld --no-tag-index bap bap-api bap-abi bap-arm bap-beagle-prey bap-bml bap-bundle bap-byteweight bap-c bap-demangle bap-dwarf bap-elementary bap-elf bap-llvm bap-main bap-plugins bap-primus bap-recipe bap-strings bap-taint bap-traces bap-x86-cpu bitvec-binprot bitvec-order bitvec-sexp graphlib monads ogre regular text-tags
 
 # removing symbolic links
 for f in `find $(odig cache path) -type l`; do
@@ -37,16 +37,16 @@ git remote set-url origin $remote_repo
 
 sec1=
 if [ "no$INPUT_SECRET" == "no" ]; then
-    sec1 = "no input"
+    sec1="no input"
 else
-    sec1 = "has input"
+    sec1="has input"
 fi
 
 sec2=
 if [ "no$1" == "no" ]; then
-    sec2 = "no input"
+    sec2="no input"
 else
-    sec2 = "has input"
+    sec2="has input"
 fi
 
 
