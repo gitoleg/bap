@@ -1,9 +1,10 @@
 #!/usr/bin/env sh
 
+set -eu
+
 eval $(opam env)
 
 fake_ida="/home/opam/fake-ida-7.1"
-
 mkdir $fake_ida
 cd $fake_ida
 for f in "ida ida64 idat idat64"; do
@@ -13,7 +14,7 @@ done
 mkdir plugins
 cd ../
 opam install bap-ida
-
+cp /home/opam/.opam/4.09/share/bap-ida-python/plugin_loader_bap.py /home/opam/fake-ida-7.1/plugins/
 
 echo "building lisp documentation"
 bap /bin/true --primus-lisp-documentation > lisp.org
