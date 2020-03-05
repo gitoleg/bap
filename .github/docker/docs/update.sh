@@ -3,7 +3,7 @@
 eval $(opam env)
 
 echo "building lisp documentation"
-bap /bin/true --primus-lisp-documentation > lisp.org 
+bap /bin/true --primus-lisp-documentation > lisp.org
 emacs lisp.org --batch --eval '(org-html-export-to-html)'
 
 echo "building odoc documentaion"
@@ -33,6 +33,25 @@ remote_repo="https://${GITHUB_ACTOR}:${INPUT_SECRET}@${repo}.git"
 git config --global user.name ${GITHUB_ACTOR}
 git config --global user.email ${GITHUB_ACTOR}@users.noreply.github.com
 git remote set-url origin $remote_repo
+
+
+sec1=
+if [ "no$INPUT_SECRET" == "no" ]; then
+    sec = "no input"
+else
+    sec = "has input"
+fi
+
+sec2=
+if [ "no$1" == "no" ]; then
+    sec = "no input"
+else
+    sec = "has input"
+fi
+
+
+echo "inputs: $sec1, $sec2"
+
 
 msg=`bap --version`
 git commit -m "$msg"
