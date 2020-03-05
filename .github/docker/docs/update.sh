@@ -29,12 +29,12 @@ git add bap/api/lisp/index.html
 
 ## setup and push
 
-echo actor is ${GITHUB_ACTOR}
+echo actor is ${1}
 
-remote_repo="https://${GITHUB_ACTOR}:${1}@${repo}.git"
+remote_repo="https://${1}:${2}@${repo}.git"
 
-git config --global user.name ${GITHUB_ACTOR}
-git config --global user.email ${GITHUB_ACTOR}@users.noreply.github.com
+git config --global user.name ${1}
+git config --global user.email ${1}@users.noreply.github.com
 git remote set-url origin $remote_repo
 
 msg=`bap --version`
