@@ -24,10 +24,12 @@ ls
 mv ../lisp.html bap/api/lisp/index.html
 git add bap/api/lisp/index.html
 
-cp -r $(odig cache path)/html/* bap/api/odoc/
-git add bap/api/odoc
+# cp -r $(odig cache path)/html/* bap/api/odoc/
+# git add bap/api/odoc
 
 ## setup and push
+
+echo actor is ${GITHUB_ACTOR}
 
 remote_repo="https://${GITHUB_ACTOR}:${1}@${repo}.git"
 
