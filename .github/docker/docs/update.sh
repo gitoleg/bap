@@ -15,6 +15,7 @@ for f in `find $(odig cache path) -type l`; do
     rm $f
 done
 
+repo="github.com/gitoleg/gitoleg.github.io"
 # adding documentaion
 git clone https://${repo} bap.io
 cd bap.io
@@ -25,7 +26,7 @@ cp -r $(odig cache path)/html/* bap/api/odoc/
 git add bap/api/odoc
 
 # setup and push
-repo="github.com/gitoleg/gitoleg.github.io"
+
 remote_repo="https://${GITHUB_ACTOR}:${INPUT_SECRET}@${repo}.git"
 
 git config --global user.name ${GITHUB_ACTOR}
