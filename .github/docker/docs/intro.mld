@@ -1,0 +1,107 @@
+Binary Analysis Platform
+
+{1 Core libraries}
+
+- {{!module:Bap_main}Bap_main} - the entry point to BAP
+- {{!module:Bap_knowledge}Bap_knowledge} - The Knowledge Representation library
+- {{!module:Bap_core_theory}Bap_core_theory} - The Core Theory Library
+- {{!module:Bap.Std}Bap.Std} - The Standard Library
+- {{!module:Bap_taint}Bap_taint} - The Taint Analysis Framework
+- {{!module:Bap_primus}Bap_primus} - The Microexecution Framework
+
+{1 Foundation Libraries }
+- {{!module:Monads}Monads} - The Monads library
+- {{!module:Regular}Regular} - Regular Data Library
+- {{!module:Graphlib}Graphlib} - Algorithms on graphs
+- {{!module:Bitvec}Bitvec} - Bitvectors and modular arithmetic
+- {{!module:Bap_future}Bap_future} - Futures and Streams
+- {{!module:Ogre}Ogre} - A sexp-based NoSQL database
+
+{1 Hardware Specific Libraries }
+- {{!module:ARM}ARM} - ARM-specific definitions
+- {{!module:X86_cpu}X86_cpu} - x86/x86-64 specific definitions
+
+{1 Language and API/ABI Specific Libraries}
+- {{!module:Bap_abi}Bap_abi} - Interface for specifying ABI
+- {{!module:Bap_api}Bap_api} - Interface for defining API
+- {{!module:Bap_c}Bap_c} - Basic definitions of the C language
+
+{1 Utility Libraries}
+- {{!module:Bap_bml}Bap_bml} - writing term transformations
+- {{!module:Bare}Bare} - writing rules for matching for Primus observations
+- {{!module:Bap_bundle}Bap_bundle} - creating and opening bundles
+- {{!module:Bap_byteweight}Bap_byteweight} - interface to the Byteweight subsystem
+- {{!module:Bap_demangle}Bap_demangle} - writing name demanglers
+- {{!module:Bap_dwarf}Bap_dwarf} - a native DWARF parser
+- {{!module:Bap_ida}Bap_ida} - an interface to IDA Pro
+- {{!module:Bap_llvm}Bap_llvm} - an inteface to LLVM disassemblers and loaders
+- {{!module:Bap_plugins}Bap_plugins} - loading plugins
+- {{!module:Bap_recipe}Bap_recipe} - loading recipes (packs of command line arguments)
+- {{!module:Bap_strings}Bap_strings} - various text utilities
+- {{!module:Bap_traces}Bap_traces} - working with execution traces
+- {{!module:Text_tags}Text_tags} - Extension of Format's semantic tags
+
+{1 Plugins}
+
+The list of available plugins could be obtained using the {bap list plugins} command, here is
+the current list of on-line reference:
+{[
+  abi                      apply abi information to a project
+  api                      add parameters to subroutines based on known API
+  arm                      provide ARM lifter
+  beagle                   microx powered obfuscated string solver
+  bil                      provides bil optimizations
+  byteweight               find function starts using Byteweight algorithm
+  cache                    provide caching services
+  callsites                annotate callsites with subroutine's arguments
+  constant-tracker         constant Tracking Analysis based on Primus
+  cxxfilt                  provide c++filt based demangler
+  demangle                 demangle subroutine names
+  disassemble              implements the disassemble command
+  dump-symbols             dump symbol information as a list of blocks
+  elf-loader               read ELF and DWARF formats in a pure OCaml
+  emit-ida-script          extract a IDA python script from bap
+  frontc-parser            parse c files with FrontC
+  ida                      use ida to provide rooter, symbolizer and reconstructor
+  llvm                     provide loader and disassembler using LLVM library
+  map-terms                map terms using BML DSL
+  mc                       implements the mc command
+  mips                     provide MIPS lifter
+  objdump                  use objdump to provide a symbolizer
+  optimization             automatically removes dead code and propagates consts
+  phoenix                  output project information in a phoenix format
+  piqi-printers            provides piqi serialization for main data types (BIL, IR)
+  powerpc                  provide PowerPC lifter
+  primus-dictionary        provides a key-value storage
+  primus-exploring         evaluates all machines, prioritizing the least visited
+  primus-greedy            evaluates all machines in the DFS order
+  primus-limit             ensures termination by limiting Primus machines
+  primus-lisp              install and load Primus lisp libraries
+  primus-loader            generic program loader for Primus
+  primus-mark-visited      marks terms that were visited by Primus
+  primus-powerpc           powerpc support package
+  primus-print             prints Primus states and observations
+  primus-promiscuous       enables the promiscuous mode of execution
+  primus-propagate-taint   a compatibility layer between different taint analysis frameworks
+  primus-region            interval sets for Primus Lisp
+  primus-round-robin       evaluates all machines in the BFS order
+  primus-taint             a taint analysis control interface
+  primus-test              primus Program Testing and Verification Kit
+  primus-wandering         evaluates all machines while
+  primus-x86               x86 support package
+  print                    print project in various formats
+  propagate-taint          propagate taints through a program
+  raw                      provides a loader for raw binaries
+  read-symbols             read symbol information from file
+  recipe-command           manipulates bap recipes
+  relocatable              provides facility to load relocatable files
+  report                   reports program status
+  run                      a pass that will run a program
+  ssa                      translates a program into the SSA form
+  strings                  find strings of characters
+  taint                    taint specified terms
+  trace                    manage execution traces
+  trivial-condition-form   eliminates complex conditionals in branches
+  warn-unused              warn about unused results of certain functions
+  x86                      provide x86 lifter
+]}

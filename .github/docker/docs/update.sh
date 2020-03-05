@@ -37,16 +37,16 @@ git remote set-url origin $remote_repo
 
 sec1=
 if [ "no$INPUT_SECRET" == "no" ]; then
-    sec = "no input"
+    sec1 = "no input"
 else
-    sec = "has input"
+    sec1 = "has input"
 fi
 
 sec2=
 if [ "no$1" == "no" ]; then
-    sec = "no input"
+    sec2 = "no input"
 else
-    sec = "has input"
+    sec2 = "has input"
 fi
 
 

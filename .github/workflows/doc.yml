@@ -17,4 +17,4 @@ jobs:
          run: |
           docker image build .github/docker/docs -t docs
           docker run --rm docs ${{ secrets.MY_SECRET }}
-          docker image rm docs
+#          docker image rm docs
