@@ -3,18 +3,18 @@ Binary Analysis Platform
 {1 Core libraries}
 
 - {{!module:Bap_main}Bap_main} - the entry point to BAP
-- {{!module:Bap_knowledge}Bap_knowledge} - The Knowledge Representation library
+- {{!module:Bap_knowledge.Knowledge}Bap_knowledge} - The Knowledge Representation library
 - {{!module:Bap_core_theory}Bap_core_theory} - The Core Theory Library
 - {{!module:Bap.Std}Bap.Std} - The Standard Library
-- {{!module:Bap_taint}Bap_taint} - The Taint Analysis Framework
-- {{!module:Bap_primus}Bap_primus} - The Microexecution Framework
+- {{!module:Bap_taint.Std}Bap_taint} - The Taint Analysis Framework
+- {{!module:Bap_primus.Std}Bap_primus} - The Microexecution Framework
 
 {1 Foundation Libraries }
-- {{!module:Monads}Monads} - The Monads library
-- {{!module:Regular}Regular} - Regular Data Library
-- {{!module:Graphlib}Graphlib} - Algorithms on graphs
+- {{!module:Monads.Std}Monads} - The Monads library
+- {{!module:Regular.Std}Regular} - Regular Data Library
+- {{!module:Graphlib.Std}Graphlib} - Algorithms on graphs
 - {{!module:Bitvec}Bitvec} - Bitvectors and modular arithmetic
-- {{!module:Bap_future}Bap_future} - Futures and Streams
+- {{!module:Bap_future.Std}Bap_future} - Futures and Streams
 - {{!module:Ogre}Ogre} - A sexp-based NoSQL database
 
 {1 Hardware Specific Libraries }
@@ -24,21 +24,21 @@ Binary Analysis Platform
 {1 Language and API/ABI Specific Libraries}
 - {{!module:Bap_abi}Bap_abi} - Interface for specifying ABI
 - {{!module:Bap_api}Bap_api} - Interface for defining API
-- {{!module:Bap_c}Bap_c} - Basic definitions of the C language
+- {{!module:Bap_c.Std}Bap_c} - Basic definitions of the C language
 
 {1 Utility Libraries}
 - {{!module:Bap_bml}Bap_bml} - writing term transformations
 - {{!module:Bare}Bare} - writing rules for matching for Primus observations
-- {{!module:Bap_bundle}Bap_bundle} - creating and opening bundles
+- {{!module:Bap_bundle.Std}Bap_bundle} - creating and opening bundles
 - {{!module:Bap_byteweight}Bap_byteweight} - interface to the Byteweight subsystem
-- {{!module:Bap_demangle}Bap_demangle} - writing name demanglers
-- {{!module:Bap_dwarf}Bap_dwarf} - a native DWARF parser
-- {{!module:Bap_ida}Bap_ida} - an interface to IDA Pro
-- {{!module:Bap_llvm}Bap_llvm} - an inteface to LLVM disassemblers and loaders
-- {{!module:Bap_plugins}Bap_plugins} - loading plugins
-- {{!module:Bap_recipe}Bap_recipe} - loading recipes (packs of command line arguments)
-- {{!module:Bap_strings}Bap_strings} - various text utilities
-- {{!module:Bap_traces}Bap_traces} - working with execution traces
+- {{!module:Bap_demangle.Std}Bap_demangle} - writing name demanglers
+- {{!module:Bap_dwarf.Std}Bap_dwarf} - a native DWARF parser
+- {{!module:Bap_ida.Std}Bap_ida} - an interface to IDA Pro
+- {{!module:Bap_llvm.Std}Bap_llvm} - an inteface to LLVM disassemblers and loaders
+- {{!module:Bap_plugins.Std}Bap_plugins} - loading plugins
+- {{!module:Bap_recipe.Std}Bap_recipe} - loading recipes (packs of command line arguments)
+- {{!module:Bap_strings.Std}Bap_strings} - various text utilities
+- {{!module:Bap_traces.Std}Bap_traces} - working with execution traces
 - {{!module:Text_tags}Text_tags} - Extension of Format's semantic tags
 
 {1 Plugins}
