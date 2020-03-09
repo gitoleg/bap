@@ -9,7 +9,7 @@ RUN sudo apt-get --yes install emacs-nox man2html pkg-config \
  && opam update \
  && git clone https://github.com/BinaryAnalysisPlatform/bap \
  && opam depext bap --yes \
- && opam pin add bap bap \
+ && opam pin add bap bap -v -v \
  && opam install odig --yes \
  && eval $(opam env)
 
