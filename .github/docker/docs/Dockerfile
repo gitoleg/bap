@@ -11,8 +11,7 @@ RUN sudo apt-get --yes install emacs-nox man2html pkg-config \
  && opam depext bap --yes --install \
  && opam install odig --yes \
 
-RUN
- git clone https://github.com/BinaryAnalysisPlatform/bap \
+RUN git clone https://github.com/BinaryAnalysisPlatform/bap \
  && cd bap \
  && make doc
  && ls doc
