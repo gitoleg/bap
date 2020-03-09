@@ -4,13 +4,12 @@ FROM ocaml/opam2:ubuntu-19.04
 WORKDIR /home/opam
 
 RUN sudo apt-get --yes install emacs-nox man2html pkg-config \
- && opam switch 4.09 \
+ && opam switch 4.07 \
  && eval $(opam env) \
  && opam update \
  && git clone https://github.com/BinaryAnalysisPlatform/bap \
- && opam pin add bap bap -n \
- && opam depext --install bap \
- && opam install bap \
+ && opam depext bap --yes \
+ && opam pin add bap bap \
  && opam install odig --yes \
  && eval $(opam env)
 
