@@ -8,7 +8,7 @@ RUN sudo apk add libxml2-dev emacs man \
  && eval $(opam env) \
  && opam update \
  && git clone https://github.com/BinaryAnalysisPlatform/bap \
- && opam pin add bap bap
+ && opam pin add bap bap \
  && opam depext --install bap --yes \
  && opam install odig --yes \
  && eval $(opam env)
