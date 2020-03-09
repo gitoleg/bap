@@ -13,7 +13,7 @@ RUN sudo apt-get --yes install emacs-nox man2html pkg-config \
 
 RUN git clone https://github.com/BinaryAnalysisPlatform/bap \
  && cd bap \
- && make doc
+ && make doc \
  && ls doc
 
 #COPY intro.mld /home/opam/
