@@ -3,7 +3,7 @@ FROM ocaml/opam2:ubuntu
 
 WORKDIR /home/opam
 
-RUN sudo apt-get --yes install emacs-nox man2html pkg-config \
+RUN sudo apt-get --yes install emacs-nox man2html pkg-config llvm-6.0-dev \
  && opam switch 4.09 \
  && eval $(opam env) \
  && opam update \
