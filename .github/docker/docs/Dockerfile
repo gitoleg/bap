@@ -7,11 +7,15 @@ RUN sudo apt-get --yes install emacs-nox man2html pkg-config \
  && opam switch 4.07 \
  && eval $(opam env) \
  && opam update \
- && git clone https://github.com/BinaryAnalysisPlatform/bap \
- && opam depext bap --yes \
- && opam pin add bap bap -v -v \
+ && opam repo add bap git://github.com/gitoleg/opam-repository#testing \
+ && opam depext bap --yes --install \
  && opam install odig --yes \
- && eval $(opam env)
+
+RUN
+ git clone https://github.com/BinaryAnalysisPlatform/bap \
+ && cd bap \
+ && make doc
+ && ls doc
 
 #COPY intro.mld /home/opam/
 #COPY update.sh /home/opam/
