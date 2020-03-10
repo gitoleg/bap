@@ -214,4 +214,16 @@ let generate () =
   odig intro;
   Sys.remove intro
 
-let () = generate ()
+let hand_written () =
+  mkdir "man1";
+  run "cp ../man/* man1/"
+
+let lisp_documentation () =
+  mkdir "lisp";
+  run "bap /bin/true --primus-lisp-documentation > lisp/lisp.org";
+  run "emacs lisp/lisp.org --batch --eval '(org-html-export-to-html)'"
+
+let () =
+  hand_written ();
+  lisp_documentation ();
+  generate ()
