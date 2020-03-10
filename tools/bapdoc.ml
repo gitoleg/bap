@@ -5,58 +5,52 @@ open Bap_plugins.Std
 
 module Filename = Caml.Filename
 
-let foundation_libs = "Foundation Libraries", [
+let libraries = [
+  "Foundation Libraries", [
     "monads", "Monads.Std", "The Monads library";
     "regular", "Regular.Std", "Regular Data Library";
     "graphlib", "Graphlib.Std", "Algorithms on graphs";
     "bitvec", "Bitvec", "Bitvectors and modular arithmetic";
     "bap-future", "Bap_future.Std", "Futures and Streams";
     "ogre", "Ogre", "A sexp-based NoSQL database";
-  ]
+  ];
 
-let core_libs = "Core libraries", [
+  "Core libraries", [
     "bap-main", "Bap_main", "the entry point to BAP";
     "bap-knowledge", "Bap_knowledge.Knowledge", "The Knowledge Representation library";
     "bap-core-theory", "Bap_core_theory", "The Core Theory Library";
     "bap", "Bap.Std", "The Standard Library";
     "bap-taint", "Bap_taint.Std", "The Taint Analysis Framework";
     "bap-primus", "Bap_primus.Std", "The Microexecution Framework";
-  ]
+  ];
 
-let hardware_libs = "Hardware Specific Libraries", [
+  "Hardware Specific Libraries", [
     "bap-arm", "ARM", "ARM-specific definitions";
     "bap-x86-cpu", "X86_cpu", "x86/x86-64 specific definitions";
-  ]
+  ];
 
-let abi_api_libs = "Language and API/ABI Specific Libraries", [
+  "Language and API/ABI Specific Libraries", [
     "bap-abi", "Bap_abi", "Interface for specifying ABI";
     "bap-api", "Bap_api", "Interface for defining API";
     "bap-c", "Bap_c.Std", "Basic definitions of the C language";
-  ]
+  ];
 
-let utility_libs = "Utility Libraries", [
+  "Utility Libraries", [
     "bap-bml", "Bap_bml", "writing term transformations";
     "bare", "Bare", "writing rules for matching for Primus observations";
     "bap-bundle", "Bap_bundle.Std", "creating and opening bundles";
     "bap-byteweight", "Bap_byteweight", "interface to the Byteweight subsystem";
     "bap-demangle", "Bap_demangle.Std", "writing name demanglers";
     "bap-dwarf", "Bap_dwarf.Std", "a native DWARF parser";
+    "bap-ida", "Bap_ida.Std","an interface to IDA Pro";
     "bap-llvm", "Bap_llvm.Std", "an inteface to LLVM disassemblers and loaders";
     "bap-plugins", "Bap_plugins.Std", "loading plugins";
     "bap-recipe", "Bap_recipe", "loading recipes (packs of command line arguments)";
     "bap-strings", "Bap_strings.Std", "various text utilities";
     "bap-traces", "Bap_traces.Std", "working with execution traces";
     "text-tags", "Text_tags", "Extension of Format's semantic tags";
-  ]
-
-let utility_libs =
-  let name, libs = utility_libs in
-  if List.exists (Plugins.list ()) ~f:(fun p -> Plugin.name p = "ida")
-  then
-    name, ("bap-ida", "Bap_ida.Std","an interface to IDA Pro"):: libs
-  else name, libs
-
-let libraries = [ foundation_libs; core_libs; hardware_libs; utility_libs ]
+  ];
+]
 
 let frontends = [
   "bap", "bap main frontend";
@@ -94,10 +88,6 @@ semantically same types.
 let packages =
   List.concat_map ~f:(fun (_,ps) -> List.map ~f:(fun (p,_,_) -> p) ps) libraries
 
-
-let is_interface file =
-  Filename.check_suffix file ".ml" || Filename.check_suffix file ".mli"
-
 let mkdir path =
   if not (Sys.file_exists path) then
     Unix.mkdir path 0o770
@@ -109,7 +99,7 @@ let run cmd =
 
 let dedot name =
   match String.split name ~on:'.' with
-  | name' :: _ when name' = "Bap" -> name
+  | name' :: _ when String.equal name' "Bap" -> name
   | name :: _ -> name
   | _ -> name
 
@@ -120,15 +110,10 @@ let render_section (name,entries) =
   sprintf "{1 %s}\n%s" name
     (String.concat ~sep:"\n" @@ List.map ~f:render_entry entries)
 
-let library_index =
-  sprintf "\n{2 Libraries}\n%s"
-    (List.map ~f:render_section libraries |> String.concat ~sep:"\n\n")
-
 type info = {
   man : string -> string;
   help : string -> string;
 }
-
 
 let program = {
   man  = ident;
@@ -153,7 +138,7 @@ let man3_redirection lib =
   let name = sprintf "man3/%s.3.html" lib in
   Out_channel.write_all name ~data:redirection
 
-let generate_manual {man; help} tool =
+let build_manual {man; help} tool =
   let repair_links x =
     sprintf {|%s | sed "s/\\\N'45'/-/g" | man2html -r > %s|}
       (help tool) x in
@@ -171,41 +156,34 @@ let generate_manual {man; help} tool =
     ignore(Sys.command @@ sprintf "%s >&2" (help tool));
     eprintf "\n%!"
 
-let render_entry (name,desc,manual) =
-  printf "compiling %s\n%!" name;
-  match manual with
-  | None -> sprintf "- [%s] - %s" name desc
-  | Some file -> sprintf "- {{:%s}%s} - %s" file name desc
-
-let render_entries es =
-  List.map ~f:render_entry es |> String.concat ~sep:"\n"
-
-let frontends =
-  List.iter frontends ~f:(fun (p,_) -> generate_manual program p)
-
-let by_plugin_name p1 p2 =
-  String.compare (Plugin.name p1) (Plugin.name p2)
-
-let plugins =
-  Plugins.list () |> List.sort ~compare:by_plugin_name |>
-  List.fold ~init:"" ~f:(fun s p ->
-      generate_manual plugin (Plugin.name p);
-      Format.sprintf "%s%-24s %s\n" s (Plugin.name p) (Plugin.desc p))
-
-let plugins =
-  sprintf "\n\n{1 Plugins}\n{[%s]}\n" plugins
+let generate_manual () =
+  let _frontends =
+    List.iter frontends ~f:(fun (p,_) -> build_manual program p) in
+  let _plugins =
+    Plugins.list () |> List.iter ~f:(fun p ->
+        build_manual plugin (Plugin.name p))in
+  List.iter packages ~f:(fun lib -> man3_redirection lib)
 
 let odig intro =
   let pkgs = String.concat packages ~sep:" " in
-  ignore @@
-  Sys.command @@
-  sprintf
+  run @@ sprintf
     {|odig odoc --index-title="BAP API" --no-tag-index --index-intro=%s %s|}
     intro pkgs;
-  ignore @@ Sys.command "ln -s $(odig cache path)/html odoc"
+  run @@ "ln -s $(odig cache path)/html odoc"
+
+let plugins =
+  let by_plugin_name p1 p2 =
+    String.compare (Plugin.name p1) (Plugin.name p2) in
+  Plugins.list () |> List.sort ~compare:by_plugin_name |>
+  List.fold ~init:"" ~f:(fun s p ->
+      Format.sprintf "%s%-24s %s\n" s (Plugin.name p) (Plugin.desc p))
 
 let generate () =
-  List.iter packages ~f:(fun lib -> man3_redirection lib);
+  let plugins = sprintf "\n\n{1 Plugins}\n{[%s]}\n" plugins in
+  let library_index =
+    sprintf "\n{2 Libraries}\n%s"
+      (List.map ~f:render_section libraries
+       |> String.concat ~sep:"\n\n") in
   let intro,out = Filename.open_temp_file "intro" ".mld" in
   Out_channel.output_string out introduction;
   Out_channel.output_string out library_index;
@@ -214,7 +192,7 @@ let generate () =
   odig intro;
   Sys.remove intro
 
-let hand_written () =
+let hand_written_man () =
   mkdir "man1";
   run "cp ../man/* man1/"
 
@@ -224,6 +202,7 @@ let lisp_documentation () =
   run "emacs lisp/index.org --batch --eval '(org-html-export-to-html)'"
 
 let () =
-  hand_written ();
+  generate_manual ();
+  hand_written_man ();
   lisp_documentation ();
   generate ()
