@@ -4,7 +4,7 @@ FROM ocaml/opam2:ubuntu-19.04
 WORKDIR /home/opam
 
 RUN sudo apt-get --yes install emacs-nox man2html pkg-config \
- && opam switch 4.07 \
+ && opam switch 4.09 \
  && eval $(opam env) \
  && opam update \
  && opam repo add bap git://github.com/gitoleg/opam-repository#testing \
