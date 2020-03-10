@@ -11,7 +11,7 @@ RUN sudo apt-get --yes install emacs-nox man2html pkg-config llvm-dev \
  && opam depext bap --yes \
  && opam remote remove bap \
  && opam depext ocurl --yes \
- && opam installodig conf-bap-llvm
+ && opam install odig conf-bap-llvm
 
 RUN eval $(opam env) \
  && git clone https://github.com/BinaryAnalysisPlatform/bap \
