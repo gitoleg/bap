@@ -10,7 +10,6 @@ RUN sudo apt-get --yes install emacs-nox man2html pkg-config llvm-dev \
  && opam update \
  && opam depext bap --yes \
  && opam remote remove bap \
- && opam depext ocurl --install \
  && opam install odig conf-bap-llvm
 
 RUN eval $(opam env) \
