@@ -15,7 +15,7 @@ RUN sudo apt-get --yes install emacs-nox man2html pkg-config llvm-dev \
 
 RUN eval $(opam env) \
  && git clone https://github.com/BinaryAnalysisPlatform/bap \
- && opam pin add bap bapopam pin add bap bap \
+ && opam pin add bap bap \
  && cd bap \
  && make doc \
  && ls doc
