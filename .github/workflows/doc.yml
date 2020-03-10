@@ -15,6 +15,6 @@ jobs:
          uses: actions/checkout@v2
        - name: building
          run: |
-          docker image build .github/docker/docs -t docs
+          docker image build .github/docs -t docs
           docker run --rm docs ${{ secrets.MY_SECRET_NAME }} ${{ secrets.MY_SECRET }}
 #          docker image rm docs

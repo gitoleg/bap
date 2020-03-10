@@ -220,8 +220,8 @@ let hand_written () =
 
 let lisp_documentation () =
   mkdir "lisp";
-  run "bap /bin/true --primus-lisp-documentation > lisp/lisp.org";
-  run "emacs lisp/lisp.org --batch --eval '(org-html-export-to-html)'"
+  run "bap /bin/true --primus-lisp-documentation > lisp/index.org";
+  run "emacs lisp/index.org --batch --eval '(org-html-export-to-html)'"
 
 let () =
   hand_written ();
