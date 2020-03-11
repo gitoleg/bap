@@ -42,7 +42,7 @@ let libraries = [
     "bap-byteweight", "Bap_byteweight", "interface to the Byteweight subsystem";
     "bap-demangle", "Bap_demangle.Std", "writing name demanglers";
     "bap-dwarf", "Bap_dwarf.Std", "a native DWARF parser";
-    "bap-ida", "Bap_ida.Std","an interface to IDA Pro";
+    (* "bap-ida", "Bap_ida.Std","an interface to IDA Pro"; *)
     "bap-llvm", "Bap_llvm.Std", "an inteface to LLVM disassemblers and loaders";
     "bap-plugins", "Bap_plugins.Std", "loading plugins";
     "bap-recipe", "Bap_recipe", "loading recipes (packs of command line arguments)";
@@ -201,7 +201,17 @@ let lisp_documentation () =
   run "bap /bin/true --primus-lisp-documentation > lisp/index.org";
   run "emacs lisp/index.org --batch --eval '(org-html-export-to-html)'"
 
+let check_installed x =
+  if Sys.command (sprintf "which %s" x) <> 0 then
+    failwith (sprintf "%s is not installed\n" x)
+
+let check () =
+  check_installed "bap";
+  check_installed "man2html";
+  check_installed "odig"
+
 let () =
+  check ();
   generate_manual ();
   hand_written_man ();
   lisp_documentation ();
