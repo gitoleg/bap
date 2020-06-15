@@ -32,7 +32,6 @@ depends: [
   "parsexp"
   "bap-signatures"
   "result"
-  "z3"
 ]
 depopts: ["conf-ida" "conf-binutils"]
 flags: light-uninstall
@@ -53,6 +52,7 @@ build: [
     "--%{conf-binutils:enable}%-objdump"
     "--objdump-path=%{conf-binutils:objdump}%" {conf-binutils:installed}
     "--objdump-targets=%{conf-binutils:targets}%" {conf-binutils:installed}
+    "--disable-primus-symbolic-executor"
   ]
   [make]
 ]
