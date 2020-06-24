@@ -9,13 +9,15 @@ RUN sudo apt-get update && sudo apt-get install --yes python-pip \
  && eval "$(opam env)" \
  && opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing --all \
  && opam update \
- && opam depext bap --yes \
- && opam install bap -v -j 1 --yes \
- && echo "done!"
-# && opam clean -acrs \
-# && rm -rf /home/opam/.opam/4.0[2-8] \
-# && rm -rf /home/opam/.opam/4.09/.opam-switch/sources/* \
-# && rm -rf /home/opam/opam-repository \
-# && sudo pip install bap
+ && opam depext bap --yes \ 
+ && git clone https://github.com/BinaryAnalysisPlatform/bap --single-branch --branch=master \
+ && opam pin add bap bap -n \
+ && opam install bap --deps-only --yes \
+ && opam pin remove bap \
+ && opam clean -acrs \
+ && rm -rf /home/opam/.opam/4.0[2-8] \
+ && rm -rf /home/opam/.opam/4.09/.opam-switch/sources/* \
+ && rm -rf /home/opam/opam-repository \
+ && opam install bap -v -j 1 --yes 
 
 ENTRYPOINT ["opam", "config", "exec", "--" ]
