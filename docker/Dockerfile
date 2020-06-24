@@ -10,6 +10,7 @@ RUN sudo apt-get update && sudo apt-get install --yes python-pip \
  && opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing --all \
  && opam update \
  && opam depext bap --yes \
+ && opam install bap -j 1 --yes \
  && echo "done!"
 # && opam clean -acrs \
 # && rm -rf /home/opam/.opam/4.0[2-8] \
