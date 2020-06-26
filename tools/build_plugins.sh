@@ -54,7 +54,8 @@ build_plugin() {
 
 for plugin in $(ls plugins); do
     if [ -d plugins/$plugin ]; then
-        (build_plugin $plugin)&
+        (build_plugin $plugin)
+        rm  -rf /tmp/*
     fi
 done
 wait
