@@ -33,9 +33,9 @@ git config --global user.name $GITHUB_ACTOR
 git config --global user.email "action-noreply@github.com"
 
 echo "debug: git add"
-git add bap/api > /dev/null
+git add bap/api
 echo "debug: git commit"
-git commit -m $bap_commit
+git commit -m $bap_commit > /dev/null
 
 echo "debug: pushing"
 git push $repo master # TODO!
