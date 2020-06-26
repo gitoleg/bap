@@ -6,7 +6,7 @@ TOKEN=$1
 bap_commit=`git rev-parse --short HEAD`
 
 #TODO
-git clone https://github.com/gitoleg/binaryanalysisplatform.github.io --no-checkout --single-branch --branch=add-actions --depth=1 blog
+git clone https://github.com/gitoleg/binaryanalysisplatform.github.io --no-checkout --single-branch --branch=master --depth=1 blog
 
 git reset --
 
