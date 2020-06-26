@@ -27,7 +27,7 @@ if [ "some$TOKEN" != "some" ]; then
     echo "has token"
 fi
 
-repo="https://gitoleg:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+repo="https://gitoleg:${TOKEN}@github.com/binaryanalysisplatform.github.io.git"
 
 git config --global user.name $GITHUB_ACTOR
 git config --global user.email "action-noreply@github.com"
