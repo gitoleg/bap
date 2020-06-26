@@ -3,9 +3,6 @@
 set -eu
 
 TOKEN=$1
-ls -l
-
-cd bap
 bap_commit=`git rev-parse --short HEAD`
 
 #TODO
