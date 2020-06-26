@@ -8,6 +8,12 @@ RUN sudo apt-get update && sudo apt-get install --yes python-pip \
  && opam remote set-url default https://opam.ocaml.org \
  && opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing --all \
  && opam update \
+ && rm -rf /home/opam/.opam/4.0[2-8,10] \
+ && rm -rf /home/opam/.opam/4.09/.opam-switch/sources/* \
+ && rm -rf /home/opam/opam-repository \
+ && opam depext bap --yes \
+ && opam install bap-std bap-primus --yes \
+ && opam clean -arcs \
  && opam depext --install bap -j 1 --yes \
  && opam clean -acrs \
  && rm -rf /home/opam/.opam/4.0[2-8,10] \
