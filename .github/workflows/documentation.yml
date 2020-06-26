@@ -1,0 +1,44 @@
+name: Build documentation
+
+
+on:
+  - push
+  #temp, replace to weekly later
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # - name: Install system dependencies
+      #   run: |
+      #       opam pin add bap . -n
+      #       opam depext bap --yes
+
+      # - name: Install opam dependencies
+      #   run: opam install . --deps-only
+
+      # - name: Install BAP
+      #   run: opam install bap --yes
+
+      # - name: Build Documentation
+      #   run: |
+      #     sudo apt-get install emacs-nox man2html --yes
+      #     opam install odig --yes
+      #     make doc
+
+      - name: Imitate docs
+        run: |
+          mkdir man1
+          mkdir man3
+          mkdir lisp
+          mkdir -p doc/odoc
+          touch man1/file1
+          touch man3/file2
+          touch lisp/file3
+          touch doc/odoc/file4
+
+      - name: Try push
+        run: bash push-documentation.sh ${{ secrets.GITHUB_TOKEN }}
