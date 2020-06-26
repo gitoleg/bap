@@ -31,13 +31,13 @@ jobs:
 
       - name: Imitate docs
         run: |
-          mkdir man1
-          mkdir man3
-          mkdir lisp
-          mkdir -p doc/odoc
-          touch man1/file1
-          touch man3/file2
-          touch lisp/file3
+          mkdir doc/man1
+          mkdir doc/man3
+          mkdir doc/lisp
+          mkdir doc/odoc
+          touch doc/man1/file1
+          touch doc/man3/file2
+          touch doc/lisp/file3
           touch doc/odoc/file4
 
       - name: Try push
