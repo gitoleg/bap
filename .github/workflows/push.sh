@@ -12,6 +12,7 @@ git reset --
 
 mkdir -p blog/bap/api
 
+echo "debug: copying"
 cp -r  doc/man1 blog/bap/api/
 cp -r  doc/man3 blog/bap/api/
 cp -r  doc/lisp blog/bap/api/
@@ -31,7 +32,10 @@ repo="https://gitoleg:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 git config --global user.name $GITHUB_ACTOR
 git config --global user.email "action-noreply@github.com"
 
-git add bap/api
-
+echo "debug: git add"
+git add bap/api > /dev/null
+echo "debug: git commit"
 git commit -m $bap_commit
+
+echo "debug: pushing"
 git push $repo master # TODO!
