@@ -4,9 +4,6 @@ set -eu
 
 TOKEN=$1
 
-cd /home/opam/
-export HOME=/home/opam
-
 cd bap
 bap_commit=`git rev-parse --short HEAD`
 

@@ -41,6 +41,5 @@ jobs:
           touch doc/odoc/file4
 
       - name: Try push
-        run: |
-          ls
+        run:
           bash .github/workflows/push.sh ${{ secrets.GITHUB_TOKEN }}
