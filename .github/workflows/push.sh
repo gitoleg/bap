@@ -13,6 +13,12 @@ mkdir -p blog/bap/api
 cd blog
 git reset
 
+ls
+
+echo "debug: status"
+git status | head -n 10
+
+
 echo "debug: copying"
 cp -r  ../doc/man1 blog/bap/api/
 cp -r  ../doc/man3 blog/bap/api/
