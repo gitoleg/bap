@@ -10,15 +10,14 @@ git clone https://github.com/gitoleg/binaryanalysisplatform.github.io --no-check
 
 mkdir -p blog/bap/api
 
-echo "debug: copying"
-cp -r  doc/man1 blog/bap/api/
-cp -r  doc/man3 blog/bap/api/
-cp -r  doc/lisp blog/bap/api/
-cp -rL doc/odoc blog/bap/api/
-
 cd blog
-
 git reset
+
+echo "debug: copying"
+cp -r  ../doc/man1 blog/bap/api/
+cp -r  ../doc/man3 blog/bap/api/
+cp -r  ../doc/lisp blog/bap/api/
+cp -rL ../doc/odoc blog/bap/api/
 
 echo "debug: status"
 git status | head -n 10
