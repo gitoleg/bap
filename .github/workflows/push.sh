@@ -13,20 +13,14 @@ mkdir -p blog/bap/api
 cd blog
 git reset > /dev/null
 
-ls
-
 echo "debug: status"
 git status | head -n 10
 
-
-echo "debug: copying man1"
-cp -r  ../doc/man1 blog/bap/api/
-echo "debug: copying man3"
-cp -r  ../doc/man3 blog/bap/api/
-echo "debug: copying lisp"
-cp -r  ../doc/lisp blog/bap/api/
-echo "debug: copying odoc"
-cp -rL ../doc/odoc blog/bap/api/
+echo "debug: copying"
+cp -r  ../doc/man1 bap/api/
+cp -r  ../doc/man3 bap/api/
+cp -r  ../doc/lisp bap/api/
+cp -rL ../doc/odoc bap/api/
 
 echo "debug: status"
 git status | head -n 10
