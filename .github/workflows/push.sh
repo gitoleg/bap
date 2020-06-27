@@ -8,11 +8,6 @@ bap_commit=`git rev-parse --short HEAD`
 #TODO
 git clone https://github.com/gitoleg/binaryanalysisplatform.github.io --no-checkout --single-branch --branch=master --depth=1 blog
 
-git reset
-
-echo "debug: status"
-git status | head -n 10
-
 mkdir -p blog/bap/api
 
 echo "debug: copying"
@@ -22,6 +17,11 @@ cp -r  doc/lisp blog/bap/api/
 cp -rL doc/odoc blog/bap/api/
 
 cd blog
+
+git reset
+
+echo "debug: status"
+git status | head -n 10
 
 repo="https://gitoleg:${TOKEN}@github.com/gitoleg/binaryanalysisplatform.github.io.git"
 
