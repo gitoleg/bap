@@ -10,6 +10,9 @@ git clone https://github.com/gitoleg/binaryanalysisplatform.github.io --no-check
 
 git reset
 
+echo "debug: status"
+git status | head -n 10
+
 mkdir -p blog/bap/api
 
 echo "debug: copying"
@@ -28,7 +31,10 @@ git config --global user.email "action-noreply@github.com"
 echo "debug: git add"
 git add bap/api
 echo "debug: git commit"
-git commit -m $bap_commit > /dev/null
+
+git status | head -n 10
+
+git commit -m $bap_commit  | head -n 10
 
 echo "debug: pushing"
 git push $repo master # TODO
