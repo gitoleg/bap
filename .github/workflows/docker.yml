@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
     - name: Publish docker image
@@ -13,4 +13,3 @@ jobs:
         docker build -t gitoleg/bap:latest docker/
         docker push gitoleg/bap:latest
         docker rm gitoleg/bap:latest
-
