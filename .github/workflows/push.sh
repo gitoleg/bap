@@ -9,8 +9,8 @@ if [ ! -d ~/.ssh ]; then
 fi
 echo '-----BEGIN RSA PRIVATE KEY-----'  >> ~/.ssh/id_rsa
 tr ' ' '\n' $KEY >> ~/.ssh/id_rsa
-echo '-----end RSA PRIVATE KEY-----'  >> ~/.ssh/id_rsa
-cat ~/.ssh/id_rsa
+echo '-----END RSA PRIVATE KEY-----'  >> ~/.ssh/id_rsa
+cat ~/.ssh/id_rsa | hean -n 3
 
 
 
