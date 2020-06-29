@@ -8,6 +8,8 @@ if [ ! -d .ssh ]; then
     mkdir .ssh
 fi
 
+cat $KEY | head -n 1
+
 echo $KEY > .ssh/id_rsa
 chmod a-rw .ssh/id_rsa
 chmod u+r .ssh/id_rsa
