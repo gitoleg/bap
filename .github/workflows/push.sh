@@ -8,12 +8,13 @@ if [ ! -d ~/.ssh ]; then
     mkdir ~/.ssh
 fi
 
+echo $KEY
+
+
 echo '-----BEGIN RSA PRIVATE KEY-----'  >> ~/.ssh/id_rsa
 echo $KEY | tr ' ' '\n'  >> ~/.ssh/id_rsa
 echo '-----END RSA PRIVATE KEY-----'  >> ~/.ssh/id_rsa
-cat ~/.ssh/id_rsa
-
-
+echo "" >> >> ~/.ssh/id_rsa
 
 chmod a-rw ~/.ssh/id_rsa
 chmod u+r ~/.ssh/id_rsa
