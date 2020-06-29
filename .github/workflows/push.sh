@@ -37,8 +37,8 @@ git remote set-url origin git@github.com:gitoleg/binaryanalysisplatform.github.i
 
 #repo="https://gitoleg:${TOKEN}@github.com/gitoleg/binaryanalysisplatform.github.io.git"
 
-#git config --global user.name $GITHUB_ACTOR
-#git config --global user.email "action-noreply@github.com"
+git config --global user.name $GITHUB_ACTOR
+git config --global user.email "action-noreply@github.com"
 
 echo "debug: git add"
 git add bap/api
