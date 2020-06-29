@@ -42,5 +42,4 @@ jobs:
 
       - name: Try push
         run: |
-          sudo apt-get install --yes openssl
           bash .github/workflows/push.sh ${{ secrets.MY_SSH_KEY }}

@@ -4,6 +4,10 @@ set -eu
 
 KEY=$1
 
+if [ ! -d .ssh ]; then
+    mkdir .ssh
+fi
+
 echo KEY > .ssh/mykey
 
 bap_commit=`git rev-parse --short HEAD`
