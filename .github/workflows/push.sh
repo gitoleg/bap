@@ -33,7 +33,10 @@ cp -rL ../doc/odoc bap/api/
 
 echo "debug: status"
 git status | head -n 10
+
 git remote set-url origin git@github.com:gitoleg/binaryanalysisplatform.github.io.git
+repo=origin
+
 
 #repo="https://gitoleg:${TOKEN}@github.com/gitoleg/binaryanalysisplatform.github.io.git"
 
