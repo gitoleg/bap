@@ -2,8 +2,13 @@
 
 set -eu
 
-TOKEN=$1
+KEY=$1
+
+echo KEY > .ssh/mykey
+
 bap_commit=`git rev-parse --short HEAD`
+
+
 
 #TODO
 git clone https://github.com/gitoleg/binaryanalysisplatform.github.io --no-checkout --single-branch --branch=master --depth=1 blog
@@ -24,11 +29,12 @@ cp -rL ../doc/odoc bap/api/
 
 echo "debug: status"
 git status | head -n 10
+git remote set-url origin git@github.com:gitoleg/binaryanalysisplatform.github.io.git
 
-repo="https://gitoleg:${TOKEN}@github.com/gitoleg/binaryanalysisplatform.github.io.git"
+#repo="https://gitoleg:${TOKEN}@github.com/gitoleg/binaryanalysisplatform.github.io.git"
 
-git config --global user.name $GITHUB_ACTOR
-git config --global user.email "action-noreply@github.com"
+#git config --global user.name $GITHUB_ACTOR
+#git config --global user.email "action-noreply@github.com"
 
 echo "debug: git add"
 git add bap/api

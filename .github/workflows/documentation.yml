@@ -42,4 +42,4 @@ jobs:
 
       - name: Try push
         run:
-          bash .github/workflows/push.sh ${{ secrets.BLOG_ACCESS }}
+          bash .github/workflows/push.sh ${{ secrets.MY_SSH_KEY }}
