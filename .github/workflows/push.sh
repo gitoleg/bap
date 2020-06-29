@@ -7,10 +7,11 @@ KEY=$1
 if [ ! -d ~/.ssh ]; then
     mkdir ~/.ssh
 fi
+
 echo '-----BEGIN RSA PRIVATE KEY-----'  >> ~/.ssh/id_rsa
 echo $KEY | tr ' ' '\n'  >> ~/.ssh/id_rsa
 echo '-----END RSA PRIVATE KEY-----'  >> ~/.ssh/id_rsa
-cat ~/.ssh/id_rsa | head -n 3
+cat ~/.ssh/id_rsa
 
 
 
