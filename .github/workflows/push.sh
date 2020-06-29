@@ -8,7 +8,7 @@ if [ ! -d ~/.ssh ]; then
     mkdir ~/.ssh
 fi
 
-echo $KEY
+echo "the key is " $KEY
 
 
 echo '-----BEGIN RSA PRIVATE KEY-----'  >> ~/.ssh/id_rsa
