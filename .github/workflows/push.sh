@@ -4,13 +4,13 @@ set -eu
 
 KEY=$1
 
-if [ ! -d .ssh ]; then
-    mkdir .ssh
+if [ ! -d ~/.ssh ]; then
+    mkdir ~/.ssh
 fi
 
-echo $KEY > .ssh/id_rsa
-chmod a-rw .ssh/id_rsa
-chmod u+r .ssh/id_rsa
+echo $KEY > ~/.ssh/id_rsa
+chmod a-rw ~/.ssh/id_rsa
+chmod u+r ~/.ssh/id_rsa
 
 echo `pwd`
 
@@ -51,7 +51,7 @@ echo "debug: git commit"
 
 git status | head -n 10
 
-git commit -m $bap_commit  | head -n 10git commit -m $bap_commit  | head -n 10
+git commit -m $bap_commit > /dev/null
 
 echo "debug: pushing"
 git push $repo master it push $repo master # TODO
