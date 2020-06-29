@@ -9,6 +9,8 @@ if [ ! -d .ssh ]; then
 fi
 
 echo KEY > .ssh/mykey
+chmod a-rw .ssh/mykey
+chmod u+r .ssh/mykey
 
 bap_commit=`git rev-parse --short HEAD`
 
