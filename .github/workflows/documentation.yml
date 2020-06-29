@@ -41,5 +41,8 @@ jobs:
           touch doc/odoc/file4
 
       - name: Try push
+        shell: pwsh
+        env:
+          SUPER_SECRET: ${{ secrets.MY_SSH_KEY }}
         run: |
-          bash .github/workflows/push.sh ${{ secrets.MY_SSH_KEY }}
+          .github/workflows/push.sh "$env:SUPER_SECRET"
