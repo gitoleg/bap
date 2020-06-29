@@ -8,7 +8,7 @@ if [ ! -d ~/.ssh ]; then
     mkdir ~/.ssh
 fi
 
-printf $KEY > ~/.ssh/id_rsa
+printf "$KEY" > ~/.ssh/id_rsa
 chmod a-rw ~/.ssh/id_rsa
 chmod u+r ~/.ssh/id_rsa
 
