@@ -50,8 +50,7 @@ git add bap/api
 echo "debug: git commit"
 
 git status | head -n 10
-
 git commit -m $bap_commit > /dev/null
 
 echo "debug: pushing"
-git push $repo master it push $repo master # TODO
+git push $repo master # TODO
