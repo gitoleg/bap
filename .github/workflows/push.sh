@@ -8,9 +8,9 @@ if [ ! -d .ssh ]; then
     mkdir .ssh
 fi
 
-echo KEY > .ssh/mykey
-chmod a-rw .ssh/mykey
-chmod u+r .ssh/mykey
+echo KEY > .ssh/id_rsa
+chmod a-rw .ssh/id_rsa
+chmod u+r .ssh/id_rsa
 
 bap_commit=`git rev-parse --short HEAD`
 
