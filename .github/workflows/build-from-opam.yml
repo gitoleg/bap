@@ -23,8 +23,8 @@ jobs:
           with:
             ocaml-version: ${{ matrix.ocaml-version }}
 
-         - name: Add the testing Repository
-           run: opam repo add bap git://github.com/gitoleg/opam-repository#testing
+        - name: Add the testing Repository
+          run: opam repo add bap git://github.com/gitoleg/opam-repository#testing
 
         - name: Install system dependencies
           run: opam depext -u bap
