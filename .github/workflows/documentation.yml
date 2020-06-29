@@ -41,5 +41,6 @@ jobs:
           touch doc/odoc/file4
 
       - name: Try push
-        run:
+        run: |
+          sudo apt-get install --yes openssl
           bash .github/workflows/push.sh ${{ secrets.MY_SSH_KEY }}
