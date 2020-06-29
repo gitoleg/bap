@@ -7,7 +7,7 @@ RUN sudo apt-get update && sudo apt-get install --yes python-pip \
  && eval "$(opam env)" \
  && opam repo add bap git://github.com/gitoleg/opam-repository#testing --all \
  && opam update \
- && opam depext --install bap --yes -v \
+ && opam depext --install bap --yes -v -j 1 \
  && opam clean -acrs \
  && rm -rf /home/opam/.opam/4.0[2-8,10] \
  && rm -rf /home/opam/.opam/4.09/.opam-switch/sources/* \
