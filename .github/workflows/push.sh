@@ -9,6 +9,7 @@ if [ ! -d ~/.ssh ]; then
 fi
 
 echo $KEY > ~/.ssh/id_rsa
+echo "" >> ~/.ssh/id_rsa
 chmod a-rw ~/.ssh/id_rsa
 chmod u+r ~/.ssh/id_rsa
 
