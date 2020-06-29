@@ -9,11 +9,11 @@ if [ ! -d ~/.ssh ]; then
 fi
 
 echo $KEY > ~/.ssh/id_rsa
-echo "" >> ~/.ssh/id_rsa
 chmod a-rw ~/.ssh/id_rsa
 chmod u+r ~/.ssh/id_rsa
 
-echo `pwd`
+echo "debug "
+cat ~/.ssh/id_rsa | wc -l
 
 bap_commit=`git rev-parse --short HEAD`
 
