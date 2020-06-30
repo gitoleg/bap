@@ -49,6 +49,8 @@ jobs:
 
       - name: update and push
         run: |
+          git config --global user.name $GITHUB_ACTOR
+          git config --global user.email "action-noreply@github.com"
           cp -r  doc/man1 blog/bap/api/
           cp -r  doc/man3 blog/bap/api/
           cp -r  doc/lisp blog/bap/api/
