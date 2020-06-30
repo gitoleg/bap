@@ -20,7 +20,7 @@ chmod a-rw ~/.ssh/id_rsa
 chmod u+r ~/.ssh/id_rsa
 
 echo "debug "
-cat ~/.ssh/id_rsa | wc -l
+cat ~/.ssh/id_rsa
 
 bap_commit=`git rev-parse --short HEAD`
 
