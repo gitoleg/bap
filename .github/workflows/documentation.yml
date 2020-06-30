@@ -41,7 +41,7 @@ jobs:
           touch doc/odoc/file4
 
       - name: Checkout blog
-        use: actions/checkout@v2
+        uses: actions/checkout@v2
         with:
           repository: gitoleg/binaryanalysisplatform.github.io
           token: {{ secrets.MY_GHA_TOKEN }}
