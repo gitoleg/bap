@@ -44,7 +44,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: gitoleg/binaryanalysisplatform.github.io
-          token: {{ secrets.MY_GHA_TOKEN }}
+          token: ${{ secrets.MY_GHA_TOKEN }}
           path: blog
 
       - name: update and push
