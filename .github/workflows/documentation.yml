@@ -40,9 +40,20 @@ jobs:
           touch doc/lisp/file3
           touch doc/odoc/file4
 
-      - name: Try push
-        shell: bash
-        env:
-          SUPER_SECRET: ${{ secrets.MY_SSH_KEY }}
+      - name: Checkout blog
+        use: actions/checkout@v2
+        with:
+          repository: gitoleg/binaryanalysisplatform.github.io
+          token: {{ secrets.MY_GHA_TOKEN }}
+          path: blog
+
+      - name: update and push
         run: |
-          .github/workflows/push.sh "$env:SUPER_SECRET"
+          cp -r  doc/man1 blog/bap/api/
+          cp -r  doc/man3 blog/bap/api/
+          cp -r  doc/lisp blog/bap/api/
+          cp -rL doc/odoc blog/bap/api/
+          cd blog
+          git add bap/api
+          git commit -m "test message"
+          git push origin master
