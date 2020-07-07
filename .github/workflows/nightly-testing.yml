@@ -24,31 +24,34 @@ jobs:
       OPAMRETRES: 8
 
     steps:
-        - name: Use OCaml ${{ matrix.ocaml-version }}
-          uses: avsm/setup-ocaml@v1
-          with:
-            ocaml-version: ${{ matrix.ocaml-version }}
+        - name: find objdump
+          run: which objdump
 
-        - name: Add the Testing Repository
-          run: opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing
+        # - name: Use OCaml ${{ matrix.ocaml-version }}
+        #   uses: avsm/setup-ocaml@v1
+        #   with:
+        #     ocaml-version: ${{ matrix.ocaml-version }}
 
-        - name: Install System Dependencies
-          run: opam depext -u bap
+        # - name: Add the Testing Repository
+        #   run: opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing
 
-        - name: Configure Homebrew
-          if: matrix.os == 'macos-latest'
-          run: |
+        # - name: Install System Dependencies
+        #   run: opam depext -u bap
+
+        # - name: Configure Homebrew
+        #   if: matrix.os == 'macos-latest'
+        #   run: |
             echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
          #   echo "::add-path::/usr/local/opt/binutils/bin"
 
-        - name: Cleanup the Caches
-          if: matrix.os == 'ubuntu-latest'
-          run: sudo apt clean --yes
+        # - name: Cleanup the Caches
+        #   if: matrix.os == 'ubuntu-latest'
+        #   run: sudo apt clean --yes
 
-        - name: Build and Install BAP
-          run: |
-            ls -l /usr/local/opt/binutils/bin
-            opam install bap
+        # - name: Build and Install BAP
+        #   run: |
+        #     ls -l /usr/local/opt/binutils/bin
+        #     opam install bap
 
         # - name: Checkout the Tests
         #   uses: actions/checkout@v2
