@@ -46,9 +46,7 @@ jobs:
           run: sudo apt clean --yes
 
         - name: Build and Install BAP
-          run: |
-            ls -l /usr/local/opt/binutils/bin
-            opam install bap
+          run: opam install bap
 
         - name: Checkout the Tests
           uses: actions/checkout@v2
