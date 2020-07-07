@@ -41,7 +41,7 @@ jobs:
         # - name: Configure Homebrew
         #   if: matrix.os == 'macos-latest'
         #   run: |
-            echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
+        #    echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
          #   echo "::add-path::/usr/local/opt/binutils/bin"
 
         # - name: Cleanup the Caches
