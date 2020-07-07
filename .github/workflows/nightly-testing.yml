@@ -40,7 +40,7 @@ jobs:
           if: matrix.os == 'macos-latest'
           run: |
            echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
-           brew link binutils
+           brew link -f binutils
 
         - name: Cleanup the Caches
           if: matrix.os == 'ubuntu-latest'
@@ -49,7 +49,7 @@ jobs:
         - name: Build and Install BAP
           run: |
             ls -l /usr/local/opt/binutils/bin
-            opam install bap -v
+            opam install bap
 
         - name: Checkout the Tests
           uses: actions/checkout@v2
