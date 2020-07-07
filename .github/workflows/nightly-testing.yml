@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
           os:
-           # - ubuntu-latest
+            - ubuntu-latest
             - macos-latest
           ocaml-version:
            # - 4.09.1
@@ -31,7 +31,7 @@ jobs:
             ocaml-version: ${{ matrix.ocaml-version }}
 
         - name: Add the Testing Repository
-          run: opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing
+          run: opam repo add bap git://github.com/gitoleg/opam-repository#fixes-conf-binutils
 
         - name: Install System Dependencies
           run: opam depext -u bap
@@ -40,7 +40,6 @@ jobs:
           if: matrix.os == 'macos-latest'
           run: |
            echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
-           brew link -f binutils
 
         - name: Cleanup the Caches
           if: matrix.os == 'ubuntu-latest'
