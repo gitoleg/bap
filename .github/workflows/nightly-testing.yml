@@ -24,69 +24,67 @@ jobs:
       OPAMRETRES: 8
 
     steps:
-        - name: find objdump
-          run: which objdump
 
-        # - name: Use OCaml ${{ matrix.ocaml-version }}
-        #   uses: avsm/setup-ocaml@v1
-        #   with:
-        #     ocaml-version: ${{ matrix.ocaml-version }}
+        - name: Use OCaml ${{ matrix.ocaml-version }}
+          uses: avsm/setup-ocaml@v1
+          with:
+            ocaml-version: ${{ matrix.ocaml-version }}
 
-        # - name: Add the Testing Repository
-        #   run: opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing
+        - name: Add the Testing Repository
+          run: opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing
 
-        # - name: Install System Dependencies
-        #   run: opam depext -u bap
+        - name: Install System Dependencies
+          run: opam depext -u bap
 
-        # - name: Configure Homebrew
-        #   if: matrix.os == 'macos-latest'
-        #   run: |
-        #    echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
-         #   echo "::add-path::/usr/local/opt/binutils/bin"
+        - name: Configure Homebrew
+          if: matrix.os == 'macos-latest'
+          run: |
+           echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
+           echo "::add-path::/usr/local/opt/binutils/bin"
 
-        # - name: Cleanup the Caches
-        #   if: matrix.os == 'ubuntu-latest'
-        #   run: sudo apt clean --yes
+        - name: Cleanup the Caches
+          if: matrix.os == 'ubuntu-latest'
+          run: sudo apt clean --yes
 
-        # - name: Build and Install BAP
-        #   run: |
-        #     ls -l /usr/local/opt/binutils/bin
-        #     opam install bap
+        - name: Build and Install BAP
+          run: |
+            ls -l /usr/local/opt/binutils/bin
+            opam install bap -v
 
-        # - name: Checkout the Tests
-        #   uses: actions/checkout@v2
-        #   with:
-        #     submodules: true
-        #     repository: BinaryAnalysisPlatform/bap
+        - name: Checkout the Tests
+          uses: actions/checkout@v2
+          with:
+            submodules: true
+            repository: BinaryAnalysisPlatform/bap
 
-        # - name: Install Extra System Dependencies
-        #   run: |
-        #       opam pin add bap . -n
-        #       opam depext -u bap
+        - name: Install Extra System Dependencies
+          run: |
+              opam pin add bap . -n
+              opam depext -u bap
 
-        # - name: Run Functional Tests
-        #   run: opam exec -- make check
+        - name: Run Functional Tests
+          run: opam exec -- make check
 
-        # - uses: actions/upload-artifact@v2
-        #   if: ${{ always() }}
-        #   with:
-        #     name: opam-log
-        #     path: ~/.opam/log
+        - uses: actions/upload-artifact@v2
+          if: ${{ always() }}
+          with:
+            name: opam-log
+            path: ~/.opam/log
 
-        # - uses: actions/upload-artifact@v2
-        #   if: ${{ always() }}
-        #   with:
-        #     name: bap-log
-        #     path: /tmp/bap/log
+        - uses: actions/upload-artifact@v2
+          if: ${{ always() }}
+          with:
+            name: bap-log
+            path: /tmp/bap/log
 
-        # - uses: actions/upload-artifact@v2
-        #   if: ${{ always() }}
-        #   with:
-        #     name: unit-tests-log
-        #     path: oUnit-*.log
+        - uses: actions/upload-artifact@v2
+          if: ${{ always() }}
+          with:
+            name: unit-tests-log
+            path: oUnit-*.log
 
-        # - uses: actions/upload-artifact@v2
-        #   if: ${{ always() }}
-        #   with:
-        #     name: fun-tests-log
-        #     path: testsuite/*.log
+        - uses: actions/upload-artifact@v2
+          if: ${{ always() }}
+          with:
+            name: fun-tests-log
+            path: testsuite/*.log
