@@ -18,6 +18,12 @@ jobs:
            with:
              submodules: recursive
 
+         - name: Check submodule
+           run: |
+             cd testsuite
+             git status
+             git log | head -n 30
+
          - name: Install OCaml
            uses: avsm/setup-ocaml@v1
            with:
