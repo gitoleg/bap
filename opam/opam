@@ -36,10 +36,10 @@ depends: [
   "radare2"
   "yojson"
   "result" {= "1.4"}
+  "conf-binutils"  {= "0.3"}
 ]
 depopts: [
   "conf-ida"
-  "conf-binutils"  {= "0.3"}
 ]
 flags: light-uninstall
 build: [
