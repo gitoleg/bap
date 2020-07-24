@@ -43,6 +43,9 @@ jobs:
                opam install bap --deps-only
                opam install omake
 
+         - name: Check Conf-binutils
+           run: opam config list conf-binutils
+
          - name: Configure BAP
            run: opam exec -- ./configure-omake
 
