@@ -32,6 +32,7 @@ jobs:
           run: echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
 
         - name: Check python version
+          if: matrix.os == 'macos-latest'
           run:
              python3.8 --version
 
