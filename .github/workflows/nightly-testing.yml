@@ -25,6 +25,7 @@ jobs:
         - name: Check python version
           if: matrix.os == 'macos-latest'
           run: |
+             brew update
              brew cleanup
              python3.8 --version
              brew install python@3.8
