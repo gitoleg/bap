@@ -2,7 +2,7 @@
 
 name: build-and-test
 on:
-  - pull_request
+  - push
 
 jobs:
   build:
@@ -22,6 +22,11 @@ jobs:
            uses: avsm/setup-ocaml@v1
            with:
              ocaml-version: 4.07.1
+
+         - name: Check testsuite
+           run: |
+             cd testsuite
+             git log | head -n 20
 
          - name: Pin OASIS
            run: opam pin add oasis https://github.com/BinaryAnalysisPlatform/oasis.git
