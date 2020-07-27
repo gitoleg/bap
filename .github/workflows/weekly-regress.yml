@@ -2,7 +2,8 @@
 name: weekly-regression-tests
 
 on:
-  - push
+  schedule:
+    - cron: '0 0 * * TUE'
 
 jobs:
   build:
