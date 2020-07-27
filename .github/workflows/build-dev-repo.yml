@@ -8,11 +8,11 @@ jobs:
     strategy:
       matrix:
           os:
-            - ubuntu-latest
+#            - ubuntu-latest
             - macos-latest
           ocaml-version:
-            - 4.09.1
-            - 4.08.1
+#            - 4.09.1
+#            - 4.08.1
             - 4.07.1
 
     runs-on: ${{ matrix.os }}
