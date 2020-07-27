@@ -1,7 +1,8 @@
 name: build-dev-repo
 
 on:
-  - push
+  schedule:
+    - cron: '0 0 * * SUN' # Every Sunday at 00:00 UTC */
 
 jobs:
   build:

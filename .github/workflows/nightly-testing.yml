@@ -24,7 +24,10 @@ jobs:
     steps:
         - name: Check python version
           if: matrix.os == 'macos-latest'
-          run: python3.8 --version
+          run: |
+             python3.8 --version
+             brew install glib
+             python3.8 --version
 
         - name: Use OCaml ${{ matrix.ocaml-version }}
           uses: avsm/setup-ocaml@v1

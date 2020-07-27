@@ -2,8 +2,7 @@
 name: weekly-regression-tests
 
 on:
-  schedule:
-    - cron: '0 0 * * SUN' # Every Sunday at 00:00 UTC */
+  - push
 
 jobs:
   build:
@@ -48,6 +47,7 @@ jobs:
           with:
             submodules: true
             repository: BinaryAnalysisPlatform/bap
+            ref: v2.1.0
 
         - name: Install Extra System Dependencies
           run: |
