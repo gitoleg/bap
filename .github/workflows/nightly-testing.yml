@@ -26,6 +26,7 @@ jobs:
           if: matrix.os == 'macos-latest'
           run: |
              python3.8 --version
+             brew update
              brew install graphviz
              python3.8 --version
 
