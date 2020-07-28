@@ -2,8 +2,9 @@
 name: weekly-regression-tests
 
 on:
-  schedule:
-    - cron: '0 0 * * TUE'
+  - push
+#  schedule:
+#    - cron: '0 0 * * TUE'
 
 jobs:
   build:
@@ -31,7 +32,9 @@ jobs:
 
         - name: Configure Homebrew LLVM
           if: matrix.os == 'macos-latest'
-          run: echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
+          run: |
+             echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
+             echo '::set-env name=OBJDUMP_PATH::$(which objdump)
 
         - name: Install System Dependencies
           run: opam depext -y bap
@@ -53,7 +56,7 @@ jobs:
         - name: Install Extra System Dependencies
           run: |
               opam pin add bap . -n
-              opam depext -u bap
+   #           opam depext -u bap
 
         - name: Run Functional Tests
           run: opam exec -- make check
