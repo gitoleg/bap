@@ -2,6 +2,8 @@ name: nightly-regression-tests
 
 on:
   - push
+#schedule:
+#     - cron: '0 6 * * *' # Every day at 06:00 UTC, 2 am EDT
 
 jobs:
   build:
@@ -11,8 +13,8 @@ jobs:
 #            - ubuntu-latest
             - macos-latest
           ocaml-version:
-#            - 4.09.1
-#            - 4.08.1
+            - 4.09.1
+            - 4.08.1
             - 4.07.1
 
     runs-on: ${{ matrix.os }}
@@ -22,26 +24,22 @@ jobs:
       OPAMRETRES: 8
 
     steps:
-        # - name: Check python version
-        #   if: matrix.os == 'macos-latest'
-        #   run: |
-        #      brew update
-        #      brew upgrade
-        #      python3.8 --version
 
         - name: Use OCaml ${{ matrix.ocaml-version }}
           uses: avsm/setup-ocaml@v1
           with:
             ocaml-version: ${{ matrix.ocaml-version }}
 
-        - name: Configure Homebrew LLVM
+        - name: Configure Homebrew
           if: matrix.os == 'macos-latest'
-          run: echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
+          run: |
+            brew upgrade
+            echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
 
         - name: Add the Testing Repository
           run: opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing
         - name: Install System Dependencies
-          run: opam depext bap
+          run: opam depext -u bap
 
         - name: Cleanup the Caches
           if: matrix.os == 'ubuntu-latest'
