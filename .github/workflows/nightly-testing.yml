@@ -22,12 +22,12 @@ jobs:
       OPAMRETRES: 8
 
     steps:
-        - name: Check python version
-          if: matrix.os == 'macos-latest'
-          run: |
-             brew update
-             brew upgrade
-             python3.8 --version
+        # - name: Check python version
+        #   if: matrix.os == 'macos-latest'
+        #   run: |
+        #      brew update
+        #      brew upgrade
+        #      python3.8 --version
 
         - name: Use OCaml ${{ matrix.ocaml-version }}
           uses: avsm/setup-ocaml@v1
@@ -41,7 +41,7 @@ jobs:
         - name: Add the Testing Repository
           run: opam repo add bap git://github.com/BinaryAnalysisPlatform/opam-repository#testing
         - name: Install System Dependencies
-          run: opam depext -u bap
+          run: opam depext bap
 
         - name: Cleanup the Caches
           if: matrix.os == 'ubuntu-latest'
