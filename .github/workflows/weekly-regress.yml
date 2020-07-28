@@ -34,7 +34,7 @@ jobs:
           if: matrix.os == 'macos-latest'
           run: |
              echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
-             echo '::set-env name=OBJDUMP_PATH::$(which objdump)
+             echo '::set-env name=OBJDUMP_PATH::$(which objdump)'
 
         - name: Install System Dependencies
           run: opam depext -y bap
@@ -55,8 +55,9 @@ jobs:
 
         - name: Install Extra System Dependencies
           run: |
+              cat opam/opam | grep -v -E "3.*8" > opam/opam
               opam pin add bap . -n
-   #           opam depext -u bap
+              opam depext -u bap
 
         - name: Run Functional Tests
           run: opam exec -- make check
