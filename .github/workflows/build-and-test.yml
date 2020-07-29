@@ -50,10 +50,13 @@ jobs:
            run: opam exec -- make reinstall
 
          - name: check bap stage 1
-           run: opam exec -- bap testsuite/obj/x86_64-w64-mingw32-obj --no-radare --no-objdump -d
+           run: opam exec -- bap testsuite/obj/x86_64-w64-mingw32-obj --no-radare --no-objdump -dasm
 
          - name: check bap stage 2
-           run: opam exec -- bap testsuite/obj/x86_64-w64-mingw32-obj -d
+           run: opam exec -- bap testsuite/obj/x86_64-w64-mingw32-obj -dasm --no-objdump
+
+         - name: check bap stage 3
+           run: opam exec -- bap testsuite/obj/x86_64-w64-mingw32-obj -dasm --no-radare
 
          - name: Run Unit Tests
            run: opam exec -- make test
