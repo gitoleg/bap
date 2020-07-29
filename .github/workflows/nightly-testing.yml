@@ -2,8 +2,6 @@ name: nightly-regression-tests
 
 on:
   - push
-#  schedule:
-#    - cron: '0 6 * * *' # Every day at 06:00 UTC, 2 am EDT
 
 jobs:
   build:
@@ -13,8 +11,6 @@ jobs:
             - ubuntu-latest
             - macos-latest
           ocaml-version:
-#            - 4.09.1
-#            - 4.08.1
             - 4.07.1
 
     runs-on: ${{ matrix.os }}
@@ -66,23 +62,5 @@ jobs:
         - uses: actions/upload-artifact@v2
           if: ${{ always() }}
           with:
-            name: opam-log
-            path: ~/.opam/log
-
-        - uses: actions/upload-artifact@v2
-          if: ${{ always() }}
-          with:
-            name: bap-log
-            path: /tmp/bap/log
-
-        - uses: actions/upload-artifact@v2
-          if: ${{ always() }}
-          with:
-            name: unit-tests-log
-            path: oUnit-*.log
-
-        - uses: actions/upload-artifact@v2
-          if: ${{ always() }}
-          with:
-            name: fun-tests-log
-            path: testsuite/*.log
+            name: fun-tests-log-${{ matrix.os }}
+            path: testsuite/times.log
