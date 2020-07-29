@@ -52,7 +52,8 @@ jobs:
           uses: actions/checkout@v2
           with:
             submodules: true
-            repository: BinaryAnalysisPlatform/bap
+            repository: gitoleg/bap
+            ref: removes-symbol-info
 
         - name: Install Extra System Dependencies
           run: |
