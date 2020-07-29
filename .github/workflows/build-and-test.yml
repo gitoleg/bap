@@ -40,12 +40,6 @@ jobs:
                opam install bap --deps-only
                opam install omake
 
-         - name: check bap stage 1
-           run:  bap -d testsuite/obj/x86_64-w64-mingw32-obj --no-radare --no-objdump
-
-         - name: check bap stage 2
-           run: bap -d testsuite/obj/x86_64-w64-mingw32-obj
-
          - name: Configure BAP
            run: opam exec -- ./configure-omake
 
@@ -54,6 +48,12 @@ jobs:
 
          - name: Install BAP
            run: opam exec -- make reinstall
+
+         - name: check bap stage 1
+           run: bap -d testsuite/obj/x86_64-w64-mingw32-obj --no-radare --no-objdump
+
+         - name: check bap stage 2
+           run: bap -d testsuite/obj/x86_64-w64-mingw32-obj
 
          - name: Run Unit Tests
            run: opam exec -- make test
