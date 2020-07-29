@@ -32,6 +32,11 @@ jobs:
          - name: Install system dependencies
            run: opam depext -u bap
 
+         - name: check objdump
+           run: |
+               opam config list conf-binutils
+               objdump -d testsuite/obj/x86_64-w64-mingw32-obj
+
          - name: Install opam dependencies
            run: |
                opam install bap --deps-only
