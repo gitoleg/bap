@@ -36,13 +36,10 @@ jobs:
         run: opam install bap --deps-only
 
       - name: Build and Install BAP
-        run: opam install bap
-
-      - name: Run Unit Tests
-        run: opam exec -- make test
+        run: opam install bap --with-test
 
       - name: Run Functional Tests
-        run: opam exec -- make check
+        run: make check
 
       - name: Run BIL verification tool
         run: |
