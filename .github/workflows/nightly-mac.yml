@@ -36,14 +36,16 @@ jobs:
         run: opam install bap --deps-only
 
       - name: Build and Install BAP
-        run: opam install bap --with-test
+        run: opam install bap -v --with-test
+
+      - name: Find OUnit logs
+        run: find .opam -name "oUnit-*.log"
 
       - name: Run Functional Tests
         run: opam exec -- make check
 
       - name: Run BIL verification tool
         run: |
-          opam install --fake bap
           opam pin add bap-veri testsuite/veri/bap-veri/ -n
           opam depext bap-veri
           opam install bap-veri
