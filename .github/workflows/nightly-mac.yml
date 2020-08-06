@@ -1,8 +1,8 @@
 name: nightly-mac
 
 on:
-  - push
-#  - pull_request
+  schedule:
+    - cron: '0 6 * * *' # Every day at 06:00 UTC, 2 am EDT
 
 jobs:
   build:
@@ -36,10 +36,10 @@ jobs:
         run: opam install bap --deps-only
 
       - name: Build and Install BAP
-        run: opam install bap -v --with-test
+        run: opam install bap
 
-      - name: Find OUnit logs
-        run: find ~/.opam -name "oUnit-*.log"
+      - name: Run OUnit Tests
+        run: opam exec -- make test
 
       - name: Run Functional Tests
         run: opam exec -- make check
@@ -56,12 +56,6 @@ jobs:
         with:
           name: bap-log
           path: ~/.local/state/bap
-
-      - uses: actions/upload-artifact@v2
-        if: ${{ always() }}
-        with:
-          name: unit-tests-log
-          path: _build/oUnit-*.log
 
       - uses: actions/upload-artifact@v2
         if: ${{ always() }}
