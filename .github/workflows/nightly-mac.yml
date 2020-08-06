@@ -39,7 +39,7 @@ jobs:
         run: opam install bap -v --with-test
 
       - name: Find OUnit logs
-        run: find .opam -name "oUnit-*.log"
+        run: find ~/.opam -name "oUnit-*.log"
 
       - name: Run Functional Tests
         run: opam exec -- make check
