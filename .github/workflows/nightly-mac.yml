@@ -39,7 +39,7 @@ jobs:
         run: opam install bap --with-test
 
       - name: Run Functional Tests
-        run: make check
+        run: opam exec -- make check
 
       - name: Run BIL verification tool
         run: |
