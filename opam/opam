@@ -172,6 +172,7 @@ install: [
   ["cp" "run_piqi_tests.native" "%{bin}%/bap_piqi_tests"] {with-test}
   ["cp" "run_traces_tests.native" "%{bin}%/bap_traces_tests"] {with-test}
   ["cp" "run_stub_resolver_tests.native" "%{bin}%/bap_stub_resolver_tests"] {with-test}
+  [make "test"] {with-test}
 ]
 remove: [
   ["ocamlfind" "remove" "bap-main"]
