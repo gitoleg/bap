@@ -12,6 +12,7 @@ jobs:
     env:
       OPAMJOBS: 2
       OPAMRETRES: 8
+      XDG_CACHE_HOME: /tmp/cache
 
     steps:
       - name: Checkout code
