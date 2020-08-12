@@ -12,7 +12,9 @@ jobs:
     env:
       OPAMJOBS: 2
       OPAMRETRES: 8
+      TMPDIR: /tmp
       XDG_CACHE_HOME: /tmp/cache
+      BAP_LOG_DIR: /tmp/bap-log
 
     steps:
       - name: Checkout code
