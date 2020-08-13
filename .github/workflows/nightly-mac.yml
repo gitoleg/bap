@@ -40,19 +40,17 @@ jobs:
         run: opam install bap --deps-only
 
       - name: Build and Install BAP
-        run: opam install bap -v --with-test
+        run: opam install bap
+        #-v --with-test
 
-      # - name: Run OUnit Tests
-      #   run: opam exec -- make test
-
-      - name: Run Functional Tests
-        run: opam exec -- make check
+     # - name: Run Functional Tests
+     #   run: opam exec -- make check
 
       - name: Run BIL verification tool
         run: |
           opam pin add bap-veri testsuite/veri/bap-veri/ -n
           opam depext bap-veri
-          opam install bap-veri
+          opam install -v -v bap-veri
           opam exec -- make -C testsuite veri
 
       - uses: actions/upload-artifact@v2
