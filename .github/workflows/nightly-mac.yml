@@ -48,7 +48,9 @@ jobs:
 
       - name: Run BIL verification tool
         run: |
-          opam pin add bap-veri testsuite/veri/bap-veri/ -n
+          git clone https://github.com/gitoleg/bap-veri
+          opam pin add bap-veri bap-veri -n
+         # opam pin add bap-veri testsuite/veri/bap-veri/ -n
           opam depext bap-veri
           opam install -v -v bap-veri
           opam exec -- make -C testsuite veri
