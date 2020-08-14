@@ -1,8 +1,9 @@
 name: build-dev-repo
 
 on:
-  schedule:
-    - cron: '0 0 * * SUN' # Every Sunday at 00:00 UTC */
+  - push
+ # schedule:
+ #   - cron: '0 0 * * SUN' # Every Sunday at 00:00 UTC */
 
 jobs:
   build:
@@ -31,10 +32,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Check python version
-        if: matrix.os == 'macos-latest'
-        run: python3.8 --version
-
       - name: Use OCaml ${{ matrix.ocaml-version }}
         uses: avsm/setup-ocaml@v1
         with:
@@ -42,10 +39,6 @@ jobs:
 
       - name: Pin BAP
         run: opam pin add bap . --no-action
-
-      - name: Configure Homebrew LLVM
-        if: matrix.os == 'macos-latest'
-        run: echo '::set-env name=LLVM_CONFIG::/usr/local/opt/llvm@9/bin/llvm-config'
 
       - name: Install system dependencies
         run: opam depext -u bap
