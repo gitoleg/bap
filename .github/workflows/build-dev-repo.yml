@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
           os:
-#            - ubuntu-latest
+            - ubuntu-latest
             - macos-latest
           ocaml-version:
 #            - 4.09.1
@@ -42,6 +42,9 @@ jobs:
 
       - name: Install system dependencies
         run: opam depext -u bap
+
+      - name: Install conf-bap-llvm.master
+        run: opam pin add conf-bap-llvm https://github.com/BinaryAnalysisPlatform/opam-repository/conf-bap-llvm/conf-bap-llvm.master
 
       - name: Install opam dependencies
         run: opam install bap --deps-only
