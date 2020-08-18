@@ -2,7 +2,7 @@ name: release
 on:
   - push
 #  schedule:
-#     - cron: '0 0 * * SAT' # every Saturday
+#     - cron: '5 * * * *'
 
 jobs:
   build:
@@ -16,8 +16,6 @@ jobs:
      steps:
          - name: Checkout code
            uses: actions/checkout@v2
-           with:
-             submodules: recursive
 
          - name: Install OCaml
            uses: avsm/setup-ocaml@v1
@@ -25,7 +23,7 @@ jobs:
              ocaml-version: 4.09.1+flambda
 
          - name: Build deb packages
-           run: ./tools/deb-build.sh ${{ env.VERSION }}
+           run: ./tools/release.sh ${{ env.VERSION }}
 
            # caution: this action overwrite the tag and deletes
            # releases that are associated with it
@@ -33,7 +31,7 @@ jobs:
            uses: "marvinpinto/action-automatic-releases@latest"
            with:
              repo_token: "${{ secrets.GITHUB_TOKEN }}"
-             automatic_release_tag: dev
+             automatic_release_tag: v${{ env.VERSION }}-alpha
              prerelease: true
              title: "Development Build"
              files: bap/*
