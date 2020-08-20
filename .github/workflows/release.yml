@@ -1,8 +1,8 @@
 name: release
+
 on:
-  - push
-#  schedule:
-#     - cron: '5 * * * *'
+  schedule:
+    - cron: '0 0 * * SAT' # every Saturday
 
 jobs:
   build:
